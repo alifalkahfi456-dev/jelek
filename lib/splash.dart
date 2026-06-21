@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'dashboard_page.dart';
@@ -29,52 +28,46 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late VideoPlayerController _videoController;
-  late AnimationController _fadeController;
-  bool _fadeOutStarted = false;
-
-  // Palet Warna TEMA DEEP VIOLET
-  final Color deepViolet = const Color(0xFF311B92);  // Ungu Sangat Gelap
-  final Color mainViolet = const Color(0xFF7B1FA2);   // Ungu Utama
-  final Color accentViolet = const Color(0xFFEA80FC); // Ungu Neon/Highlight
-  final Color deepBlack = const Color(0xFF000000);
+class _SplashScreenState extends State<SplashScreen> {
+  late VideoPlayerController _videoCtrl;
+  bool _videoReady = false;
 
   @override
   void initState() {
     super.initState();
-    _videoController = VideoPlayerController.asset("assets/videos/load.mp4")
+    _initVideo();
+  }
+
+  void _initVideo() {
+    _videoCtrl = VideoPlayerController.asset('assets/videos/splash.mp4')
       ..initialize().then((_) {
-        setState(() {});
-        _videoController.setLooping(false);
-        _videoController.play();
-
-        _fadeController = AnimationController(
-          vsync: this,
-          duration: const Duration(seconds: 1),
-        );
-
-        _videoController.addListener(() {
-          final position = _videoController.value.position;
-          final duration = _videoController.value.duration;
-
-          // Logic fade out sebelum video selesai
-          if (position >= duration - const Duration(seconds: 1) &&
-              !_fadeOutStarted) {
-            _fadeOutStarted = true;
-            _fadeController.forward();
-          }
-
-          // Navigasi setelah video selesai
-          if (position >= duration) {
-            _navigateToDashboard();
-          }
-        });
+        if (!mounted) return;
+        setState(() => _videoReady = true);
+        _videoCtrl.setLooping(false);
+        _videoCtrl.play();
+        
+        _videoCtrl.addListener(_onVideoProgress);
+      }).catchError((_) {
+        // Fallback jika video error
+        if (mounted) {
+          setState(() => _videoReady = false);
+          Future.delayed(const Duration(seconds: 3), _navigate);
+        }
       });
   }
 
-  void _navigateToDashboard() {
+  void _onVideoProgress() {
+    if (!mounted) return;
+    final pos = _videoCtrl.value.position;
+    final dur = _videoCtrl.value.duration;
+    
+    if (dur != Duration.zero && pos >= dur) {
+      _navigate();
+    }
+  }
+
+  void _navigate() {
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => DashboardPage(
@@ -93,103 +86,104 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _videoController.dispose();
-    _fadeController.dispose();
+    _videoCtrl.removeListener(_onVideoProgress);
+    _videoCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
+      backgroundColor: Colors.black,
       body: Stack(
-        alignment: Alignment.center,
+        fit: StackFit.expand,
         children: [
-          // === 1. FULL SCREEN VIDEO ===
-          if (_videoController.value.isInitialized)
-            SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoController.value.size.width,
-                  height: _videoController.value.size.height,
-                  child: VideoPlayer(_videoController),
-                ),
+          // Video background
+          if (_videoReady)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoCtrl.value.size.width,
+                height: _videoCtrl.value.size.height,
+                child: VideoPlayer(_videoCtrl),
               ),
-            )
-          else
-            Center(child: CircularProgressIndicator(color: mainViolet)),
+            ),
+          
+          // Dark overlay agar tulisan lebih terbaca
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.5),
+                ],
+              ),
+            ),
+          ),
 
-          // === 2. GRADIENT OVERLAY ===
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    deepBlack.withOpacity(0.9),
+          // Tombol Skip (pojok kanan atas)
+          Positioned(
+            top: 50,
+            right: 20,
+            child: GestureDetector(
+              onTap: _navigate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.skip_next, color: Colors.white, size: 18),
+                    SizedBox(width: 4),
+                    Text(
+                      'Lewati Intro',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
+                    ),
                   ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.6, 1.0],
                 ),
               ),
             ),
           ),
 
-          // === 3. LOGO TEKS (Ukuran diperkecil) ===
+          // Tulisan THE-END X-ONE di tengah bawah
           Positioned(
             bottom: 80,
+            left: 0,
+            right: 0,
             child: Column(
               children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [accentViolet, deepViolet],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ).createShader(bounds),
-                  child: const Text(
-                    "HoxtenCloud",
-                    style: TextStyle(
-                      fontSize: 38, // Diperkecil dari 48 menjadi 38
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 3, // Spacing disesuaikan sedikit
-                      fontFamily: 'Orbitron',
-                      shadows: [
-                        Shadow(
-                          color: Colors.black,
-                          blurRadius: 20,
-                          offset: Offset(0, 5),
-                        ),
-                        Shadow(
-                          color: Color(0xFF7B1FA2),
-                          blurRadius: 15,
-                          offset: Offset(0, 0),
-                        )
-                      ],
-                    ),
+                Text(
+                  'THE-END X-ONE',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 2,
+                    shadows: [
+                      Shadow(
+                        color: Colors.blue.withOpacity(0.5),
+                        blurRadius: 10,
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Text(
-                  "System Initializing...",
+                  'Developer by @yanxz_emptiness',
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
                     fontSize: 12,
-                    letterSpacing: 2,
+                    color: Colors.white.withOpacity(0.7),
                   ),
                 ),
               ],
             ),
           ),
-
-          // === 4. FADE OUT TRANSITION ===
-          if (_fadeOutStarted)
-            FadeTransition(
-              opacity: _fadeController.drive(Tween(begin: 1.0, end: 0.0)),
-              child: Container(color: Colors.black),
-            ),
         ],
       ),
     );

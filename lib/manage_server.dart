@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'api_config.dart';
 
 class ManageServerPage extends StatefulWidget {
   final String keyToken;
@@ -18,11 +19,11 @@ class _ManageServerPageState extends State<ManageServerPage> {
   final _userController = TextEditingController();
   final _passController = TextEditingController();
 
-  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
-  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
+  // --- Warna Tema Hitam Cyan ---
+  final Color primaryDark = const Color(0xFF0B1A1A);
+  final Color primaryWhite = Colors.white;
+  final Color accentCyan = const Color(0xFF00ACC1);
+  final Color cardDark = const Color(0xFF1A2A2A);
 
   @override
   void initState() {
@@ -32,7 +33,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
 
   Future<void> _fetchVpsList() async {
     setState(() => isLoading = true);
-    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/myServer?key=${widget.keyToken}');
+    final uri = Uri.parse('$baseUrl/myServer?key=${widget.keyToken}');
     try {
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
@@ -55,7 +56,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
       return;
     }
 
-    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/addServer');
+    final uri = Uri.parse('$baseUrl/addServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -78,7 +79,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
   }
 
   Future<void> _deleteVps(String host) async {
-    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/delServer');
+    final uri = Uri.parse('$baseUrl/delServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -102,14 +103,14 @@ class _ManageServerPageState extends State<ManageServerPage> {
         backgroundColor: cardDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: bloodRed.withOpacity(0.5)),
+          side: BorderSide(color: accentCyan.withOpacity(0.3)),
         ),
-        title: Text("Error", style: TextStyle(color: bloodRed)),
+        title: const Text("Error", style: TextStyle(color: Colors.white)),
         content: Text(msg, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("OK", style: TextStyle(color: bloodRed)),
+            child: const Text("OK", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -123,9 +124,9 @@ class _ManageServerPageState extends State<ManageServerPage> {
         backgroundColor: cardDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: bloodRed.withOpacity(0.5)),
+          side: BorderSide(color: accentCyan.withOpacity(0.3)),
         ),
-        title: Text("Tambah VPS", style: TextStyle(color: bloodRed)),
+        title: const Text("Tambah VPS", style: TextStyle(color: Colors.white)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -137,14 +138,17 @@ class _ManageServerPageState extends State<ManageServerPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("BATAL", style: TextStyle(color: Colors.white54)),
+            child: const Text("BATAL", style: TextStyle(color: Colors.white54)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               _addVps();
             },
-            child: Text("TAMBAH", style: TextStyle(color: bloodRed)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: accentCyan,
+            ),
+            child: const Text("TAMBAH", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -159,15 +163,17 @@ class _ManageServerPageState extends State<ManageServerPage> {
         style: const TextStyle(color: Colors.white),
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
+          labelStyle: TextStyle(color: accentCyan),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.5)),
+            borderSide: BorderSide(color: accentCyan.withOpacity(0.5)),
             borderRadius: BorderRadius.circular(12),
           ),
           focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: bloodRed, width: 2),
+            borderSide: BorderSide(color: accentCyan),
             borderRadius: BorderRadius.circular(12),
           ),
+          filled: true,
+          fillColor: primaryDark,
         ),
       ),
     );
@@ -177,7 +183,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-        backgroundColor: deepBlack,
+        backgroundColor: primaryDark,
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -186,21 +192,21 @@ class _ManageServerPageState extends State<ManageServerPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text("My VPS List",
+                  const Text("My VPS List",
                       style: TextStyle(
                           fontSize: 18,
                           color: Colors.white,
                           fontFamily: 'Orbitron')),
                   IconButton(
-                    icon: const Icon(Icons.add, color: Colors.white),
+                    icon: const Icon(Icons.add, color: Color(0xFF00ACC1)),
                     onPressed: _showAddDialog,
                   )
                 ],
               ),
-              Divider(color: bloodRed.withOpacity(0.5)),
+              Divider(color: accentCyan),
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF00ACC1)))
                     : ListView.builder(
                   itemCount: vpsList.length,
                   itemBuilder: (context, index) {
@@ -209,13 +215,13 @@ class _ManageServerPageState extends State<ManageServerPage> {
                       color: cardDark,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: darkRed.withOpacity(0.3)),
+                        side: BorderSide(color: accentCyan.withOpacity(0.2)),
                       ),
                       child: ListTile(
                         title: Text("${vps['host']}", style: const TextStyle(color: Colors.white)),
                         subtitle: Text("User: ${vps['username']}", style: const TextStyle(color: Colors.white70)),
                         trailing: IconButton(
-                          icon: Icon(Icons.delete, color: lightRed),
+                          icon: const Icon(Icons.delete, color: Color(0xFF00ACC1)),
                           onPressed: () => _deleteVps(vps['host']),
                         ),
                       ),
