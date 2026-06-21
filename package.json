@@ -1,0 +1,24 @@
+{
+  "name": "ALTEI-FLOWS",
+  "version": "3.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@bellachu/baileys": "^2.1.9",
+    "adm-zip": "^0.5.17",
+    "axios": "^1.6.8",
+    "chalk": "^4.1.2",
+    "cheerio": "^1.2.0",
+    "cherio": "^1.0.0-rc.2",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.7",
+    "fs-extra": "^11.2.0",
+    "js-confuser": "latest",
+    "moment": "^2.30.1",
+    "node-telegram-bot-api": "^0.64.0",
+    "pino": "^9.6.0"
+  }
+}
