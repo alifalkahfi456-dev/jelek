@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
@@ -11,55 +10,12 @@ class LandingPage extends StatefulWidget {
   State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin {
-  late VideoPlayerController _controller;
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.asset("assets/videos/landing.mp4")
-      ..initialize().then((_) {
-        setState(() {});
-        _controller.setLooping(true);
-        _controller.play();
-      });
-
-    _fadeController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
-    );
-
-    _fadeController.forward();
-    _slideController.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    _fadeController.dispose();
-    _slideController.dispose();
-    super.dispose();
-  }
+class _LandingPageState extends State<LandingPage> {
+  final Color solidBg      = const Color(0xFF001412);   // background hijau sangat gelap
+  final Color mainTeal     = const Color(0xFF00695C);   // hijau kebiru gelap
+  final Color accentTeal   = const Color(0xFF00BFA5);   // aksen teal terang
+  final Color telegramBlue = const Color(0xFF2AABEE);   // biru telegram
+  final Color whatsappGreen= const Color(0xFF25D366);   // hijau whatsapp
 
   Future<void> _openUrl(String url) async {
     final Uri uri = Uri.parse(url);
@@ -71,385 +27,201 @@ class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0E27),
+      backgroundColor: solidBg,
       body: Stack(
         children: [
-          // Background pattern
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topRight,
-                  radius: 1.5,
-                  colors: [
-                    Color(0xFF1A237E),
-                    Color(0xFF0A0E27),
-                    Color(0xFF000511),
-                  ],
-                ),
-              ),
-              child: CustomPaint(
-                painter: BackgroundPattern(),
-              ),
-            ),
-          ),
-
-          // Main content
-          SafeArea(
-            child: Column(
-              children: [
-                // Header with logo
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: Image.asset(
-                          "assets/images/logo.jpg",
-                          width: 40,
-                          height: 40,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: const Text(
-                          "v1.0",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Video section with new design
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 20),
-
-                        // Video container with new design
-                        FadeTransition(
-                          opacity: _fadeAnimation,
-                          child: SlideTransition(
-                            position: _slideAnimation,
-                            child: Container(
-                              height: 280,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF3949AB).withOpacity(0.3),
-                                    blurRadius: 20,
-                                    spreadRadius: 5,
-                                  ),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(24),
-                                child: Stack(
-                                  children: [
-                                    _controller.value.isInitialized
-                                        ? SizedBox(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      child: FittedBox(
-                                        fit: BoxFit.cover,
-                                        child: SizedBox(
-                                          width: _controller.value.size.width,
-                                          height: _controller.value.size.height,
-                                          child: VideoPlayer(_controller),
-                                        ),
-                                      ),
-                                    )
-                                        : Container(
-                                      width: double.infinity,
-                                      height: double.infinity,
-                                      color: const Color(0xFF1A237E),
-                                      child: const Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              color: Color(0xFF5C6BC0),
-                                              strokeWidth: 3,
-                                            ),
-                                            SizedBox(height: 16),
-                                            Text(
-                                              "Loading content...",
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Gradient overlay
-                                    Positioned.fill(
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topCenter,
-                                            end: Alignment.bottomCenter,
-                                            colors: [
-                                              Colors.transparent,
-                                              Colors.black.withOpacity(0.7),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-
-                                    // Title with new design
-                                    Positioned(
-                                      bottom: 30,
-                                      left: 0,
-                                      right: 0,
-                                      child: Center(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(0.6),
-                                            borderRadius: BorderRadius.circular(30),
-                                            border: Border.all(
-                                              color: const Color(0xFF5C6BC0).withOpacity(0.5),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            "Ocean Eclipse",
-                                            style: TextStyle(
-                                              fontSize: 28,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                              letterSpacing: 1.2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 60),
-
-                        // Login button with new design
-                        Container(
-                          width: double.infinity,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF3949AB).withOpacity(0.4),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF3949AB),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              elevation: 0,
-                            ),
-                            onPressed: () {
-                              Navigator.pushNamed(context, "/login");
-                            },
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.login_rounded, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Login",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Register button with new design
-                        Container(
-                          width: double.infinity,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFF5C6BC0),
-                              width: 2,
-                            ),
-                          ),
-                          child: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF5C6BC0),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              side: BorderSide.none,
-                            ),
-                            onPressed: () => _openUrl("https://t.me/aboutvils"),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.app_registration_rounded, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  "Register",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 40),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Footer with new design
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    border: Border(
-                      top: BorderSide(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Connect With Us",
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _buildSocialButton(
-                            icon: FontAwesomeIcons.telegram,
-                            url: "https://t.me/aboutvils",
-                          ),
-                          const SizedBox(width: 16),
-                          _buildSocialButton(
-                            icon: FontAwesomeIcons.tiktok,
-                            url: "https://tiktok.com/@evilkyowo",
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        "© 2026 Ocean Eclipse - All Rights Reserved",
-                        style: TextStyle(
-                          color: Colors.white38,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildBackground(),
+          _buildGlassOverlay(),
+          _buildMainContent(),
+          _buildFloatingButtons(),
         ],
       ),
     );
   }
 
-  Widget _buildSocialButton({required IconData icon, required String url}) {
+  Widget _buildBackground() {
     return Container(
-      width: 44,
-      height: 44,
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.2),
-          width: 1,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [solidBg, const Color(0xFF000D0A)],
         ),
-      ),
-      child: IconButton(
-        icon: FaIcon(
-          icon,
-          color: const Color(0xFF5C6BC0),
-          size: 20,
-        ),
-        onPressed: () => _openUrl(url),
       ),
     );
   }
-}
 
-// Custom painter for background pattern
-class BackgroundPattern extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withOpacity(0.03)
-      ..style = PaintingStyle.fill;
-
-    const dotSize = 2.0;
-    const spacing = 30.0;
-
-    for (double x = 0; x < size.width; x += spacing) {
-      for (double y = 0; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), dotSize, paint);
-      }
-    }
+  Widget _buildGlassOverlay() {
+    return BackdropFilter(
+      filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+      child: Container(color: Colors.white.withOpacity(0.02)),
+    );
   }
 
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget _buildMainContent() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 60),
+            Center(
+              child: Image.asset('assets/images/wel.png', height: 260, fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 20),
+            FittedBox(
+              child: Text(
+                "404 VOIDX V1.3",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 36,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 3,
+                  fontFamily: 'Orbitron',
+                  shadows: [
+                    Shadow(color: accentTeal.withOpacity(0.7), blurRadius: 25),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "The Ultimate Digital Tools & Security",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade400,
+                letterSpacing: 1.2,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // BUTTON SIGN IN - gradient hijau kebiru
+            _buildGradientButton(
+              label: "Sign In",
+              onTap: () => Navigator.pushNamed(context, "/login"),
+            ),
+            const SizedBox(height: 16),
+
+            // BUTTON BUY ACCESS - outline putih, teks putih
+            _buildOutlineButton(label: "Buy Access", url: "https://t.me/F4Lzzzzoffc"),
+
+            const SizedBox(height: 100),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingButtons() {
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 30, left: 24, right: 24),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildLargeSocialButton(
+                icon: FontAwesomeIcons.telegram,
+                label: "TELEGRAM",
+                color: telegramBlue,
+                url: "https://t.me/F4Lzzzzoffc",
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildLargeSocialButton(
+                icon: FontAwesomeIcons.whatsapp,
+                label: "WHATSAPP",
+                color: whatsappGreen,
+                url: "https://wa.me/6289691563280",
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientButton({required String label, required VoidCallback onTap}) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        child: Ink(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [accentTeal, mainTeal],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(color: accentTeal.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 8)),
+            ],
+          ),
+          child: const Center(
+            child: Text(
+              "Sign In",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlineButton({required String label, required String url}) {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: OutlinedButton(
+        onPressed: () => _openUrl(url),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.white54, width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white.withOpacity(0.08),
+        ),
+        child: const Text(
+          "Buy Access",
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLargeSocialButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required String url,
+  }) {
+    return SizedBox(
+      height: 55,
+      child: OutlinedButton.icon(
+        onPressed: () => _openUrl(url),
+        icon: Icon(icon, color: color, size: 20),
+        label: Text(
+          label,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.0),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: color.withOpacity(0.8), width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: color.withOpacity(0.15),
+        ),
+      ),
+    );
+  }
 }

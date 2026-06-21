@@ -1,12 +1,15 @@
-import 'dart:convert';
+import 'dart:ui';
+import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'splash.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'dashboard_page.dart';
 
-const String baseUrl = "http://yanzoffc-private.panelwota.my.id:11396";
+const String baseUrl = "https://xterclose.zorryxhostz.my.id:4001";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -16,7 +19,7 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   final userController = TextEditingController();
   final passController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -25,10 +28,18 @@ class _LoginPageState extends State<LoginPage>
   bool _obscurePassword = true;
   String? androidId;
 
-  late AnimationController _slideController;
-  late AnimationController _rotateController;
-  late Animation<Offset> _slideAnim;
-  late Animation<double> _rotateAnim;
+  late AnimationController _controller;
+  late Animation<double> _fadeAnim;
+  late VideoPlayerController _videoCtrl;
+
+  // Palet warna purple sesuai dashboard
+  final Color deepPurple = const Color(0xFF120000);
+  final Color mainPurple = const Color(0xFFB71C1C);
+  final Color lightPurple = const Color(0xFFE53935);
+  final Color accentPink = const Color(0xFFCCCCCC);
+  final Color bgDark = const Color(0xFF120000);
+  final Color cardPurple = const Color(0xFF1E0000);
+  final Color glassBlack = Color(0xFF120000).withOpacity(0.7);
 
   @override
   void initState() {
@@ -38,22 +49,21 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void _initAnim() {
-    _slideController = AnimationController(
+    // Video background login
+    _videoCtrl = VideoPlayerController.asset('assets/videos/login.mp4')
+      ..initialize().then((_) {
+        setState(() {});
+        _videoCtrl.setLooping(true);
+        _videoCtrl.play();
+        _videoCtrl.setVolume(0);
+      });
+
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
     )..forward();
 
-    _rotateController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-
-    _rotateAnim = Tween<double>(begin: 0, end: 1).animate(_rotateController);
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
   }
 
   Future<void> initLogin() async {
@@ -79,7 +89,7 @@ class _LoginPageState extends State<LoginPage>
               builder: (_) => SplashScreen(
                 username: savedUser,
                 password: savedPass,
-                role: data['role'],
+                role: (data['role'] ?? '').toString(),
                 sessionKey: data['key'],
                 expiredDate: data['expiredDate'],
                 listBug: (data['listBug'] as List? ?? [])
@@ -107,6 +117,7 @@ class _LoginPageState extends State<LoginPage>
 
   Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
+
     final username = userController.text.trim();
     final password = passController.text.trim();
 
@@ -123,19 +134,20 @@ class _LoginPageState extends State<LoginPage>
       );
 
       final validData = jsonDecode(validate.body);
+      print("VALIDATE RESPONSE => $validData");
 
       if (validData['expired'] == true) {
         _showPopup(
           title: "⏳ Access Expired",
           message: "Your access has expired.\nPlease renew it.",
-          color: Colors.amber,
+          color: Colors.orange,
           showContact: true,
         );
       } else if (validData['valid'] != true) {
         _showPopup(
-          title: "❌ Login Failed",
+          title: "Login Failed",
           message: "Invalid username or password.",
-          color: Colors.redAccent,
+          color: Colors.pink,
         );
       } else {
         final prefs = await SharedPreferences.getInstance();
@@ -149,7 +161,7 @@ class _LoginPageState extends State<LoginPage>
             builder: (_) => SplashScreen(
               username: username,
               password: password,
-              role: validData['role'],
+              role: (validData['role'] ?? '').toString(),
               sessionKey: validData['key'],
               expiredDate: validData['expiredDate'],
               listBug: (validData['listBug'] as List? ?? [])
@@ -167,9 +179,10 @@ class _LoginPageState extends State<LoginPage>
       }
     } catch (e) {
       _showPopup(
-        title: "⚠️ Connection Error",
-        message: "Failed to connect to the server.\nPlease check your connection.",
-        color: Colors.teal,
+        title: "Connection Error",
+        message:
+        "Failed to connect to the server.\nPlease check your internet connection.",
+        color: mainPurple,
       );
     }
 
@@ -179,18 +192,19 @@ class _LoginPageState extends State<LoginPage>
   void _showPopup({
     required String title,
     required String message,
-    Color color = Colors.redAccent,
+    Color color = Colors.pink,
     bool showContact = false,
   }) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: glassBlack,
+        shape:
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           title,
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.bold, fontSize: 18),
+          style:
+          TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: Text(
           message,
@@ -200,13 +214,11 @@ class _LoginPageState extends State<LoginPage>
           if (showContact)
             TextButton(
               onPressed: () async {
-                await launchUrl(Uri.parse("https://t.me/aboutvils"),
-                    mode: LaunchMode.externalApplication);
+                final uri = Uri.parse("https://t.me/F4Lzzzzoffc");
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
-              child: const Text(
-                "Contact Admin",
-                style: TextStyle(color: Colors.teal),
-              ),
+              child: Text("Contact Admin",
+                  style: TextStyle(color: lightPurple)),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -220,8 +232,8 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void dispose() {
-    _slideController.dispose();
-    _rotateController.dispose();
+    _controller.dispose();
+    _videoCtrl.dispose();
     userController.dispose();
     passController.dispose();
     super.dispose();
@@ -229,111 +241,72 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   Widget build(BuildContext context) {
+    final inputWidth = MediaQuery.of(context).size.width * 0.85;
+    final gradientPurple = LinearGradient(
+      colors: [mainPurple, lightPurple],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    );
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F3460), Color(0xFF16213E), Color(0xFF0F3460)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
+      backgroundColor: bgDark,
+      body: Stack(
+        children: [
+          // Video background
+          if (_videoCtrl.value.isInitialized)
+            Positioned.fill(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _videoCtrl.value.size.width,
+                  height: _videoCtrl.value.size.height,
+                  child: VideoPlayer(_videoCtrl),
+                ),
+              ),
+            ),
+          // Dark overlay di atas video
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF120000).withOpacity(0.6),
+                    Color(0xFF120000).withOpacity(0.85),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            // Animated background elements
-            Positioned(
-              top: -100,
-              left: -100,
-              child: AnimatedBuilder(
-                animation: _rotateAnim,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _rotateAnim.value * 2 * 3.14159,
-                    child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.teal.withOpacity(0.1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
 
-            Positioned(
-              bottom: -150,
-              right: -150,
-              child: AnimatedBuilder(
-                animation: _rotateAnim,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: -_rotateAnim.value * 2 * 3.14159,
-                    child: Container(
-                      width: 400,
-                      height: 400,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.blue.withOpacity(0.1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // Main card
-            Center(
-              child: SlideTransition(
-                position: _slideAnim,
-                child: Container(
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Colors.teal.withOpacity(0.3),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
+          // 🔹 Konten utama
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnim,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(24),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo section
+                      // Logo glass
                       Container(
-                        width: 80,
-                        height: 80,
+                        width: 100,
+                        height: 100,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Colors.teal, Colors.blue],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          gradient: gradientPurple,
+                          borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.teal.withOpacity(0.5),
-                              blurRadius: 15,
+                              color: mainPurple.withOpacity(0.5),
+                              blurRadius: 20,
                               spreadRadius: 2,
                             ),
                           ],
                         ),
-                        child: ClipOval(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
                           child: Image.asset(
                             'assets/images/logo.jpg',
                             fit: BoxFit.cover,
@@ -341,55 +314,103 @@ class _LoginPageState extends State<LoginPage>
                         ),
                       ),
 
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 25),
 
-                      // Title
-                      const Text(
-                        "Ocean Eclipse",
+                      Text(
+                        "WELCOME BACK",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      const Text(
-                        "Please Log-in",
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // Form
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            _buildMinimalInput(
-                              userController,
-                              "Username",
-                              Icons.person,
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            _buildMinimalInput(
-                              passController,
-                              "Password",
-                              Icons.lock,
-                              isPassword: true,
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            // Login button
-                            _buildMinimalButton(),
+                          color: accentPink.withOpacity(0.8),
+                          shadows: [
+                            Shadow(
+                              offset: const Offset(0, 2),
+                              blurRadius: 8,
+                              color: mainPurple.withOpacity(0.6),
+                            )
                           ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+                      const Text("Sign in to continue",
+                          style:
+                          TextStyle(color: Colors.white60, fontSize: 14)),
+
+                      const SizedBox(height: 40),
+
+                      // 🔹 Form glass
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: glassBlack,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: mainPurple.withOpacity(0.3),
+                              width: 1.2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: mainPurple.withOpacity(0.2),
+                              blurRadius: 10,
+                            ),
+                          ],
+                        ),
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              _glassTextField(
+                                  controller: userController,
+                                  label: "Username",
+                                  icon: Icons.person_outline),
+                              const SizedBox(height: 16),
+                              _glassTextField(
+                                  controller: passController,
+                                  label: "Password",
+                                  icon: Icons.lock_outline,
+                                  obscureText: _obscurePassword,
+                                  isPassword: true),
+                              const SizedBox(height: 24),
+
+                              // 🔹 Tombol login
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: isLoading ? null : login,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                  ),
+                                  child: Ink(
+                                    decoration: BoxDecoration(
+                                      gradient: gradientPurple,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      child: isLoading
+                                          ? const CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                        AlwaysStoppedAnimation<Color>(
+                                            Colors.white),
+                                      )
+                                          : const Text("Sign In",
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white)),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -397,140 +418,57 @@ class _LoginPageState extends State<LoginPage>
                 ),
               ),
             ),
-
-            // Top decoration
-            Positioned(
-              top: 40,
-              left: 24,
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.teal,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            Positioned(
-              top: 40,
-              right: 24,
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalInput(TextEditingController controller, String label, IconData icon, {bool isPassword = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword ? _obscurePassword : false,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: label,
-          hintStyle: const TextStyle(color: Colors.white38),
-          prefixIcon: Icon(icon, color: Colors.teal.withOpacity(0.7)),
-          suffixIcon: isPassword
-              ? IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_off
-                  : Icons.visibility,
-              color: Colors.white38,
-              size: 20,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Colors.teal.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Colors.teal,
-              width: 2,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalButton() {
-    return Container(
-      width: double.infinity,
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: [Colors.teal, Colors.blue],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.teal.withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : login,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    );
+  }
+
+  // 🔹 Custom TextField bergaya kaca
+  Widget _glassTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    bool obscureText = false,
+    bool isPassword = false,
+  }) {
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      style: const TextStyle(color: Colors.white),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white70),
+        prefixIcon: Icon(icon, color: accentPink),
+        suffixIcon: isPassword
+            ? IconButton(
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+            color: Colors.white60,
           ),
-          elevation: 0,
-        ),
-        child: isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-          ),
+          onPressed: () {
+            setState(() {
+              _obscurePassword = !_obscurePassword;
+            });
+          },
         )
-            : const Text(
-          "LOGIN",
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
-          ),
+            : null,
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide:
+          BorderSide(color: mainPurple.withOpacity(0.3), width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: lightPurple, width: 2),
         ),
       ),
+      validator: (value) =>
+      value == null || value.isEmpty ? "Please enter $label" : null,
     );
   }
 }

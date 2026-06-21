@@ -17,13 +17,15 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Ocean Eclipse',
+      title: '404 VOIDX',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: const Color(0xFF001412),
         colorScheme: ColorScheme.dark().copyWith(
-          secondary: Colors.purple,
+          primary: const Color(0xFF00BFA5),
+          secondary: const Color(0xFF00E5CC),
+          surface: const Color(0xFF002A25),
         ),
       ),
       initialRoute: '/',
@@ -33,29 +35,33 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => LandingPage());
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginPage());
+          
+          // --- DASHBOARD ROUTE ---
           case '/dashboard':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => DashboardPage(
                 username: args['username'],
                 password: args['password'],
-                role: args['role'],
+                role: ((args['role'] ?? '').toString() ??'').toString(),
                 sessionKey: args['key'],
                 expiredDate: args['expiredDate'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
-                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), // ✅ aman
-                news: List<Map<String, dynamic>>.from(args['news'] ?? []), // ✅ aman
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), 
+                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), 
+                news: List<Map<String, dynamic>>.from(args['news'] ?? []), 
               ),
             );
 
+          // --- HOME PAGE ROUTE (YANG DIPERBAIKI) ---
           case '/home':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => HomePage(
+                isGroup: false, // <--- TAMBAHKAN INI (Default ke Bug Contact)
                 username: args['username'],
                 password: args['password'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
-                role: args['role'],
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
+                role: ((args['role'] ?? '').toString() ??'').toString(),
                 expiredDate: args['expiredDate'],
                 sessionKey: args['sessionKey'],
               ),

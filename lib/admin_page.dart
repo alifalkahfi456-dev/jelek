@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:ui';
 
 class AdminPage extends StatefulWidget {
   final String sessionKey;
@@ -11,14 +12,14 @@ class AdminPage extends StatefulWidget {
   State<AdminPage> createState() => _AdminPageState();
 }
 
-class _AdminPageState extends State<AdminPage> with TickerProviderStateMixin {
+class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMixin {
   late String sessionKey;
   List<dynamic> fullUserList = [];
   List<dynamic> filteredList = [];
-  final List<String> roleOptions = ['vip', 'reseller', 'reseller1', 'owner', 'member'];
+  final List<String> roleOptions = ['reseller', 'reseller1', 'owner', 'member'];
   String selectedRole = 'member';
   int currentPage = 1;
-  int itemsPerPage = 25;
+  int itemsPerPage = 10;
 
   final deleteController = TextEditingController();
   final createUsernameController = TextEditingController();
@@ -27,55 +28,34 @@ class _AdminPageState extends State<AdminPage> with TickerProviderStateMixin {
   String newUserRole = 'member';
   bool isLoading = false;
 
-  late AnimationController _animationController;
-  late AnimationController _tabController;
+  late AnimationController _animController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  int _selectedTab = 0;
 
-  // Tema warna hitam biru
-  final Color primaryDark = const Color(0xFF0A0E27);
-  final Color primaryBlue = const Color(0xFF1E3A8A);
-  final Color accentBlue = const Color(0xFF3B82F6);
-  final Color lightBlue = const Color(0xFF60A5FA);
-  final Color cardDark = const Color(0xFF151932);
-  final Color cardDarker = const Color(0xFF0F1330);
-  final Color successGreen = const Color(0xFF10B981);
-  final Color warningOrange = const Color(0xFFF59E0B);
-  final Color dangerRed = const Color(0xFFEF4444);
+  // --- PALET WARNA HIJAU KEBIRU ---
+  final Color deepTeal = const Color(0xFF001412);
+  final Color mainTeal = const Color(0xFF002A25);
+  final Color lightTeal = const Color(0xFF002A25);
+  final Color accentTeal = const Color(0xFF00BFA5);
+  final Color bgDark = const Color(0xFF001412);
+  final Color cardDark = const Color(0xFF002A25);
 
   @override
   void initState() {
     super.initState();
     sessionKey = widget.sessionKey;
-
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+    
+    _animController = AnimationController(
       vsync: this,
-    );
+      duration: const Duration(milliseconds: 800),
+    )..forward();
+    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
 
-    _tabController = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.2),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-
-    _animationController.forward();
     _fetchUsers();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
-    _tabController.dispose();
+    _animController.dispose();
     deleteController.dispose();
     createUsernameController.dispose();
     createPasswordController.dispose();
@@ -87,17 +67,24 @@ class _AdminPageState extends State<AdminPage> with TickerProviderStateMixin {
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('http://yanzoffc-private.panelwota.my.id:11396/listUsers?key=$sessionKey'),
+        Uri.parse('https://xterclose.zorryxhostz.my.id:4001/listUsers?key=$sessionKey'),
       );
-      final data = jsonDecode(res.body);
-      if (data['valid'] == true && data['authorized'] == true) {
-        fullUserList = data['users'] ?? [];
-        _filterAndPaginate();
+      
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['valid'] == true && data['authorized'] == true) {
+          setState(() {
+            fullUserList = data['users'] ?? [];
+            _filterAndPaginate();
+          });
+        } else {
+          _showSnack("Error: ${data['message'] ?? 'Akses ditolak.'}");
+        }
       } else {
-        _showNotification("Error", data['message'] ?? 'Tidak diizinkan melihat daftar user.', dangerRed);
+        _showSnack("Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showNotification("Error", "Gagal memuat user list.", dangerRed);
+    } catch (e) {
+      _showSnack("Gagal memuat data user: $e");
     }
     setState(() => isLoading = false);
   }
@@ -112,33 +99,39 @@ class _AdminPageState extends State<AdminPage> with TickerProviderStateMixin {
   List<dynamic> _getCurrentPageData() {
     final start = (currentPage - 1) * itemsPerPage;
     final end = (start + itemsPerPage);
+    if (start >= filteredList.length) return [];
     return filteredList.sublist(start, end > filteredList.length ? filteredList.length : end);
   }
 
-  int get totalPages => (filteredList.length / itemsPerPage).ceil();
+  int get totalPages => filteredList.isEmpty ? 1 : (filteredList.length / itemsPerPage).ceil();
 
   Future<void> _deleteUser() async {
     final username = deleteController.text.trim();
     if (username.isEmpty) {
-      _showNotification("Error", "Masukkan username yang ingin dihapus.", dangerRed);
+      _showSnack("Masukkan username!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('http://yanzoffc-private.panelwota.my.id:11396/deleteUser?key=$sessionKey&username=$username'),
+        Uri.parse('https://xterclose.zorryxhostz.my.id:4001/deleteUser?key=$sessionKey&username=$username'),
       );
-      final data = jsonDecode(res.body);
-      if (data['deleted'] == true) {
-        _showNotification("Success", "User '${data['user']['username']}' telah dihapus.", successGreen);
-        deleteController.clear();
-        _fetchUsers();
+      
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['deleted'] == true) {
+          _showSnack("User '${data['user']?['username'] ?? username}' dihapus!", isSuccess: true);
+          deleteController.clear();
+          _fetchUsers();
+        } else {
+          _showSnack("Gagal: ${data['message'] ?? 'Unknown error'}");
+        }
       } else {
-        _showNotification("Failed", data['message'] ?? 'Gagal menghapus user.', dangerRed);
+        _showSnack("Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showNotification("Error", "Tidak dapat menghubungi server.", dangerRed);
+    } catch (e) {
+      _showSnack("Error koneksi: $e");
     }
     setState(() => isLoading = false);
   }
@@ -149,883 +142,533 @@ class _AdminPageState extends State<AdminPage> with TickerProviderStateMixin {
     final day = createDayController.text.trim();
 
     if (username.isEmpty || password.isEmpty || day.isEmpty) {
-      _showNotification("Error", "Semua field wajib diisi.", dangerRed);
+      _showSnack("Semua field wajib diisi!");
+      return;
+    }
+
+    // Validasi day harus angka
+    if (int.tryParse(day) == null) {
+      _showSnack("Days harus berupa angka!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        'http://yanzoffc-private.panelwota.my.id:11396/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
+        'https://xterclose.zorryxhostz.my.id:4001/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
       );
       final res = await http.get(url);
-      final data = jsonDecode(res.body);
+      
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
 
-      if (data['created'] == true) {
-        _showNotification("Success", "Akun '${data['user']['username']}' berhasil dibuat.", successGreen);
-        createUsernameController.clear();
-        createPasswordController.clear();
-        createDayController.clear();
-        newUserRole = 'member';
-        _fetchUsers();
+        if (data['created'] == true) {
+          _showSnack("Akun '${data['user']?['username'] ?? username}' berhasil dibuat!", isSuccess: true);
+          createUsernameController.clear();
+          createPasswordController.clear();
+          createDayController.clear();
+          newUserRole = 'member';
+          _fetchUsers();
+        } else {
+          _showSnack("Gagal: ${data['message'] ?? 'Unknown error'}");
+        }
       } else {
-        _showNotification("Failed", data['message'] ?? 'Gagal membuat akun.', dangerRed);
+        _showSnack("Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showNotification("Error", "Gagal menghubungi server.", dangerRed);
+    } catch (e) {
+      _showSnack("Error koneksi: $e");
     }
     setState(() => isLoading = false);
   }
 
-  void _showNotification(String title, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: cardDarker,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.5)),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                color == successGreen ? Icons.check_circle :
-                color == dangerRed ? Icons.error : Icons.info,
-                color: color,
-                size: 24,
+  void _showSnack(String msg, {bool isSuccess = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white)),
+      backgroundColor: isSuccess ? Colors.green.shade800 : deepTeal,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: bgDark,
+      body: Stack(
+        children: [
+          // Background Ambience
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(colors: [deepTeal.withOpacity(0.2), Colors.transparent]),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+            ),
+          ),
+          
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      message,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 14,
-                      ),
-                    ),
+                    // --- HEADER ---
+                    _buildHeader(),
+                    const SizedBox(height: 25),
+
+                    // --- CREATE USER CARD ---
+                    _buildSectionTitle("Create New User", Icons.person_add),
+                    const SizedBox(height: 10),
+                    _buildCreateUserCard(),
+
+                    const SizedBox(height: 30),
+
+                    // --- DELETE USER CARD (Compact) ---
+                    _buildDeleteUserCard(),
+
+                    const SizedBox(height: 30),
+
+                    // --- USER LIST SECTION ---
+                    _buildSectionTitle("Database Users", Icons.storage),
+                    const SizedBox(height: 10),
+                    _buildUserListSection(),
+                    
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
+            ),
+          ),
+          
+          // Loading Overlay
+          if (isLoading)
+            Container(
+              color: Color(0x54001A14),
+              child: Center(child: CircularProgressIndicator(color: accentTeal)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // --- WIDGET COMPONENTS ---
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [deepTeal, const Color(0xFF001412)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: mainTeal.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 5))
+        ],
+        border: Border.all(color: mainTeal.withOpacity(0.5)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Color(0x26001A14),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: accentTeal),
+            ),
+            child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
+          ),
+          const SizedBox(width: 15),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "ADMIN PANEL",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Orbitron',
+                  letterSpacing: 1.5,
+                ),
+              ),
+              Text(
+                "Manage Access & Users",
+                style: TextStyle(color: Colors.white70, fontSize: 12),
+              ),
             ],
           ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
+        ],
       ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: accentTeal, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: accentTeal,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Container(height: 1, color: mainTeal.withOpacity(0.3))),
+      ],
+    );
+  }
+
+  Widget _buildCreateUserCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: [
+          _buildInput(createUsernameController, "Username", Icons.person_outline),
+          const SizedBox(height: 15),
+          _buildInput(createPasswordController, "Password", Icons.lock_outline),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: _buildInput(createDayController, "Days", Icons.calendar_today, isNumber: true),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                flex: 2,
+                child: _buildDropdown(newUserRole, (val) => setState(() => newUserRole = val!)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          _buildGradientButton("CREATE ACCOUNT", Icons.add_circle, _createAccount),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeleteUserCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        color: deepTeal.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: deepTeal.withOpacity(0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: accentTeal, size: 20),
+              const SizedBox(width: 10),
+              Text("Danger Zone", style: TextStyle(color: accentTeal, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                child: _buildInput(deleteController, "Username to Delete", Icons.delete_outline),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                decoration: BoxDecoration(
+                  color: deepTeal,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: IconButton(
+                  onPressed: _deleteUser,
+                  icon: const Icon(Icons.delete_forever, color: Colors.white),
+                ),
+              )
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserListSection() {
+    return Column(
+      children: [
+        // Filter Dropdown
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: cardDark,
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              dropdownColor: const Color(0xFF002A25),
+              value: selectedRole,
+              isExpanded: true,
+              icon: Icon(Icons.filter_list, color: accentTeal),
+              items: roleOptions.map((role) {
+                return DropdownMenuItem(
+                  value: role,
+                  child: Text(
+                    "Filter: ${role.toUpperCase()}",
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  selectedRole = val!;
+                  _filterAndPaginate();
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 15),
+
+        // List
+        if (filteredList.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(30),
+            child: Column(
+              children: [
+                const Icon(Icons.person_off, color: Colors.grey, size: 40),
+                const SizedBox(height: 10),
+                Text("No users found for '$selectedRole'", style: const TextStyle(color: Colors.grey)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _getCurrentPageData().length,
+            itemBuilder: (context, index) {
+              final user = _getCurrentPageData()[index];
+              return _buildUserItem(user);
+            },
+          ),
+        
+        const SizedBox(height: 20),
+        
+        // Pagination
+        if (totalPages > 1) _buildPagination(),
+      ],
     );
   }
 
   Widget _buildUserItem(Map user) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentBlue.withOpacity(0.2)),
+        color: const Color(0xFF001C18),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Color(0xFF001412).withOpacity(0.5), blurRadius: 5, offset: const Offset(0, 2))
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accentBlue.withOpacity(0.2),
-                  shape: BoxShape.circle,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: mainTeal.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: mainTeal.withOpacity(0.3)),
+            ),
+            child: Icon(Icons.person, color: accentTeal, size: 20),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user['username']?.toString() ?? 'Unknown',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
-                child: Icon(
-                  Icons.person,
-                  color: accentBlue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                const SizedBox(height: 4),
+                Row(
                   children: [
-                    Text(
-                      user['username'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        _buildRoleBadge(user['role']),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Exp: ${user['expiredDate']}",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildMiniBadge(user['role']?.toString() ?? 'member', Colors.pink),
+                    const SizedBox(width: 8),
+                    _buildMiniBadge("Exp: ${user['expiredDate']?.toString() ?? 'N/A'}", Colors.grey),
                   ],
                 ),
-              ),
-              IconButton(
-                icon: Icon(Icons.delete_outline, color: dangerRed),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      backgroundColor: cardDarker,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: dangerRed.withOpacity(0.3)),
-                      ),
-                      title: Row(
-                        children: [
-                          Icon(Icons.warning, color: dangerRed),
-                          const SizedBox(width: 8),
-                          const Text(
-                            "Konfirmasi",
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ],
-                      ),
-                      content: Text(
-                        "Yakin ingin menghapus user '${user['username']}'?",
-                        style: const TextStyle(color: Colors.white70),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text(
-                            "Batal",
-                            style: TextStyle(color: Colors.white.withOpacity(0.7)),
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: dangerRed,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text("Hapus"),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    deleteController.text = user['username'];
-                    _deleteUser();
-                  }
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Parent: ${user['parent'] ?? 'SYSTEM'}",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.6),
-              fontSize: 12,
+              ],
             ),
           ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: Colors.grey.shade700),
+            onPressed: () {
+              deleteController.text = user['username']?.toString() ?? '';
+              _showSnack("Tekan tombol ungu di 'Danger Zone' untuk menghapus.", isSuccess: false);
+            },
+          ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRoleBadge(String role) {
-    Color badgeColor;
-    switch (role.toLowerCase()) {
-      case 'owner':
-        badgeColor = dangerRed;
-        break;
-      case 'vip':
-        badgeColor = accentBlue;
-        break;
-      case 'reseller':
-        badgeColor = successGreen;
-        break;
-      case 'reseller1':
-        badgeColor = warningOrange;
-        break;
-      default:
-        badgeColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: badgeColor.withOpacity(0.5)),
-      ),
-      child: Text(
-        role.toUpperCase(),
-        style: TextStyle(
-          color: badgeColor,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
       ),
     );
   }
 
   Widget _buildPagination() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        IconButton(
-          onPressed: currentPage > 1
-              ? () => setState(() => currentPage--)
-              : null,
-          icon: const Icon(Icons.chevron_left),
-          color: currentPage > 1 ? accentBlue : Colors.grey,
-        ),
-        ...List.generate(totalPages > 5 ? 5 : totalPages, (index) {
-          int page;
-          if (totalPages > 5) {
-            if (currentPage <= 3) {
-              page = index + 1;
-            } else if (currentPage >= totalPages - 2) {
-              page = totalPages - 4 + index;
-            } else {
-              page = currentPage - 2 + index;
-            }
-          } else {
-            page = index + 1;
-          }
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ElevatedButton(
-              onPressed: () => setState(() => currentPage = page),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: currentPage == page ? accentBlue : cardDarker,
-                foregroundColor: currentPage == page ? Colors.white : Colors.white70,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(
-                    color: currentPage == page ? accentBlue : Colors.white.withOpacity(0.2),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(totalPages, (index) {
+          final page = index + 1;
+          final isActive = currentPage == page;
+          return GestureDetector(
+            onTap: () => setState(() => currentPage = page),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 35,
+              height: 35,
+              decoration: BoxDecoration(
+                color: isActive ? mainTeal : Colors.transparent,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: isActive ? accentTeal : Colors.grey.shade800),
+                boxShadow: isActive ? [BoxShadow(color: deepTeal, blurRadius: 10)] : [],
+              ),
+              child: Center(
+                child: Text(
+                  "$page",
+                  style: TextStyle(
+                    color: isActive ? Colors.white : Colors.grey,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                elevation: 0,
               ),
-              child: Text("$page"),
             ),
           );
         }),
-        IconButton(
-          onPressed: currentPage < totalPages
-              ? () => setState(() => currentPage++)
-              : null,
-          icon: const Icon(Icons.chevron_right),
-          color: currentPage < totalPages ? accentBlue : Colors.grey,
-        ),
-      ],
+      ),
     );
   }
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    resizeToAvoidBottomInset: true, // tambahkan ini
-    backgroundColor: primaryDark,
-    body: SafeArea(
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Column(
-            children: [
-              // Tab Bar
-              Container(
-                margin: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardDark,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    _buildTab(0, "Delete User", Icons.delete_outline),
-                    _buildTab(1, "Create Account", Icons.person_add),
-                    _buildTab(2, "User List", Icons.list),
-                  ],
-                ),
-              ),
+  // --- Helper Widgets ---
 
-              // Tab Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _selectedTab == 0
-                      ? _buildDeleteUserTab()
-                      : _selectedTab == 1
-                          ? _buildCreateAccountTab()
-                          : _buildUserListTab(),
-                ),
-              ),
-            ],
-          ),
+  Widget _buildInput(TextEditingController controller, String hint, IconData icon, {bool isNumber = false}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF002A25),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        style: const TextStyle(color: Colors.white),
+        cursorColor: accentTeal,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey.shade600),
+          prefixIcon: Icon(icon, color: mainTeal, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
-  Widget _buildTab(int index, String title, IconData icon) {
-    final isSelected = _selectedTab == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () {
-          setState(() => _selectedTab = index);
-          _tabController.forward().then((_) {
-            _tabController.reverse();
-          });
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: isSelected ? accentBlue.withOpacity(0.2) : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
+  Widget _buildDropdown(String val, Function(String?) onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF002A25),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          dropdownColor: const Color(0xFF003D36),
+          value: val,
+          isExpanded: true,
+          icon: Icon(Icons.arrow_drop_down, color: accentTeal),
+          items: roleOptions.map((role) {
+            return DropdownMenuItem(
+              value: role,
+              child: Text(role.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 13)),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGradientButton(String text, IconData icon, VoidCallback onTap) {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [deepTeal, accentTeal]),
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(color: mainTeal.withOpacity(0.5), blurRadius: 15, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: onTap,
+          child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                icon,
-                color: isSelected ? accentBlue : Colors.white.withOpacity(0.6),
-                size: 24,
-              ),
-              const SizedBox(height: 4),
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
               Text(
-                title,
-                style: TextStyle(
-                  color: isSelected ? accentBlue : Colors.white.withOpacity(0.6),
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeleteUserTab() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: dangerRed.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.warning,
-                  color: dangerRed,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Delete User",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      "Permanently remove a user from the system",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          _buildInputField(
-            controller: deleteController,
-            label: "Username",
-            hint: "Enter username to delete",
-            icon: Icons.person,
-          ),
-          const SizedBox(height: 24),
-          Container(
-            width: double.infinity,
-            height: 50,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: [dangerRed.withOpacity(0.8), dangerRed],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: dangerRed.withOpacity(0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ElevatedButton(
-              onPressed: isLoading ? null : _deleteUser,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
+                text,
+                style: const TextStyle(
                   color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-                  : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.delete),
-                  SizedBox(width: 8),
-                  Text(
-                    "DELETE USER",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-Widget _buildCreateAccountTab() {
-  return Container(
-    padding: const EdgeInsets.all(24),
-    decoration: BoxDecoration(
-      color: cardDark,
-      borderRadius: BorderRadius.circular(16),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.2),
-          blurRadius: 10,
-          offset: const Offset(0, 5),
-        ),
-      ],
-    ),
-    child: LayoutBuilder(
-      builder: (context, constraints) {
-        return SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: successGreen.withOpacity(0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.person_add,
-                          color: successGreen,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Create Account",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              "Add a new user to the system",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildInputField(
-                    controller: createUsernameController,
-                    label: "Username",
-                    hint: "Enter username",
-                    icon: Icons.person,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInputField(
-                    controller: createPasswordController,
-                    label: "Password",
-                    hint: "Enter password",
-                    icon: Icons.lock,
-                    obscureText: true,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildInputField(
-                    controller: createDayController,
-                    label: "Duration",
-                    hint: "Enter duration in days",
-                    icon: Icons.calendar_today,
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildDropdownField(
-                    label: "Role",
-                    value: newUserRole,
-                    items: roleOptions,
-                    onChanged: (val) => setState(() => newUserRole = val ?? 'member'),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [successGreen.withOpacity(0.8), successGreen],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: successGreen.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: isLoading ? null : _createAccount,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2,
-                              ),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.person_add),
-                                SizedBox(width: 8),
-                                Text(
-                                  "CREATE ACCOUNT",
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
-
-  Widget _buildUserListTab() {
-    return Column(
-      children: [
-        // Filter Section
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardDark,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.filter_list,
-                color: accentBlue,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                "Filter by Role:",
-                style: TextStyle(
-                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                   fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: cardDarker,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: accentBlue.withOpacity(0.3)),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: selectedRole,
-                      dropdownColor: cardDarker,
-                      style: const TextStyle(color: Colors.white),
-                      isExpanded: true,
-                      items: roleOptions.map((role) {
-                        return DropdownMenuItem(
-                          value: role,
-                          child: Text(role.toUpperCase()),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          selectedRole = val;
-                          _filterAndPaginate();
-                        }
-                      },
-                    ),
-                  ),
+                  letterSpacing: 1,
                 ),
               ),
             ],
           ),
         ),
-
-        const SizedBox(height: 16),
-
-        // User List
-        Expanded(
-          child: isLoading
-              ? Center(
-            child: CircularProgressIndicator(
-              color: accentBlue,
-            ),
-          )
-              : filteredList.isEmpty
-              ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.people_outline,
-                  color: Colors.white.withOpacity(0.5),
-                  size: 64,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  "No users found with role '$selectedRole'",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-          )
-              : Column(
-            children: [
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: _getCurrentPageData().length,
-                  itemBuilder: (context, index) {
-                    return _buildUserItem(_getCurrentPageData()[index]);
-                  },
-                ),
-              ),
-              if (totalPages > 1) _buildPagination(),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildInputField({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    bool obscureText = false,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentBlue.withOpacity(0.3)),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              prefixIcon: Icon(icon, color: accentBlue),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required String value,
-    required List<String> items,
-    required Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentBlue.withOpacity(0.3)),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              dropdownColor: cardDarker,
-              style: const TextStyle(color: Colors.white),
-              isExpanded: true,
-              items: items.map((role) {
-                return DropdownMenuItem(
-                  value: role,
-                  child: Text(role.toUpperCase()),
-                );
-              }).toList(),
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
+  Widget _buildMiniBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withOpacity(0.5), width: 0.5),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color.withOpacity(0.9), fontSize: 10, fontWeight: FontWeight.bold),
+      ),
     );
   }
 }

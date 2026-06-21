@@ -35,10 +35,15 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _fadeController;
   bool _fadeOutStarted = false;
 
+  // Palet Warna - Hijau Kebiru
+  final Color c1 = const Color(0xFF001412);
+  final Color c2 = const Color(0xFF00BFA5);
+  final Color c3 = const Color(0xFF001412);
+
   @override
   void initState() {
     super.initState();
-    _videoController = VideoPlayerController.asset("assets/videos/splash.mp4")
+    _videoController = VideoPlayerController.asset("assets/videos/load.mp4")
       ..initialize().then((_) {
         setState(() {});
         _videoController.setLooping(false);
@@ -53,13 +58,14 @@ class _SplashScreenState extends State<SplashScreen>
           final position = _videoController.value.position;
           final duration = _videoController.value.duration;
 
-          if (duration != null &&
-              position >= duration - const Duration(seconds: 1) &&
+          // Logic fade out sebelum video selesai
+          if (position >= duration - const Duration(seconds: 1) &&
               !_fadeOutStarted) {
             _fadeOutStarted = true;
             _fadeController.forward();
           }
 
+          // Navigasi setelah video selesai
           if (position >= duration) {
             _navigateToDashboard();
           }
@@ -94,76 +100,89 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: c3,
       body: Stack(
         alignment: Alignment.center,
         children: [
-          // Video di dalam Card dengan efek glass
+          // === 1. FULL SCREEN VIDEO ===
           if (_videoController.value.isInitialized)
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: AspectRatio(
-                      aspectRatio: _videoController.value.aspectRatio,
-                      child: VideoPlayer(_videoController),
-                    ),
-                  ),
+            SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _videoController.value.size.width,
+                  height: _videoController.value.size.height,
+                  child: VideoPlayer(_videoController),
                 ),
               ),
             )
           else
-            const Center(child: CircularProgressIndicator()),
+            Center(child: CircularProgressIndicator(color: c2)),
 
-          // Teks XX-O-25
-          Positioned(
-            bottom: 80,
-            child: Text(
-              "Ocean Eclipse",
-              style: TextStyle(
-                fontSize: 42,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 3,
-                shadows: [
-                  Shadow(
-                    color: Colors.purpleAccent.withOpacity(0.9),
-                    blurRadius: 10,
-                    offset: const Offset(2, 2),
-                  ),
-                  Shadow(
-                    color: Colors.black.withOpacity(0.8),
-                    blurRadius: 15,
-                    offset: const Offset(-2, -2),
-                  ),
-                ],
+          // === 2. GRADIENT OVERLAY ===
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    c3.withOpacity(0.9),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: const [0.6, 1.0],
+                ),
               ),
             ),
           ),
 
-          // Fade out effect
+          // === 3. LOGO TEKS ===
+          Positioned(
+            bottom: 80,
+            child: Column(
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: [c2, const Color(0xFF00E5CC)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ).createShader(bounds),
+                  child: const Text(
+                    "DEWA NOFFA V3",
+                    style: TextStyle(
+                      fontSize: 35,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 4,
+                      fontFamily: 'Orbitron',
+                      shadows: [
+                        Shadow(
+                          color: Color(0xFF001412),
+                          blurRadius: 20,
+                          offset: Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "System Initializing...",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // === 4. FADE OUT TRANSITION ===
           if (_fadeOutStarted)
             FadeTransition(
               opacity: _fadeController.drive(Tween(begin: 1.0, end: 0.0)),
-              child: Container(color: Colors.black),
+              child: Container(color: Color(0xFF001412)),
             ),
         ],
       ),
