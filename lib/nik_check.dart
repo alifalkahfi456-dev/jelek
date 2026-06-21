@@ -16,17 +16,14 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   Map<String, dynamic>? _data;
   String? _errorMessage;
 
-  // --- Warna Tema Hitam Cyan ---
-  final Color primaryDark = const Color(0xFF0B1A1A);
-  final Color primaryCyan = const Color(0xFF00ACC1);
-  final Color accentCyan = const Color(0xFF18FFFF);
-  final Color lightCyan = const Color(0xFF84FFFF);
-  final Color primaryWhite = Colors.white;
-  final Color accentGrey = Colors.grey.shade400;
-  final Color cardDark = const Color(0xFF1A2A2A);
-
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
+
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
+  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -101,10 +98,10 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
       decoration: BoxDecoration(
         color: cardDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryCyan.withOpacity(0.3), width: 1),
+        border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
         boxShadow: [
           BoxShadow(
-            color: primaryCyan.withOpacity(0.2),
+            color: darkRed.withOpacity(0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -118,7 +115,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [primaryCyan, accentCyan],
+                colors: [darkRed, bloodRed],
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
@@ -129,12 +126,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             ),
             child: Row(
               children: [
-                Icon(icon, color: primaryWhite, size: 20),
+                Icon(icon, color: Colors.white, size: 20),
                 const SizedBox(width: 12),
                 Text(
                   title,
-                  style: TextStyle(
-                    color: primaryWhite,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Orbitron',
@@ -166,17 +163,9 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
+        color: deepBlack,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: primaryCyan.withOpacity(0.2)),
-        gradient: LinearGradient(
-          colors: [
-            Colors.transparent,
-            primaryCyan.withOpacity(0.05),
-          ],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
+        border: Border.all(color: darkRed.withOpacity(0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,8 +176,8 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
               children: [
                 Text(
                   label,
-                  style: TextStyle(
-                    color: accentGrey,
+                  style: const TextStyle(
+                    color: Colors.white70,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -196,8 +185,8 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: TextStyle(
-                    color: primaryWhite,
+                  style: const TextStyle(
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -206,19 +195,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             ),
           ),
           if (onCopy != null)
-            Container(
-              decoration: BoxDecoration(
-                color: primaryCyan.withOpacity(0.2),
-                shape: BoxShape.circle,
-                border: Border.all(color: primaryCyan.withOpacity(0.3)),
-              ),
-              child: IconButton(
-                icon: Icon(copyIcon, color: lightCyan, size: 18),
-                onPressed: onCopy,
-                padding: const EdgeInsets.all(6),
-                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-                tooltip: 'Salin $label',
-              ),
+            IconButton(
+              icon: Icon(copyIcon, color: lightRed, size: 20),
+              onPressed: onCopy,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 40),
+              tooltip: 'Salin $label',
             ),
         ],
       ),
@@ -229,19 +211,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          '$label disalin ke clipboard',
-          style: TextStyle(
-            color: primaryWhite,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: primaryCyan,
+        content: Text('$label disalin ke clipboard'),
+        backgroundColor: darkRed,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -249,7 +224,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryDark,
+      backgroundColor: deepBlack,
       appBar: AppBar(
         title: const Text(
           'NIK Check',
@@ -259,10 +234,8 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             color: Colors.white,
           ),
         ),
-        backgroundColor: primaryDark,
+        backgroundColor: darkRed,
         centerTitle: true,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: Padding(
@@ -274,10 +247,10 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 decoration: BoxDecoration(
                   color: cardDark,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryCyan.withOpacity(0.3)),
+                  border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryCyan.withOpacity(0.2),
+                      color: darkRed.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -288,22 +261,22 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                     TextField(
                       controller: _nikController,
                       keyboardType: TextInputType.number,
-                      style: TextStyle(color: primaryWhite, fontSize: 16),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                       decoration: InputDecoration(
                         labelText: 'Masukkan NIK',
-                        labelStyle: TextStyle(color: lightCyan),
+                        labelStyle: const TextStyle(color: Colors.white70),
                         hintText: 'Contoh: 5206085405880001',
-                        hintStyle: TextStyle(color: accentGrey),
+                        hintStyle: TextStyle(color: Colors.grey[600]),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: primaryCyan.withOpacity(0.5)),
+                          borderSide: BorderSide(color: darkRed.withOpacity(0.5)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: lightCyan, width: 2),
+                          borderSide: BorderSide(color: bloodRed, width: 2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: Colors.black.withOpacity(0.3),
+                        fillColor: deepBlack,
                         suffixIcon: _isLoading
                             ? Padding(
                           padding: const EdgeInsets.all(12.0),
@@ -311,7 +284,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
-                              color: lightCyan,
+                              color: bloodRed,
                               strokeWidth: 2,
                             ),
                           ),
@@ -326,14 +299,13 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _checkNik,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryCyan,
-                          foregroundColor: primaryWhite,
+                          backgroundColor: bloodRed,
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
-                          shadowColor: primaryCyan.withOpacity(0.5),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -362,18 +334,18 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.cyan.withOpacity(0.1),
+                    color: cardDark,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
+                    border: Border.all(color: lightRed.withOpacity(0.5)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: lightCyan),
+                      Icon(Icons.error_outline, color: lightRed),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: lightCyan, fontSize: 14),
+                          style: const TextStyle(color: Colors.white, fontSize: 14),
                         ),
                       ),
                     ],
@@ -418,7 +390,6 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               ),
                             ],
                           ),
-
                           _buildCategoryCard(
                             title: "DATA DOMISILI",
                             icon: Icons.location_on,
@@ -450,7 +421,6 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               ),
                             ],
                           ),
-
                           _buildCategoryCard(
                             title: "INFORMASI TAMBAHAN",
                             icon: Icons.info,
