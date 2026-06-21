@@ -20,40 +20,40 @@ class _SellerPageState extends State<SellerPage> {
   final _editDays = TextEditingController();
   bool loading = false;
 
-  final Color deepTeal = const Color(0xFF001412);
-  final Color mainTeal = const Color(0xFF002A25);
-  final Color accentTeal = const Color(0xFF00BFA5);
-  final Color deepDark = const Color(0xFF001412);
-  final Color cardDark = const Color(0xFF002A25);
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
+  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   Future<void> _create() async {
     final u = _newUser.text.trim(), p = _newPass.text.trim(), d = _days.text.trim();
-    if (u.isEmpty || p.isEmpty || d.isEmpty) return _alert("Semua field wajib diisi");
+    if (u.isEmpty || p.isEmpty || d.isEmpty) return _alert("❗ Semua field wajib diisi");
     setState(() => loading = true);
     final res = await http.get(Uri.parse(
-        "http://xterclose.zorryxhostz.my.id:2000/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
+        "http://respanelomdhangicir.omdhanasu.my.id:2139/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
     final data = jsonDecode(res.body);
     if (data['created'] == true) {
-      _alert("Akun berhasil dibuat!");
+      _alert("✅ Akun berhasil dibuat!");
       _newUser.clear(); _newPass.clear(); _days.clear();
     } else {
-      _alert("${data['message'] ?? 'Gagal membuat akun.'}");
+      _alert("❌ ${data['message'] ?? 'Gagal membuat akun.'}");
     }
     setState(() => loading = false);
   }
 
   Future<void> _edit() async {
     final u = _editUser.text.trim(), d = _editDays.text.trim();
-    if (u.isEmpty || d.isEmpty) return _alert("Username dan durasi wajib diisi");
+    if (u.isEmpty || d.isEmpty) return _alert("❗ Username dan durasi wajib diisi");
     setState(() => loading = true);
     final res = await http.get(Uri.parse(
-        "http://xterclose.zorryxhostz.my.id:2000/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
+        "http://respanelomdhangicir.omdhanasu.my.id:2139/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
     final data = jsonDecode(res.body);
     if (data['edited'] == true) {
-      _alert("Durasi berhasil diperbarui.");
+      _alert("✅ Durasi berhasil diperbarui.");
       _editUser.clear(); _editDays.clear();
     } else {
-      _alert("${data['message'] ?? 'Gagal mengubah durasi.'}");
+      _alert("❌ ${data['message'] ?? 'Gagal mengubah durasi.'}");
     }
     setState(() => loading = false);
   }
@@ -67,7 +67,7 @@ class _SellerPageState extends State<SellerPage> {
           backgroundColor: cardDark,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: accentTeal.withOpacity(0.3), width: 1.5),
+            side: BorderSide(color: bloodRed.withOpacity(0.3), width: 1.5),
           ),
           content: Text(
             msg,
@@ -76,7 +76,7 @@ class _SellerPageState extends State<SellerPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: accentTeal)),
+              child: Text("OK", style: TextStyle(color: bloodRed)),
             )
           ],
         ),
@@ -99,12 +99,12 @@ class _SellerPageState extends State<SellerPage> {
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: accentTeal.withOpacity(0.3),
+          color: bloodRed.withOpacity(0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: mainTeal.withOpacity(0.15),
+            color: bloodRed.withOpacity(0.15),
             blurRadius: 25,
             spreadRadius: 2,
           ),
@@ -137,23 +137,23 @@ class _SellerPageState extends State<SellerPage> {
         keyboardType: keyboardType,
         obscureText: obscureText,
         style: const TextStyle(color: Colors.white),
-        cursorColor: accentTeal,
+        cursorColor: bloodRed,
         decoration: InputDecoration(
           labelText: label,
           labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(icon, color: accentTeal),
+          prefixIcon: Icon(icon, color: bloodRed),
           filled: false,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentTeal.withOpacity(0.3)),
+            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentTeal, width: 2),
+            borderSide: BorderSide(color: bloodRed, width: 2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentTeal.withOpacity(0.3)),
+            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
           ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
@@ -166,7 +166,7 @@ class _SellerPageState extends State<SellerPage> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Icon(icon, color: accentTeal, size: 24),
+          Icon(icon, color: bloodRed, size: 24),
           const SizedBox(width: 12),
           Text(
             title,
@@ -246,7 +246,7 @@ class _SellerPageState extends State<SellerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepDark,
+      backgroundColor: deepBlack,
       body: Stack(
         children: [
           Positioned(
@@ -259,7 +259,7 @@ class _SellerPageState extends State<SellerPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    deepTeal.withOpacity(0.1),
+                    bloodRed.withOpacity(0.1),
                     Colors.transparent,
                   ],
                 ),
@@ -276,7 +276,7 @@ class _SellerPageState extends State<SellerPage> {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    mainTeal.withOpacity(0.08),
+                    darkRed.withOpacity(0.08),
                     Colors.transparent,
                   ],
                 ),
@@ -296,7 +296,7 @@ class _SellerPageState extends State<SellerPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.store, color: accentTeal, size: 32),
+                          Icon(Icons.store, color: bloodRed, size: 32),
                           const SizedBox(width: 12),
                           const Text(
                             "RESELLER PANEL",
@@ -345,7 +345,7 @@ class _SellerPageState extends State<SellerPage> {
                             text: "BUAT AKUN",
                             icon: Icons.person_add,
                             onPressed: _create,
-                            color: mainTeal,
+                            color: bloodRed,
                             isLoading: loading,
                           ),
                         ],
@@ -379,7 +379,7 @@ class _SellerPageState extends State<SellerPage> {
                             text: "UBAH DURASI",
                             icon: Icons.edit,
                             onPressed: _edit,
-                            color: deepTeal,
+                            color: darkRed,
                             isLoading: loading,
                           ),
                         ],
@@ -392,7 +392,7 @@ class _SellerPageState extends State<SellerPage> {
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          Icon(Icons.info, color: accentTeal, size: 20),
+                          Icon(Icons.info, color: bloodRed, size: 20),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(

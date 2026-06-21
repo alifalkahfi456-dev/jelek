@@ -19,11 +19,11 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -266,7 +266,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                         labelText: 'Masukkan NIK',
                         labelStyle: const TextStyle(color: Colors.white70),
                         hintText: 'Contoh: 5206085405880001',
-                        hintStyle: TextStyle(color: Colors.grey.shade600),
+                        hintStyle: TextStyle(color: Colors.grey[600]),
                         enabledBorder: OutlineInputBorder(
                           borderSide: BorderSide(color: darkRed.withOpacity(0.5)),
                           borderRadius: BorderRadius.circular(12),
@@ -368,12 +368,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               _buildInteractiveInfoRow(
                                 label: "NIK",
                                 value: _data!["nik"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["nik"]?.toString() ?? "","NIK"),
+                                onCopy: () => _copyToClipboard(_data!["nik"]?.toString() ?? "", "NIK"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Nama Lengkap",
                                 value: _data!["data"]["nama"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["nama"]?.toString() ?? "","Nama"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["nama"]?.toString() ?? "", "Nama"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Jenis Kelamin",
@@ -382,7 +382,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               _buildInteractiveInfoRow(
                                 label: "Tempat Lahir",
                                 value: _data!["data"]["tempat_lahir"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["tempat_lahir"]?.toString() ?? "","Tempat Lahir"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["tempat_lahir"]?.toString() ?? "", "Tempat Lahir"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Usia",
@@ -413,7 +413,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               _buildInteractiveInfoRow(
                                 label: "Alamat Lengkap",
                                 value: _data!["data"]["alamat"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "","Alamat"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "", "Alamat"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "TPS",

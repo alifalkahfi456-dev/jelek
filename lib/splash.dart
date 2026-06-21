@@ -35,15 +35,16 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _fadeController;
   bool _fadeOutStarted = false;
 
-  // Palet Warna - Hijau Kebiru
-  final Color c1 = const Color(0xFF001412);
-  final Color c2 = const Color(0xFF00BFA5);
-  final Color c3 = const Color(0xFF001412);
+  // Palet Warna TEMA DEEP VIOLET
+  final Color deepViolet = const Color(0xFF311B92);  // Ungu Sangat Gelap
+  final Color mainViolet = const Color(0xFF7B1FA2);   // Ungu Utama
+  final Color accentViolet = const Color(0xFFEA80FC); // Ungu Neon/Highlight
+  final Color deepBlack = const Color(0xFF000000);
 
   @override
   void initState() {
     super.initState();
-    _videoController = VideoPlayerController.asset("assets/videos/splash.mp4")
+    _videoController = VideoPlayerController.asset("assets/videos/load.mp4")
       ..initialize().then((_) {
         setState(() {});
         _videoController.setLooping(false);
@@ -100,7 +101,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: c3,
+      backgroundColor: deepBlack,
       body: Stack(
         alignment: Alignment.center,
         children: [
@@ -117,7 +118,7 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             )
           else
-            Center(child: CircularProgressIndicator(color: c2)),
+            Center(child: CircularProgressIndicator(color: mainViolet)),
 
           // === 2. GRADIENT OVERLAY ===
           Positioned.fill(
@@ -126,7 +127,7 @@ class _SplashScreenState extends State<SplashScreen>
                 gradient: LinearGradient(
                   colors: [
                     Colors.transparent,
-                    c3.withOpacity(0.9),
+                    deepBlack.withOpacity(0.9),
                   ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -136,31 +137,36 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // === 3. LOGO TEKS ===
+          // === 3. LOGO TEKS (Ukuran diperkecil) ===
           Positioned(
             bottom: 80,
             child: Column(
               children: [
                 ShaderMask(
                   shaderCallback: (bounds) => LinearGradient(
-                    colors: [c2, const Color(0xFF00E5CC)],
+                    colors: [accentViolet, deepViolet],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ).createShader(bounds),
                   child: const Text(
-                    "XtreClose",
+                    "HoxtenCloud",
                     style: TextStyle(
-                      fontSize: 35,
+                      fontSize: 38, // Diperkecil dari 48 menjadi 38
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
-                      letterSpacing: 4,
+                      letterSpacing: 3, // Spacing disesuaikan sedikit
                       fontFamily: 'Orbitron',
                       shadows: [
                         Shadow(
-                          color: Color(0xFF001412),
+                          color: Colors.black,
                           blurRadius: 20,
                           offset: Offset(0, 5),
                         ),
+                        Shadow(
+                          color: Color(0xFF7B1FA2),
+                          blurRadius: 15,
+                          offset: Offset(0, 0),
+                        )
                       ],
                     ),
                   ),
@@ -182,7 +188,7 @@ class _SplashScreenState extends State<SplashScreen>
           if (_fadeOutStarted)
             FadeTransition(
               opacity: _fadeController.drive(Tween(begin: 1.0, end: 0.0)),
-              child: Container(color: Color(0xFF001412)),
+              child: Container(color: Colors.black),
             ),
         ],
       ),

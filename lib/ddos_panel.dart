@@ -20,18 +20,18 @@ class AttackPanel extends StatefulWidget {
 class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin {
   final targetController = TextEditingController();
   final portController = TextEditingController();
-  final String baseUrl = "http://xterclose.zorryxhostz.my.id:2000";
+  final String baseUrl = "http://dianaxyz-offc.hostingercloud.web.id:4042";
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
   String selectedDoosId = "";
   double attackDuration = 60;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -62,12 +62,12 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
     final int duration = attackDuration.toInt();
 
     if (target.isEmpty || key.isEmpty) {
-      _showAlert("Invalid Input", "Target IP cannot be empty.");
+      _showAlert("❌ Invalid Input", "Target IP cannot be empty.");
       return;
     }
 
     if (selectedDoosId != "icmp" && (port.isEmpty || int.tryParse(port) == null)) {
-      _showAlert("Invalid Port", "Please input a valid port.");
+      _showAlert("❌ Invalid Port", "Please input a valid port.");
       return;
     }
 
@@ -81,14 +81,14 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
       if (data["cooldown"] == true) {
         _showAlert("⏳ Cooldown", "Please wait a moment before sending again.");
       } else if (data["valid"] == false) {
-        _showAlert("Invalid Key", "Your session key is invalid. Please log in again.");
+        _showAlert("❌ Invalid Key", "Your session key is invalid. Please log in again.");
       } else if (data["sended"] == false) {
-        _showAlert("Failed", "Failed to send attack. The server may be under maintenance.");
+        _showAlert("⚠️ Failed", "Failed to send attack. The server may be under maintenance.");
       } else {
-        _showAlert("Success", "Attack has been successfully sent to $target.");
+        _showAlert("✅ Success", "Attack has been successfully sent to $target.");
       }
     } catch (_) {
-      _showAlert("Error", "An unexpected error occurred. Please try again.");
+      _showAlert("❌ Error", "An unexpected error occurred. Please try again.");
     }
   }
 

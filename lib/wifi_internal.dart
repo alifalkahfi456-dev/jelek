@@ -21,11 +21,11 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
   bool isKilling = false;
   Timer? _loopTimer;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -63,12 +63,12 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
 
   void _startFlood() {
     if (routerIp == "-" || routerIp == "Error") {
-      _showAlert("Error", "Router IP tidak tersedia.");
+      _showAlert("❌ Error", "Router IP tidak tersedia.");
       return;
     }
 
     setState(() => isKilling = true);
-    _showAlert("Started", "WiFi Killer!\nStop Manually.");
+    _showAlert("✅ Started", "WiFi Killer!\nStop Manually.");
 
     const targetPort = 53;
     final List<int> payload = List<int>.generate(65495, (_) => Random().nextInt(256));
@@ -90,7 +90,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
     setState(() => isKilling = false);
     _loopTimer?.cancel();
     _loopTimer = null;
-    _showAlert("Stopped", "WiFi flood attack dihentikan.");
+    _showAlert("🛑 Stopped", "WiFi flood attack dihentikan.");
   }
 
   void _showAlert(String title, String message) {
@@ -168,7 +168,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
       child: Row(
         children: [
           Text(
-            "$label:",
+            "$label: ",
             style: TextStyle(
               color: bloodRed,
               fontWeight: FontWeight.bold,
@@ -341,7 +341,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                           ),
                           const SizedBox(height: 12),
                           const Text(
-                            "Feature ini mampu mematikan jaringan WiFi yang anda sambung.\n\n Gunakan hanya untuk testing pribadi. Risiko ditanggung pengguna.",
+                            "Feature ini mampu mematikan jaringan WiFi yang anda sambung.\n\n⚠️ Gunakan hanya untuk testing pribadi. Risiko ditanggung pengguna.",
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 14,
@@ -388,7 +388,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                         text: isKilling ? "STOP ATTACK" : "START KILL",
                         icon: isKilling ? Icons.stop : Icons.wifi_off,
                         onPressed: isKilling ? _stopFlood : _startFlood,
-                        color: isKilling ? Colors.pink : bloodRed,
+                        color: isKilling ? Colors.red : bloodRed,
                       ),
                     ),
 
@@ -405,14 +405,14 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                                 shape: BoxShape.circle,
                                 gradient: LinearGradient(
                                   colors: [
-                                    Colors.pink.withOpacity(0.3),
-                                    Colors.pinkAccent.withOpacity(0.1),
+                                    Colors.red.withOpacity(0.3),
+                                    Colors.redAccent.withOpacity(0.1),
                                   ],
                                 ),
-                                border: Border.all(color: Colors.pink.withOpacity(0.4)),
+                                border: Border.all(color: Colors.red.withOpacity(0.4)),
                               ),
                               child: const CircularProgressIndicator(
-                                color: Colors.pink,
+                                color: Colors.red,
                                 strokeWidth: 3,
                               ),
                             ),
@@ -420,7 +420,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                             const Text(
                               "Attack in progress...",
                               style: TextStyle(
-                                color: Colors.pinkAccent,
+                                color: Colors.redAccent,
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                               ),

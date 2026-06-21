@@ -12,11 +12,11 @@ const String jikanBaseUrl = "https://api.jikan.moe/v4";
 const String videoSearchApi = "https://api.siputzx.my.id/api/s/youtube";
 
 // Palette Warna (Ungu - Hitam)
-final Color deepViolet = const Color(0xFF921B1B);   
-final Color mainViolet = const Color(0xFF2A0000);   
+final Color deepViolet = const Color(0xFF311B92);   
+final Color mainViolet = const Color(0xFF7B1FA2);   
 final Color accentViolet = const Color(0xFFEA80FC);  
-final Color bgBlack = const Color(0xFF120000);   
-final Color cardBlack = const Color(0xFF1F0015); 
+final Color bgBlack = const Color(0xFF000000);   
+final Color cardBlack = const Color(0xFF0F0F0F); 
 
 // --- MODEL ---
 class Anime {
@@ -129,7 +129,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
                 gradient: LinearGradient(
-                  colors: [Color(0xFF120000), deepViolet.withOpacity(0.4)],
+                  colors: [Colors.black, deepViolet.withOpacity(0.4)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -169,7 +169,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                   cursorColor: accentViolet,
                   decoration: InputDecoration(
                     hintText: "Search anime...",
-                    hintStyle: TextStyle(color: Colors.grey.shade600),
+                    hintStyle: TextStyle(color: Colors.grey[600]),
                     prefixIcon: Icon(Icons.search, color: mainViolet),
                     filled: true,
                     fillColor: cardBlack,
@@ -261,7 +261,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
           border: Border.all(color: mainViolet.withOpacity(0.3)),
-          boxShadow: [BoxShadow(color: Color(0xFF120000).withOpacity(0.5), blurRadius: 5)],
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 5)],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15),
@@ -279,7 +279,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Colors.transparent, Color(0xFF120000).withOpacity(0.95)],
+                      colors: [Colors.transparent, Colors.black.withOpacity(0.95)],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -335,7 +335,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
           mainAxisSpacing: 15,
         ),
         itemCount: 6,
-        itemBuilder: (_, __) => Container(decoration: BoxDecoration(color: Color(0xFF120000), borderRadius: BorderRadius.circular(15))),
+        itemBuilder: (_, __) => Container(decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(15))),
       ),
     );
   }
@@ -385,7 +385,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
             leading: IconButton(
               icon: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Color(0x541A0010), borderRadius: BorderRadius.circular(50), border: Border.all(color: mainViolet)),
+                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(50), border: Border.all(color: mainViolet)),
                 child: const Icon(Icons.arrow_back, color: Colors.white),
               ),
               onPressed: () => Navigator.pop(context),
@@ -580,7 +580,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
       if (found) break;
 
       try {
-        debugPrint("Searching: $query");
+        debugPrint("🔍 Searching: $query");
 
         final response = await http.post(
           Uri.parse(videoSearchApi),
@@ -610,7 +610,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
           }
         }
       } catch (e) {
-        debugPrint("Error searching query '$query': $e");
+        debugPrint("❌ Error searching query '$query': $e");
       }
     }
 
@@ -657,7 +657,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
             Container(
               height: 250, 
               width: double.infinity,
-              color: Color(0xFF120000),
+              color: Colors.black,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
@@ -676,7 +676,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.error_outline, color: Colors.pink, size: 40),
+                          const Icon(Icons.error_outline, color: Colors.red, size: 40),
                           const SizedBox(height: 10),
                           Text(_errorMsg!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
                         ],
@@ -700,7 +700,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
                     top: 10,
                     left: 10,
                     child: CircleAvatar(
-                      backgroundColor: Color(0x541A0010),
+                      backgroundColor: Colors.black54,
                       child: IconButton(
                         icon: const Icon(Icons.arrow_back, color: Colors.white),
                         onPressed: () => Navigator.pop(context),

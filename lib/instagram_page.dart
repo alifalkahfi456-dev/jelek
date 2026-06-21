@@ -23,11 +23,11 @@ class _InstagramDownloaderPageState extends State<InstagramDownloaderPage> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void dispose() {
@@ -102,8 +102,8 @@ class _InstagramDownloaderPageState extends State<InstagramDownloaderPage> {
               materialProgressColors: ChewieProgressColors(
                 playedColor: bloodRed,
                 handleColor: lightRed,
-                backgroundColor: Colors.grey.shade300!,
-                bufferedColor: Colors.grey.shade400!,
+                backgroundColor: Colors.grey[300]!,
+                bufferedColor: Colors.grey[400]!,
               ),
             );
           });

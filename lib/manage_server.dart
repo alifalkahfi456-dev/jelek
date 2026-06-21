@@ -18,11 +18,11 @@ class _ManageServerPageState extends State<ManageServerPage> {
   final _userController = TextEditingController();
   final _passController = TextEditingController();
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -32,7 +32,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
 
   Future<void> _fetchVpsList() async {
     setState(() => isLoading = true);
-    final uri = Uri.parse('http://xterclose.zorryxhostz.my.id:2000/myServer?key=${widget.keyToken}');
+    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/myServer?key=${widget.keyToken}');
     try {
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
@@ -55,7 +55,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
       return;
     }
 
-    final uri = Uri.parse('http://xterclose.zorryxhostz.my.id:2000/addServer');
+    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/addServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -78,7 +78,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
   }
 
   Future<void> _deleteVps(String host) async {
-    final uri = Uri.parse('http://xterclose.zorryxhostz.my.id:2000/delServer');
+    final uri = Uri.parse('http://respanelomdhangicir.omdhanasu.my.id:2139/delServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,

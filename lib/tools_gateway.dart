@@ -14,7 +14,6 @@ import 'instagram_page.dart';
 import 'qr_gen.dart';
 import 'domain_page.dart';
 import 'spam_ngl.dart';
-import 'anime_home.dart'; 
 
 class ToolsPage extends StatefulWidget {
   final String sessionKey;
@@ -36,12 +35,12 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
   late AnimationController _bgController;
   late Animation<double> _bgAnimation;
   
-  // --- PALET WARNA (Ungu - Hitam) ---
-  final Color deepPurple = const Color(0xFF120000);   // Deep Purple
-  final Color mainPurple = const Color(0xFF2A0000);   // Main Purple
-  final Color accentPurple = const Color(0xFFCCCCCC); // Light Purple
-  final Color bgBlack = const Color(0xFF120000);      // Black Background
-  final Color cardBlack = const Color(0xFF1F0015);    // Card Black
+  // --- PALET WARNA (Merah - Hitam) ---
+  final Color deepRed = const Color(0xFF4A148C);   
+  final Color mainRed = const Color(0xFF6A1B9A);   
+  final Color accentRed = const Color(0xFF9C27B0);  
+  final Color bgBlack = const Color(0xFF000000);   
+  final Color cardBlack = const Color(0xFF0F0F0F);
 
   @override
   void initState() {
@@ -66,7 +65,7 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
       backgroundColor: bgBlack,
       body: Stack(
         children: [
-          // 1. Background Animasi Ungu
+          // 1. Background Animasi Merah
           _buildAnimatedBackground(),
 
           // 2. Konten Utama
@@ -99,7 +98,7 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
         return Stack(
           children: [
             Container(color: bgBlack),
-            // Partikel Ungu
+            // Partikel Merah
             ...List.generate(15, (index) {
               final top = (_bgAnimation.value + index * 0.1) % 1.0;
               final left = (index * 0.15) % 1.0;
@@ -111,10 +110,10 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
                   width: size,
                   height: size,
                   decoration: BoxDecoration(
-                    color: mainPurple.withOpacity(0.2),
+                    color: mainRed.withOpacity(0.2),
                     shape: BoxShape.circle,
                     boxShadow: [
-                      BoxShadow(color: mainPurple.withOpacity(0.3), blurRadius: 10)
+                      BoxShadow(color: mainRed.withOpacity(0.3), blurRadius: 10)
                     ],
                   ),
                 ),
@@ -130,7 +129,7 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
-                    colors: [deepPurple.withOpacity(0.2), Colors.transparent],
+                    colors: [deepRed.withOpacity(0.2), Colors.transparent],
                   ),
                 ),
               ),
@@ -149,15 +148,15 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF120000), deepPurple.withOpacity(0.3)],
+            colors: [Colors.black, deepRed.withOpacity(0.3)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: mainPurple.withOpacity(0.5)),
+          border: Border.all(color: mainRed.withOpacity(0.5)),
           boxShadow: [
             BoxShadow(
-              color: mainPurple.withOpacity(0.1),
+              color: mainRed.withOpacity(0.1),
               blurRadius: 15,
               offset: const Offset(0, 5),
             ),
@@ -169,9 +168,9 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: mainPurple.withOpacity(0.2),
+                color: mainRed.withOpacity(0.2),
                 shape: BoxShape.circle,
-                border: Border.all(color: accentPurple.withOpacity(0.5)),
+                border: Border.all(color: accentRed.withOpacity(0.5)),
               ),
               child: Icon(Icons.public, color: Colors.white, size: 30),
             ),
@@ -278,16 +277,10 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
         ),
 
         _buildDropdownCategory(
-          title: "Downloader & Anime",
-          subtitle: "Social Media & Streaming",
+          title: "Downloader",
+          subtitle: "Social Media Media",
           icon: Icons.download,
           children: [
-            // --- BUTTON ANIME BARU DISINI ---
-            _buildSubMenu(
-              "Anime Station", 
-              Icons.movie_filter, 
-              () => _navTo(const HomeAnimePage())
-            ),
             _buildSubMenu(
               "TikTok Video", 
               Icons.tiktok, 
@@ -334,11 +327,11 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E0000), // Warna dasar card
+        color: const Color(0xFF111111), // Warna dasar card
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white10),
         boxShadow: [
-          BoxShadow(color: Color(0xFF120000).withOpacity(0.5), blurRadius: 5)
+          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 5)
         ],
       ),
       child: Theme(
@@ -353,7 +346,7 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [deepPurple, mainPurple]),
+              gradient: LinearGradient(colors: [deepRed, mainRed]),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: Colors.white, size: 20),
@@ -378,7 +371,7 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
             ),
           ),
           // Icon Panah
-          iconColor: accentPurple,
+          iconColor: accentRed,
           collapsedIconColor: Colors.grey,
           // Isi Dropdown
           children: children,
@@ -398,13 +391,13 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
           decoration: BoxDecoration(
             border: Border(
-              left: BorderSide(color: mainPurple.withOpacity(0.3), width: 2), // Garis indikator kiri
+              left: BorderSide(color: mainRed.withOpacity(0.3), width: 2), // Garis indikator kiri
             ),
           ),
           child: Row(
             children: [
               const SizedBox(width: 10), // Indentasi
-              Icon(icon, color: accentPurple, size: 16),
+              Icon(icon, color: accentRed, size: 16),
               const SizedBox(width: 12),
               Text(
                 label,
@@ -439,9 +432,10 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
             Text("Feature Coming Soon!", style: TextStyle(color: Colors.white)),
           ],
         ),
-        backgroundColor: deepPurple,
+        backgroundColor: deepRed,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 }
+

@@ -20,11 +20,11 @@ class _NglPageState extends State<NglPage> {
   String statusLog = "";
   Timer? timer;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   String generateDeviceId(int length) {
     final random = Random.secure();
@@ -53,17 +53,17 @@ class _NglPageState extends State<NglPage> {
       if (response.statusCode == 200) {
         setState(() {
           counter++;
-          statusLog = "[$counter] Pesan terkirim";
+          statusLog = "✅ [$counter] Pesan terkirim";
         });
       } else {
         setState(() {
-          statusLog = "Ratelimit (${response.statusCode}), tunggu 5 detik...";
+          statusLog = "❌ Ratelimit (${response.statusCode}), tunggu 5 detik...";
         });
         await Future.delayed(const Duration(seconds: 5));
       }
     } catch (e) {
       setState(() {
-        statusLog = "Error: $e";
+        statusLog = "⚠️ Error: $e";
       });
       await Future.delayed(const Duration(seconds: 2));
     }
@@ -75,7 +75,7 @@ class _NglPageState extends State<NglPage> {
 
     if (username.isEmpty || message.isEmpty) {
       setState(() {
-        statusLog = "Harap isi username & pesan!";
+        statusLog = "⚠️ Harap isi username & pesan!";
       });
       return;
     }
@@ -83,7 +83,7 @@ class _NglPageState extends State<NglPage> {
     setState(() {
       isRunning = true;
       counter = 0;
-      statusLog = "▶ Mulai mengirim...";
+      statusLog = "▶️ Mulai mengirim...";
     });
 
     timer = Timer.periodic(const Duration(seconds: 2), (_) {
@@ -96,7 +96,7 @@ class _NglPageState extends State<NglPage> {
   void stopLoop() {
     setState(() {
       isRunning = false;
-      statusLog = "⏹ Dihentikan.";
+      statusLog = "⏹️ Dihentikan.";
     });
     timer?.cancel();
   }

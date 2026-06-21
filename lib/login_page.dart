@@ -1,15 +1,13 @@
 import 'dart:ui';
-import 'package:video_player/video_player.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'splash.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'dashboard_page.dart';
+import 'splash.dart';
 
-const String baseUrl = "http://xterclose.zorryxhostz.my.id:2000";
+const String baseUrl = "http://respanelomdhangicir.omdhanasu.my.id:2139";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -30,16 +28,14 @@ class _LoginPageState extends State<LoginPage>
 
   late AnimationController _controller;
   late Animation<double> _fadeAnim;
-  late VideoPlayerController _videoCtrl;
 
-  // Palet warna purple sesuai dashboard
-  final Color deepPurple = const Color(0xFF120000);
-  final Color mainPurple = const Color(0xFFB71C1C);
-  final Color lightPurple = const Color(0xFFE53935);
-  final Color accentPink = const Color(0xFFCCCCCC);
-  final Color bgDark = const Color(0xFF120000);
-  final Color cardPurple = const Color(0xFF1E0000);
-  final Color glassBlack = Color(0xFF120000).withOpacity(0.7);
+  // Palet warna TEMA DEEP VIOLET (Disesuaikan dengan Landing/Admin)
+  final Color mainViolet = const Color(0xFF7B1FA2);   // Warna Utama (Tombol, Border)
+  final Color deepViolet = const Color(0xFF311B92);  // Warna Gelap (Shadow, Gradient)
+  final Color accentViolet = const Color(0xFFEA80FC); // Warna Terang/Neon (Highlight, Focus)
+  final Color deepBlack = const Color(0xFF0A0A0A);
+  final Color glassBlack = Colors.black.withOpacity(0.7);
+  final Color cardDark = const Color(0xFF1A1A1A);
 
   @override
   void initState() {
@@ -49,15 +45,6 @@ class _LoginPageState extends State<LoginPage>
   }
 
   void _initAnim() {
-    // Video background login
-    _videoCtrl = VideoPlayerController.asset('assets/videos/login.mp4')
-      ..initialize().then((_) {
-        setState(() {});
-        _videoCtrl.setLooping(true);
-        _videoCtrl.play();
-        _videoCtrl.setVolume(0);
-      });
-
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -89,7 +76,7 @@ class _LoginPageState extends State<LoginPage>
               builder: (_) => SplashScreen(
                 username: savedUser,
                 password: savedPass,
-                role: (data['role'] ?? '').toString(),
+                role: data['role'],
                 sessionKey: data['key'],
                 expiredDate: data['expiredDate'],
                 listBug: (data['listBug'] as List? ?? [])
@@ -145,9 +132,9 @@ class _LoginPageState extends State<LoginPage>
         );
       } else if (validData['valid'] != true) {
         _showPopup(
-          title: "Login Failed",
+          title: "❌ Login Failed",
           message: "Invalid username or password.",
-          color: Colors.pink,
+          color: Colors.red,
         );
       } else {
         final prefs = await SharedPreferences.getInstance();
@@ -161,7 +148,7 @@ class _LoginPageState extends State<LoginPage>
             builder: (_) => SplashScreen(
               username: username,
               password: password,
-              role: (validData['role'] ?? '').toString(),
+              role: validData['role'],
               sessionKey: validData['key'],
               expiredDate: validData['expiredDate'],
               listBug: (validData['listBug'] as List? ?? [])
@@ -179,10 +166,10 @@ class _LoginPageState extends State<LoginPage>
       }
     } catch (e) {
       _showPopup(
-        title: "Connection Error",
+        title: "⚠️ Connection Error",
         message:
         "Failed to connect to the server.\nPlease check your internet connection.",
-        color: mainPurple,
+        color: mainViolet, // Gunakan warna ungu
       );
     }
 
@@ -192,7 +179,7 @@ class _LoginPageState extends State<LoginPage>
   void _showPopup({
     required String title,
     required String message,
-    Color color = Colors.pink,
+    Color color = Colors.red,
     bool showContact = false,
   }) {
     showDialog(
@@ -214,11 +201,11 @@ class _LoginPageState extends State<LoginPage>
           if (showContact)
             TextButton(
               onPressed: () async {
-                final uri = Uri.parse("https://t.me/XtreamClose");
+                final uri = Uri.parse("https://t.me/hafzz_reals");
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
               child: Text("Contact Admin",
-                  style: TextStyle(color: lightPurple)),
+                  style: TextStyle(color: accentViolet)), // Gunakan accentViolet
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -233,7 +220,6 @@ class _LoginPageState extends State<LoginPage>
   @override
   void dispose() {
     _controller.dispose();
-    _videoCtrl.dispose();
     userController.dispose();
     passController.dispose();
     super.dispose();
@@ -242,42 +228,27 @@ class _LoginPageState extends State<LoginPage>
   @override
   Widget build(BuildContext context) {
     final inputWidth = MediaQuery.of(context).size.width * 0.85;
-    final gradientPurple = LinearGradient(
-      colors: [mainPurple, lightPurple],
+    // Gradien Deep Violet
+    final gradientViolet = LinearGradient(
+      colors: [deepViolet, mainViolet],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     );
 
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: deepBlack,
       body: Stack(
         children: [
-          // Video background
-          if (_videoCtrl.value.isInitialized)
-            Positioned.fill(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoCtrl.value.size.width,
-                  height: _videoCtrl.value.size.height,
-                  child: VideoPlayer(_videoCtrl),
-                ),
-              ),
+          // 🔹 Gradient latar (Ubah ke Violet)
+          Container(
+            decoration: BoxDecoration(
+              gradient: gradientViolet.withOpacity(0.2),
             ),
-          // Dark overlay di atas video
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF120000).withOpacity(0.6),
-                    Color(0xFF120000).withOpacity(0.85),
-                  ],
-                ),
-              ),
-            ),
+          ),
+          // 🔹 Efek kaca blur
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            child: Container(color: Colors.black.withOpacity(0.4)),
           ),
 
           // 🔹 Konten utama
@@ -295,11 +266,11 @@ class _LoginPageState extends State<LoginPage>
                         width: 100,
                         height: 100,
                         decoration: BoxDecoration(
-                          gradient: gradientPurple,
+                          gradient: gradientViolet, // Gunakan gradien ungu
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: mainPurple.withOpacity(0.5),
+                              color: mainViolet.withOpacity(0.5), // Bayangan ungu
                               blurRadius: 20,
                               spreadRadius: 2,
                             ),
@@ -317,16 +288,16 @@ class _LoginPageState extends State<LoginPage>
                       const SizedBox(height: 25),
 
                       Text(
-                        "WELCOME BACK",
+                        "HOXTEN CLOUD",
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: accentPink.withOpacity(0.8),
+                          color: accentViolet.withOpacity(0.9), // Teks ungu neon
                           shadows: [
                             Shadow(
                               offset: const Offset(0, 2),
                               blurRadius: 8,
-                              color: mainPurple.withOpacity(0.6),
+                              color: deepViolet.withOpacity(0.8), // Bayangan teks ungu
                             )
                           ],
                         ),
@@ -346,11 +317,11 @@ class _LoginPageState extends State<LoginPage>
                           color: glassBlack,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                              color: mainPurple.withOpacity(0.3),
+                              color: mainViolet.withOpacity(0.3), // Border ungu
                               width: 1.2),
                           boxShadow: [
                             BoxShadow(
-                              color: mainPurple.withOpacity(0.2),
+                              color: mainViolet.withOpacity(0.2), // Bayangan ungu
                               blurRadius: 10,
                             ),
                           ],
@@ -379,34 +350,23 @@ class _LoginPageState extends State<LoginPage>
                                 child: ElevatedButton(
                                   onPressed: isLoading ? null : login,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.transparent,
-                                    shadowColor: Colors.transparent,
+                                    backgroundColor: mainViolet, // Tombol ungu
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    padding: EdgeInsets.zero,
                                   ),
-                                  child: Ink(
-                                    decoration: BoxDecoration(
-                                      gradient: gradientPurple,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Container(
-                                      alignment: Alignment.center,
-                                      child: isLoading
-                                          ? const CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                        AlwaysStoppedAnimation<Color>(
-                                            Colors.white),
-                                      )
-                                          : const Text("Sign In",
-                                          style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white)),
-                                    ),
-                                  ),
+                                  child: isLoading
+                                      ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor:
+                                    AlwaysStoppedAnimation<Color>(
+                                        Colors.white),
+                                  )
+                                      : const Text("Sign In",
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white)),
                                 ),
                               ),
                             ],
@@ -439,7 +399,7 @@ class _LoginPageState extends State<LoginPage>
       decoration: InputDecoration(
         labelText: label,
         labelStyle: const TextStyle(color: Colors.white70),
-        prefixIcon: Icon(icon, color: accentPink),
+        prefixIcon: Icon(icon, color: accentViolet), // Ikon ungu neon
         suffixIcon: isPassword
             ? IconButton(
           icon: Icon(
@@ -460,11 +420,11 @@ class _LoginPageState extends State<LoginPage>
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide:
-          BorderSide(color: mainPurple.withOpacity(0.3), width: 1),
+          BorderSide(color: mainViolet.withOpacity(0.3), width: 1), // Border ungu
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: lightPurple, width: 2),
+          borderSide: BorderSide(color: accentViolet, width: 2), // Border fokus ungu neon
         ),
       ),
       validator: (value) =>

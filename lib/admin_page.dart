@@ -6,7 +6,7 @@ import 'dart:ui';
 class AdminPage extends StatefulWidget {
   final String sessionKey;
 
-  const AdminPage({super.key, required this.sessionKey});
+  const AdminPage({Key? key, required this.sessionKey}) : super(key: key);
 
   @override
   State<AdminPage> createState() => _AdminPageState();
@@ -16,7 +16,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   late String sessionKey;
   List<dynamic> fullUserList = [];
   List<dynamic> filteredList = [];
-  final List<String> roleOptions = ['reseller', 'reseller1', 'owner', 'member'];
+  final List<String> roleOptions = ['vip', 'reseller', 'reseller1', 'owner', 'member'];
   String selectedRole = 'member';
   int currentPage = 1;
   int itemsPerPage = 10;
@@ -31,13 +31,12 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
-  // --- PALET WARNA HIJAU KEBIRU ---
-  final Color deepTeal = const Color(0xFF001412);
-  final Color mainTeal = const Color(0xFF002A25);
-  final Color lightTeal = const Color(0xFF002A25);
-  final Color accentTeal = const Color(0xFF00BFA5);
-  final Color bgDark = const Color(0xFF001412);
-  final Color cardDark = const Color(0xFF002A25);
+  // --- PALET WARNA (Deep Violet) ---
+  final Color deepViolet = const Color(0xFF311B92);
+  final Color mainViolet = const Color(0xFF7B1FA2);
+  final Color accentViolet = const Color(0xFFEA80FC);
+  final Color bgBlack = const Color(0xFF000000);
+  final Color cardBlack = const Color(0xFF101010);
 
   @override
   void initState() {
@@ -66,25 +65,21 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   Future<void> _fetchUsers() async {
     setState(() => isLoading = true);
     try {
+      // PORT DIUBAH JADI 4108 (Sesuai Dashboard)
       final res = await http.get(
-        Uri.parse('http://xterclose.zorryxhostz.my.id:2000/listUsers?key=$sessionKey'),
+        Uri.parse('http://dianaxyz-offc.hostingercloud.web.id:4042/listUsers?key=$sessionKey'),
       );
-      
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['valid'] == true && data['authorized'] == true) {
-          setState(() {
-            fullUserList = data['users'] ?? [];
-            _filterAndPaginate();
-          });
-        } else {
-          _showSnack("Error: ${data['message'] ?? 'Akses ditolak.'}");
-        }
+      final data = jsonDecode(res.body);
+      if (data['valid'] == true && data['authorized'] == true) {
+        setState(() {
+          fullUserList = data['users'] ?? [];
+          _filterAndPaginate();
+        });
       } else {
-        _showSnack("Server error: ${res.statusCode}");
+        _showSnack("⚠️ Error: ${data['message'] ?? 'Akses ditolak.'}");
       }
-    } catch (e) {
-      _showSnack("Gagal memuat data user: $e");
+    } catch (_) {
+      _showSnack("🌐 Gagal memuat data user.");
     }
     setState(() => isLoading = false);
   }
@@ -103,35 +98,31 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     return filteredList.sublist(start, end > filteredList.length ? filteredList.length : end);
   }
 
-  int get totalPages => filteredList.isEmpty ? 1 : (filteredList.length / itemsPerPage).ceil();
+  int get totalPages => (filteredList.length / itemsPerPage).ceil();
 
   Future<void> _deleteUser() async {
     final username = deleteController.text.trim();
     if (username.isEmpty) {
-      _showSnack("Masukkan username!");
+      _showSnack("⚠️ Masukkan username!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
+      // PORT DIUBAH JADI 4108
       final res = await http.get(
-        Uri.parse('http://xterclose.zorryxhostz.my.id:2000/deleteUser?key=$sessionKey&username=$username'),
+        Uri.parse('http://dianaxyz-offc.hostingercloud.web.id:4042/deleteUser?key=$sessionKey&username=$username'),
       );
-      
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        if (data['deleted'] == true) {
-          _showSnack("User '${data['user']?['username'] ?? username}' dihapus!", isSuccess: true);
-          deleteController.clear();
-          _fetchUsers();
-        } else {
-          _showSnack("Gagal: ${data['message'] ?? 'Unknown error'}");
-        }
+      final data = jsonDecode(res.body);
+      if (data['deleted'] == true) {
+        _showSnack("✅ User '${data['user']['username']}' dihapus!", isSuccess: true);
+        deleteController.clear();
+        _fetchUsers();
       } else {
-        _showSnack("Server error: ${res.statusCode}");
+        _showSnack("❌ Gagal: ${data['message']}");
       }
-    } catch (e) {
-      _showSnack("Error koneksi: $e");
+    } catch (_) {
+      _showSnack("🌐 Error koneksi.");
     }
     setState(() => isLoading = false);
   }
@@ -142,50 +133,39 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     final day = createDayController.text.trim();
 
     if (username.isEmpty || password.isEmpty || day.isEmpty) {
-      _showSnack("Semua field wajib diisi!");
-      return;
-    }
-
-    // Validasi day harus angka
-    if (int.tryParse(day) == null) {
-      _showSnack("Days harus berupa angka!");
+      _showSnack("⚠️ Semua field wajib diisi!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
+      // PORT DIUBAH JADI 4108
       final url = Uri.parse(
-        'http://xterclose.zorryxhostz.my.id:2000/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
+        'http://dianaxyz-offc.hostingercloud.web.id:4042/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
       );
       final res = await http.get(url);
-      
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
+      final data = jsonDecode(res.body);
 
-        if (data['created'] == true) {
-          _showSnack("Akun '${data['user']?['username'] ?? username}' berhasil dibuat!", isSuccess: true);
-          createUsernameController.clear();
-          createPasswordController.clear();
-          createDayController.clear();
-          newUserRole = 'member';
-          _fetchUsers();
-        } else {
-          _showSnack("Gagal: ${data['message'] ?? 'Unknown error'}");
-        }
+      if (data['created'] == true) {
+        _showSnack("✅ Akun '${data['user']['username']}' berhasil dibuat!", isSuccess: true);
+        createUsernameController.clear();
+        createPasswordController.clear();
+        createDayController.clear();
+        newUserRole = 'member';
+        _fetchUsers();
       } else {
-        _showSnack("Server error: ${res.statusCode}");
+        _showSnack("❌ Gagal: ${data['message']}");
       }
-    } catch (e) {
-      _showSnack("Error koneksi: $e");
+    } catch (_) {
+      _showSnack("🌐 Error koneksi.");
     }
     setState(() => isLoading = false);
   }
 
   void _showSnack(String msg, {bool isSuccess = false}) {
-    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(color: Colors.white)),
-      backgroundColor: isSuccess ? Colors.green.shade800 : deepTeal,
+      backgroundColor: isSuccess ? Colors.green[800] : deepViolet,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
@@ -194,10 +174,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: bgBlack,
       body: Stack(
         children: [
-          // Background Ambience
+          // Background Ambience (Violet)
           Positioned(
             top: -100,
             right: -100,
@@ -206,7 +186,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               height: 300,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(colors: [deepTeal.withOpacity(0.2), Colors.transparent]),
+                gradient: RadialGradient(colors: [deepViolet.withOpacity(0.2), Colors.transparent]),
               ),
             ),
           ),
@@ -249,8 +229,8 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           // Loading Overlay
           if (isLoading)
             Container(
-              color: Color(0x54001A14),
-              child: Center(child: CircularProgressIndicator(color: accentTeal)),
+              color: Colors.black54,
+              child: Center(child: CircularProgressIndicator(color: accentViolet)),
             ),
         ],
       ),
@@ -264,32 +244,32 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [deepTeal, const Color(0xFF001412)],
+          colors: [deepViolet, const Color(0xFF000000)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: mainTeal.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 5))
+          BoxShadow(color: mainViolet.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 5))
         ],
-        border: Border.all(color: mainTeal.withOpacity(0.5)),
+        border: Border.all(color: mainViolet.withOpacity(0.5)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Color(0x26001A14),
+              color: Colors.black26,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: accentTeal),
+              border: Border.all(color: accentViolet),
             ),
-            child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
+            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 32),
           ),
           const SizedBox(width: 15),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              const Text(
                 "ADMIN PANEL",
                 style: TextStyle(
                   color: Colors.white,
@@ -313,19 +293,19 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   Widget _buildSectionTitle(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: accentTeal, size: 18),
+        Icon(icon, color: accentViolet, size: 18),
         const SizedBox(width: 8),
         Text(
           title.toUpperCase(),
           style: TextStyle(
-            color: accentTeal,
+            color: accentViolet,
             fontWeight: FontWeight.bold,
             fontSize: 14,
             letterSpacing: 1,
           ),
         ),
         const SizedBox(width: 10),
-        Expanded(child: Container(height: 1, color: mainTeal.withOpacity(0.3))),
+        Expanded(child: Container(height: 1, color: mainViolet.withOpacity(0.3))),
       ],
     );
   }
@@ -334,7 +314,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: cardDark,
+        color: cardBlack,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white10),
       ),
@@ -368,18 +348,18 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
-        color: deepTeal.withOpacity(0.1),
+        color: deepViolet.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: deepTeal.withOpacity(0.5)),
+        border: Border.all(color: deepViolet.withOpacity(0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: accentTeal, size: 20),
+              Icon(Icons.warning_amber_rounded, color: accentViolet, size: 20),
               const SizedBox(width: 10),
-              Text("Danger Zone", style: TextStyle(color: accentTeal, fontWeight: FontWeight.bold)),
+              Text("Danger Zone", style: TextStyle(color: accentViolet, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 15),
@@ -391,7 +371,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               const SizedBox(width: 10),
               Container(
                 decoration: BoxDecoration(
-                  color: deepTeal,
+                  color: deepViolet,
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: IconButton(
@@ -413,16 +393,16 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: cardDark,
+            color: cardBlack,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: Colors.white10),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
-              dropdownColor: const Color(0xFF002A25),
+              dropdownColor: const Color(0xFF1A1A1A),
               value: selectedRole,
               isExpanded: true,
-              icon: Icon(Icons.filter_list, color: accentTeal),
+              icon: Icon(Icons.filter_list, color: accentViolet),
               items: roleOptions.map((role) {
                 return DropdownMenuItem(
                   value: role,
@@ -449,9 +429,9 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
             padding: const EdgeInsets.all(30),
             child: Column(
               children: [
-                const Icon(Icons.person_off, color: Colors.grey, size: 40),
+                Icon(Icons.person_off, color: Colors.grey, size: 40),
                 const SizedBox(height: 10),
-                Text("No users found for '$selectedRole'", style: const TextStyle(color: Colors.grey)),
+                Text("No users found for '$selectedRole'", style: TextStyle(color: Colors.grey)),
               ],
             ),
           )
@@ -479,11 +459,11 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF001C18),
+        color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
         boxShadow: [
-          BoxShadow(color: Color(0xFF001412).withOpacity(0.5), blurRadius: 5, offset: const Offset(0, 2))
+          BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 5, offset: const Offset(0, 2))
         ],
       ),
       child: Row(
@@ -491,11 +471,11 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: mainTeal.withOpacity(0.1),
+              color: mainViolet.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: mainTeal.withOpacity(0.3)),
+              border: Border.all(color: mainViolet.withOpacity(0.3)),
             ),
-            child: Icon(Icons.person, color: accentTeal, size: 20),
+            child: Icon(Icons.person, color: accentViolet, size: 20),
           ),
           const SizedBox(width: 15),
           Expanded(
@@ -503,7 +483,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  user['username']?.toString() ?? 'Unknown',
+                  user['username'] ?? 'Unknown',
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -513,18 +493,18 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    _buildMiniBadge(user['role']?.toString() ?? 'member', Colors.pink),
+                    _buildMiniBadge(user['role'] ?? 'member', Colors.blue),
                     const SizedBox(width: 8),
-                    _buildMiniBadge("Exp: ${user['expiredDate']?.toString() ?? 'N/A'}", Colors.grey),
+                    _buildMiniBadge("Exp: ${user['expiredDate']}", Colors.grey),
                   ],
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: Icon(Icons.delete_outline, color: Colors.grey.shade700),
+            icon: Icon(Icons.delete_outline, color: Colors.grey[700]),
             onPressed: () {
-              deleteController.text = user['username']?.toString() ?? '';
+              deleteController.text = user['username'];
               _showSnack("Tekan tombol ungu di 'Danger Zone' untuk menghapus.", isSuccess: false);
             },
           ),
@@ -548,10 +528,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               width: 35,
               height: 35,
               decoration: BoxDecoration(
-                color: isActive ? mainTeal : Colors.transparent,
+                color: isActive ? mainViolet : Colors.transparent,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: isActive ? accentTeal : Colors.grey.shade800),
-                boxShadow: isActive ? [BoxShadow(color: deepTeal, blurRadius: 10)] : [],
+                border: Border.all(color: isActive ? accentViolet : Colors.grey.shade800),
+                boxShadow: isActive ? [BoxShadow(color: deepViolet, blurRadius: 10)] : [],
               ),
               child: Center(
                 child: Text(
@@ -574,7 +554,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   Widget _buildInput(TextEditingController controller, String hint, IconData icon, {bool isNumber = false}) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF002A25),
+        color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white10),
       ),
@@ -582,11 +562,11 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         style: const TextStyle(color: Colors.white),
-        cursorColor: accentTeal,
+        cursorColor: accentViolet,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.grey.shade600),
-          prefixIcon: Icon(icon, color: mainTeal, size: 20),
+          hintStyle: TextStyle(color: Colors.grey[600]),
+          prefixIcon: Icon(icon, color: mainViolet, size: 20),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
@@ -598,16 +578,16 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF002A25),
+        color: const Color(0xFF1A1A1A),
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: Colors.white10),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-          dropdownColor: const Color(0xFF003D36),
+          dropdownColor: const Color(0xFF222222),
           value: val,
           isExpanded: true,
-          icon: Icon(Icons.arrow_drop_down, color: accentTeal),
+          icon: Icon(Icons.arrow_drop_down, color: accentViolet),
           items: roleOptions.map((role) {
             return DropdownMenuItem(
               value: role,
@@ -625,10 +605,10 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       width: double.infinity,
       height: 50,
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [deepTeal, accentTeal]),
+        gradient: LinearGradient(colors: [deepViolet, accentViolet]),
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(color: mainTeal.withOpacity(0.5), blurRadius: 15, offset: const Offset(0, 4))
+          BoxShadow(color: mainViolet.withOpacity(0.5), blurRadius: 15, offset: const Offset(0, 4))
         ],
       ),
       child: Material(

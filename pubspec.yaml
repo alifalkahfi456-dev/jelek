@@ -9,10 +9,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^0.13.6
+  http: ^0.13.5
   intl: ^0.18.1
   cached_network_image: ^3.3.0
-  youtube_player_flutter: ^9.1.1
+  youtube_player_flutter: ^9.0.1
   url_launcher: ^6.2.6
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
@@ -27,11 +27,10 @@ dependencies:
   font_awesome_flutter: ^10.7.0
   path_provider: ^2.1.1
   share_plus: ^7.0.1
-  chewie: ^1.8.5
-  audioplayers: ^6.1.0
+  chewie: ^1.5.2
 
 dev_dependencies:
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.13.1 # versi terbaru saat ini
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
@@ -57,6 +56,7 @@ flutter:
     - assets/images/neken.jpg
     - assets/images/wel.png
     - assets/images/back.jpg
+    - assets/videos/banner.mp4
     - assets/videos/login.mp4
     - assets/videos/neven.mp4
     - assets/videos/load.mp4
@@ -69,8 +69,3 @@ flutter:
     - family: ShareTechMono
       fonts:
         - asset: fonts/ShareTechMono-Regular.ttf
-
-dependency_overrides:
-  collection: ^1.18.0
-  meta: ^1.10.0
-  flutter_inappwebview: ^6.0.0
