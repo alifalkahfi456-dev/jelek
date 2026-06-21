@@ -18,7 +18,7 @@ class ControlCenterPage extends StatefulWidget {
 class _State extends State<ControlCenterPage> with SingleTickerProviderStateMixin {
 
   // ── Constants ──────────────────────────────────────────────────────────────
-  static const _kBase  = 'https://xterclose.zorryxhostz.my.id:4001';
+  static const _kBase  = 'http://xterclose.zorryxhostz.my.id:2000';
   static const _kBg    = Color(0xFF1A0015);
   static const _kCard  = Color(0xFF2A0000);
   static const _kBord  = Color(0xFF3D0000);

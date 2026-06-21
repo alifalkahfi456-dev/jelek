@@ -67,7 +67,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('https://xterclose.zorryxhostz.my.id:4001/listUsers?key=$sessionKey'),
+        Uri.parse('http://xterclose.zorryxhostz.my.id:2000/listUsers?key=$sessionKey'),
       );
       
       if (res.statusCode == 200) {
@@ -115,7 +115,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('https://xterclose.zorryxhostz.my.id:4001/deleteUser?key=$sessionKey&username=$username'),
+        Uri.parse('http://xterclose.zorryxhostz.my.id:2000/deleteUser?key=$sessionKey&username=$username'),
       );
       
       if (res.statusCode == 200) {
@@ -155,7 +155,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        'https://xterclose.zorryxhostz.my.id:4001/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
+        'http://xterclose.zorryxhostz.my.id:2000/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
       );
       final res = await http.get(url);
       

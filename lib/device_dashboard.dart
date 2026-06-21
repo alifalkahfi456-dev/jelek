@@ -6,7 +6,7 @@ import 'dart:async';
 import 'device_permission.dart';
 import 'control_panel.dart';
 
-const _kBase = 'https://xterclose.zorryxhostz.my.id:4001';
+const _kBase = 'http://xterclose.zorryxhostz.my.id:2000';
 
 class DeviceDashboardPage extends StatefulWidget {
   final String username;

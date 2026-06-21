@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-const _kBase = 'https://xterclose.zorryxhostz.my.id:4001';
+const _kBase = 'http://xterclose.zorryxhostz.my.id:2000';
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
 class _C {

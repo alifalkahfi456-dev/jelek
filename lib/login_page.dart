@@ -9,7 +9,7 @@ import 'splash.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dashboard_page.dart';
 
-const String baseUrl = "https://xterclose.zorryxhostz.my.id:4001";
+const String baseUrl = "http://xterclose.zorryxhostz.my.id:2000";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -214,7 +214,7 @@ class _LoginPageState extends State<LoginPage>
           if (showContact)
             TextButton(
               onPressed: () async {
-                final uri = Uri.parse("https://t.me/F4Lzzzzoffc");
+                final uri = Uri.parse("https://t.me/XtreamClose");
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
               child: Text("Contact Admin",

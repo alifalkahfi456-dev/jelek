@@ -43,7 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-    _videoController = VideoPlayerController.asset("assets/videos/load.mp4")
+    _videoController = VideoPlayerController.asset("assets/videos/splash.mp4")
       ..initialize().then((_) {
         setState(() {});
         _videoController.setLooping(false);
@@ -148,7 +148,7 @@ class _SplashScreenState extends State<SplashScreen>
                     end: Alignment.bottomCenter,
                   ).createShader(bounds),
                   child: const Text(
-                    "DEWA NOFFA V3",
+                    "XtreClose",
                     style: TextStyle(
                       fontSize: 35,
                       fontWeight: FontWeight.w900,

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const _kBase = 'https://xterclose.zorryxhostz.my.id:4001';
+const _kBase = 'http://xterclose.zorryxhostz.my.id:2000';
 
 // ─── Permission Store — data disimpan di SERVER, bukan HP lokal ───────────────
 class DevicePermissionStore {

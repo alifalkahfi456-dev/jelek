@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: '404 VOIDX',
+      title: 'XtreClose',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',

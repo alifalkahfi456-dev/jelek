@@ -31,7 +31,7 @@ class _SellerPageState extends State<SellerPage> {
     if (u.isEmpty || p.isEmpty || d.isEmpty) return _alert("Semua field wajib diisi");
     setState(() => loading = true);
     final res = await http.get(Uri.parse(
-        "https://xterclose.zorryxhostz.my.id:4001/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
+        "http://xterclose.zorryxhostz.my.id:2000/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
     final data = jsonDecode(res.body);
     if (data['created'] == true) {
       _alert("Akun berhasil dibuat!");
@@ -47,7 +47,7 @@ class _SellerPageState extends State<SellerPage> {
     if (u.isEmpty || d.isEmpty) return _alert("Username dan durasi wajib diisi");
     setState(() => loading = true);
     final res = await http.get(Uri.parse(
-        "https://xterclose.zorryxhostz.my.id:4001/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
+        "http://xterclose.zorryxhostz.my.id:2000/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
     final data = jsonDecode(res.body);
     if (data['edited'] == true) {
       _alert("Durasi berhasil diperbarui.");

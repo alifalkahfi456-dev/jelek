@@ -476,7 +476,7 @@ class _DashboardPageState extends State<DashboardPage>
           // ── Telegram ──────────────────────────────────────────────────
           GestureDetector(
             onTap: () async {
-              final uri = Uri.parse('https://t.me/F4Lzzzzoffc');
+              final uri = Uri.parse('https://t.me/XtreamClose');
               if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
             },
             child: Container(
@@ -493,7 +493,7 @@ class _DashboardPageState extends State<DashboardPage>
                 const SizedBox(width: 12),
                 const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('JOIN INFO CHANNEL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
-                  Text('@F4Lzzzoffc', style: TextStyle(color: Colors.white38, fontSize: 11)),
+                  Text('XtreCloseCommunity', style: TextStyle(color: Colors.white38, fontSize: 11)),
                 ])),
                 const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white24, size: 14),
               ]),
@@ -878,7 +878,7 @@ class _DashboardPageState extends State<DashboardPage>
             ),
             Positioned(bottom: 16, left: 16, right: 16,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text("404 VOIDX V1.3", style: TextStyle(color: AppColors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 3)),
+                const Text("XtreClose", style: TextStyle(color: AppColors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 3)),
                 const SizedBox(height: 3),
                 const Text("Powerful Bug Sender Tool", style: TextStyle(color: AppColors.textSec, fontSize: 11)),
               ]),

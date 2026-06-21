@@ -68,12 +68,12 @@ class _LandingPageState extends State<LandingPage> {
           children: [
             const SizedBox(height: 60),
             Center(
-              child: Image.asset('assets/images/wel.png', height: 260, fit: BoxFit.contain),
+              child: Image.asset('assets/images/landing.png', height: 260, fit: BoxFit.contain),
             ),
             const SizedBox(height: 20),
             FittedBox(
               child: Text(
-                "404 VOIDX V1.3",
+                "XtreClose",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 36,
@@ -108,7 +108,7 @@ class _LandingPageState extends State<LandingPage> {
             const SizedBox(height: 16),
 
             // BUTTON BUY ACCESS - outline putih, teks putih
-            _buildOutlineButton(label: "Buy Access", url: "https://t.me/F4Lzzzzoffc"),
+            _buildOutlineButton(label: "Buy Access", url: "https://t.me/XtreamClose"),
 
             const SizedBox(height: 100),
           ],
@@ -129,7 +129,7 @@ class _LandingPageState extends State<LandingPage> {
                 icon: FontAwesomeIcons.telegram,
                 label: "TELEGRAM",
                 color: telegramBlue,
-                url: "https://t.me/F4Lzzzzoffc",
+                url: "https://t.me/XtreamClose",
               ),
             ),
             const SizedBox(width: 12),
@@ -138,7 +138,7 @@ class _LandingPageState extends State<LandingPage> {
                 icon: FontAwesomeIcons.whatsapp,
                 label: "WHATSAPP",
                 color: whatsappGreen,
-                url: "https://wa.me/6289691563280",
+                url: "https://wa.me/6285815677915",
               ),
             ),
           ],

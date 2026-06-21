@@ -20,7 +20,7 @@ class AttackPanel extends StatefulWidget {
 class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin {
   final targetController = TextEditingController();
   final portController = TextEditingController();
-  final String baseUrl = "https://xterclose.zorryxhostz.my.id:4001";
+  final String baseUrl = "http://xterclose.zorryxhostz.my.id:2000";
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
