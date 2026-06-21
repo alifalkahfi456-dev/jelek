@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:ui';
 
 class SellerPage extends StatefulWidget {
   final String keyToken;
@@ -12,286 +11,363 @@ class SellerPage extends StatefulWidget {
   State<SellerPage> createState() => _SellerPageState();
 }
 
-class _SellerPageState extends State<SellerPage> with SingleTickerProviderStateMixin {
+class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
   final _newUser = TextEditingController();
   final _newPass = TextEditingController();
   final _days = TextEditingController();
   final _editUser = TextEditingController();
   final _editDays = TextEditingController();
-  
-  // Untuk akun permanen (tanpa expired)
-  final _permUser = TextEditingController();
-  final _permPass = TextEditingController();
-  
   bool loading = false;
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
+  bool isCreating = false;
 
-  final Color deepPurple = const Color(0xFF120000);
-  final Color mainPurple = const Color(0xFF2A0000);
-  final Color accentPurple = const Color(0xFFCCCCCC);
-  final Color deepBlack = const Color(0xFF120000);
-  final Color cardDark = const Color(0xFF2A0000);
-  final Color greenAccent = const Color(0xFF4CAF50);
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27);
+  final Color primaryBlue = const Color(0xFF1E3A8A);
+  final Color accentBlue = const Color(0xFF3B82F6);
+  final Color lightBlue = const Color(0xFF60A5FA);
+  final Color cardDark = const Color(0xFF151932);
+  final Color cardDarker = const Color(0xFF0F1330);
+  final Color successGreen = const Color(0xFF10B981);
+  final Color warningOrange = const Color(0xFFF59E0B);
+  final Color dangerRed = const Color(0xFFEF4444);
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+
+    _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
-    )..forward();
-    _fadeAnimation = CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _fadeController.forward();
+    _slideController.forward();
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     _newUser.dispose();
     _newPass.dispose();
     _days.dispose();
     _editUser.dispose();
     _editDays.dispose();
-    _permUser.dispose();
-    _permPass.dispose();
     super.dispose();
   }
 
-  // Membuat akun dengan durasi (berlaku sampai tanggal tertentu)
   Future<void> _create() async {
     final u = _newUser.text.trim(), p = _newPass.text.trim(), d = _days.text.trim();
-    if (u.isEmpty || p.isEmpty || d.isEmpty) return _alert("Semua field wajib diisi");
-    setState(() => loading = true);
-    final res = await http.get(Uri.parse(
-        "http://panel.lynzzofficial.com:2031/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
-    final data = jsonDecode(res.body);
-    if (data['created'] == true) {
-      _alert("Akun berhasil dibuat!", isSuccess: true);
-      _newUser.clear(); _newPass.clear(); _days.clear();
-    } else {
-      _alert("${data['message'] ?? 'Gagal membuat akun.'}");
+    if (u.isEmpty || p.isEmpty || d.isEmpty) {
+      _showNotification("Error", "Semua field wajib diisi", dangerRed);
+      return;
     }
-    setState(() => loading = false);
+
+    setState(() {
+      loading = true;
+      isCreating = true;
+    });
+
+    final res = await http.get(Uri.parse(
+        "http://yanzoffc-private.panelwota.my.id:11396/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
+    final data = jsonDecode(res.body);
+
+    if (data['created'] == true) {
+      _showNotification("Success", "Akun berhasil dibuat!", successGreen);
+      _newUser.clear();
+      _newPass.clear();
+      _days.clear();
+    } else {
+      _showNotification("Error", data['message'] ?? 'Gagal membuat akun.', dangerRed);
+    }
+
+    setState(() {
+      loading = false;
+      isCreating = false;
+    });
   }
 
-  // MEMBUAT AKUN PERMANEN (tanpa expired date / berlaku selamanya)
-  Future<void> _createPermanent() async {
-    final u = _permUser.text.trim(), p = _permPass.text.trim();
-    if (u.isEmpty || p.isEmpty) return _alert("Username dan Password wajib diisi");
-    setState(() => loading = true);
-    
-    // Kirim day = 0 atau nilai khusus untuk menandakan akun permanen
-    // Sesuaikan dengan API backend Anda
-    final res = await http.get(Uri.parse(
-        "http://panel.lynzzofficial.com:2031/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=0&permanent=true"));
-    final data = jsonDecode(res.body);
-    if (data['created'] == true) {
-      _alert("Akun PERMANEN berhasil dibuat!", isSuccess: true);
-      _permUser.clear(); _permPass.clear();
-    } else {
-      _alert("${data['message'] ?? 'Gagal membuat akun permanen.'}");
-    }
-    setState(() => loading = false);
-  }
-
-  // Mengubah durasi akun (menambah hari)
   Future<void> _edit() async {
     final u = _editUser.text.trim(), d = _editDays.text.trim();
-    if (u.isEmpty || d.isEmpty) return _alert("Username dan durasi wajib diisi");
-    setState(() => loading = true);
-    final res = await http.get(Uri.parse(
-        "http://panel.lynzzofficial.com:2031/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
-    final data = jsonDecode(res.body);
-    if (data['edited'] == true) {
-      _alert("Durasi berhasil diperbarui.", isSuccess: true);
-      _editUser.clear(); _editDays.clear();
-    } else {
-      _alert("${data['message'] ?? 'Gagal mengubah durasi.'}");
+    if (u.isEmpty || d.isEmpty) {
+      _showNotification("Error", "Username dan durasi wajib diisi", dangerRed);
+      return;
     }
-    setState(() => loading = false);
+
+    setState(() {
+      loading = true;
+      isCreating = false;
+    });
+
+    final res = await http.get(Uri.parse(
+        "http://yanzoffc-private.panelwota.my.id:11396/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
+    final data = jsonDecode(res.body);
+
+    if (data['edited'] == true) {
+      _showNotification("Success", "Durasi berhasil diperbarui.", successGreen);
+      _editUser.clear();
+      _editDays.clear();
+    } else {
+      _showNotification("Error", data['message'] ?? 'Gagal mengubah durasi.', dangerRed);
+    }
+
+    setState(() {
+      loading = false;
+      isCreating = false;
+    });
   }
 
-  void _alert(String msg, {bool isSuccess = false}) {
-    showDialog(
-      context: context,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: AlertDialog(
-          backgroundColor: cardDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: isSuccess ? greenAccent : accentPurple.withOpacity(0.3), width: 1.5),
+  void _showNotification(String title, String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
           ),
-          content: Text(
-            msg,
-            style: const TextStyle(color: Colors.white70),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  color == successGreen ? Icons.check_circle :
+                  color == dangerRed ? Icons.error : Icons.info,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: isSuccess ? greenAccent : accentPurple)),
-            )
-          ],
         ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
 
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: accentPurple.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: mainPurple.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildGlassInputField({
-    required TextEditingController controller,
+  Widget _buildModernInput({
     required String label,
+    required TextEditingController controller,
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     bool obscureText = false,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        obscureText: obscureText,
-        style: const TextStyle(color: Colors.white),
-        cursorColor: accentPurple,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(icon, color: accentPurple),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentPurple.withOpacity(0.3)),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentBlue.withOpacity(0.3)),
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentPurple, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: accentPurple.withOpacity(0.3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, IconData icon, {Color? color}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: color ?? accentPurple, size: 24),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color ?? Colors.white,
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            obscureText: obscureText,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              prefixIcon: Icon(icon, color: accentBlue),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildActionButton({
-    required String text,
+  Widget _buildActionCard({
+    required String title,
+    required String description,
     required IconData icon,
+    required List<Widget> inputs,
     required VoidCallback onPressed,
-    required Color color,
-    bool isLoading = false,
+    required String buttonText,
+    Color buttonColor = const Color(0xFF3B82F6),
   }) {
     return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
+        color: cardDark,
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.8),
-            color.withOpacity(0.6),
-          ],
-        ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: buttonColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: buttonColor, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.7),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
-        child: isLoading
-            ? const SizedBox(
+          const SizedBox(height: 20),
+          ...inputs,
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            height: 50,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                colors: [buttonColor, buttonColor.withOpacity(0.8)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: buttonColor.withOpacity(0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: loading ? null : onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: loading && isCreating == (buttonText == "CREATE ACCOUNT")
+                  ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
                   color: Colors.white,
+                  strokeWidth: 2,
                 ),
               )
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: Colors.white, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    text,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
+                  : loading && isCreating == (buttonText == "UPDATE DURATION")
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+                  : Text(
+                buttonText,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -299,234 +375,117 @@ class _SellerPageState extends State<SellerPage> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
-      body: Stack(
-        children: [
-          // Background decorations
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    deepPurple.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    mainPurple.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+      backgroundColor: primaryDark,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Header Section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [primaryBlue, accentBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentBlue.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Header
-                      _buildGlassCard(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.store, color: accentPurple, size: 32),
-                            const SizedBox(width: 12),
-                            const Text(
-                              "RESELLER PANEL",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
+                      const Text(
+                        "Account Management",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-
-                      const SizedBox(height: 24),
-
-                      // --- SECTION: BUAT AKUN PERMANEN (BARU) ---
-                      _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Buat Akun Permanen", Icons.star, color: greenAccent),
-                            const Text(
-                              "Akun member tanpa masa berlaku (selamanya)",
-                              style: TextStyle(color: Colors.white54, fontSize: 11),
-                            ),
-                            const SizedBox(height: 12),
-
-                            _buildGlassInputField(
-                              controller: _permUser,
-                              label: "Username",
-                              icon: Icons.person_outline,
-                            ),
-
-                            _buildGlassInputField(
-                              controller: _permPass,
-                              label: "Password",
-                              icon: Icons.lock_outline,
-                              obscureText: true,
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            _buildActionButton(
-                              text: "BUAT AKUN PERMANEN",
-                              icon: Icons.star,
-                              onPressed: _createPermanent,
-                              color: greenAccent,
-                              isLoading: loading,
-                            ),
-                          ],
+                      const SizedBox(height: 8),
+                      Text(
+                        "Create new accounts or extend existing ones",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
                         ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // --- SECTION: BUAT AKUN BIAYA (dengan durasi) ---
-                      _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Buat Akun Berbayar", Icons.person_add),
-
-                            _buildGlassInputField(
-                              controller: _newUser,
-                              label: "Username",
-                              icon: Icons.person_outline,
-                            ),
-
-                            _buildGlassInputField(
-                              controller: _newPass,
-                              label: "Password",
-                              icon: Icons.lock_outline,
-                              obscureText: true,
-                            ),
-
-                            _buildGlassInputField(
-                              controller: _days,
-                              label: "Durasi (hari)",
-                              icon: Icons.calendar_today,
-                              keyboardType: TextInputType.number,
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            _buildActionButton(
-                              text: "BUAT AKUN",
-                              icon: Icons.person_add,
-                              onPressed: _create,
-                              color: mainPurple,
-                              isLoading: loading,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // --- SECTION: UBAH DURASI ---
-                      _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Tambah Durasi", Icons.edit_calendar),
-
-                            _buildGlassInputField(
-                              controller: _editUser,
-                              label: "Username",
-                              icon: Icons.person_outline,
-                            ),
-
-                            _buildGlassInputField(
-                              controller: _editDays,
-                              label: "Tambah Hari",
-                              icon: Icons.calendar_today,
-                              keyboardType: TextInputType.number,
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            _buildActionButton(
-                              text: "TAMBAH DURASI",
-                              icon: Icons.edit,
-                              onPressed: _edit,
-                              color: deepPurple,
-                              isLoading: loading,
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Info card
-                      _buildGlassCard(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Icon(Icons.info, color: greenAccent, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Akun Permanen vs Berbayar",
-                                    style: TextStyle(
-                                      color: greenAccent,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    "• Akun PERMANEN: Tidak ada masa berlaku (selamanya)\n• Akun BERBAYAR: Memiliki masa berlaku sesuai durasi yang dipilih",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                 ),
-              ),
+
+                const SizedBox(height: 24),
+
+                // Create Account Card
+                _buildActionCard(
+                  title: "Create New Account",
+                  description: "Create a new user account with specified duration",
+                  icon: Icons.person_add,
+                  inputs: [
+                    _buildModernInput(
+                      label: "Username",
+                      controller: _newUser,
+                      icon: Icons.person,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernInput(
+                      label: "Password",
+                      controller: _newPass,
+                      icon: Icons.lock,
+                      obscureText: true,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernInput(
+                      label: "Duration (days)",
+                      controller: _days,
+                      icon: Icons.calendar_today,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                  onPressed: _create,
+                  buttonText: "CREATE ACCOUNT",
+                  buttonColor: accentBlue,
+                ),
+
+                // Edit Duration Card
+                _buildActionCard(
+                  title: "Extend Account Duration",
+                  description: "Add more days to an existing user account",
+                  icon: Icons.update,
+                  inputs: [
+                    _buildModernInput(
+                      label: "Username",
+                      controller: _editUser,
+                      icon: Icons.person,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernInput(
+                      label: "Additional Days",
+                      controller: _editDays,
+                      icon: Icons.add_circle,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                  onPressed: _edit,
+                  buttonText: "UPDATE DURATION",
+                  buttonColor: successGreen,
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
