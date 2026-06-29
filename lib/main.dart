@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'HOXTEN CLOUD',
+      title: '𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',
@@ -33,8 +33,6 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(builder: (_) => LandingPage());
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginPage());
-          
-          // --- DASHBOARD ROUTE ---
           case '/dashboard':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
@@ -44,21 +42,19 @@ class MyApp extends StatelessWidget {
                 role: args['role'],
                 sessionKey: args['key'],
                 expiredDate: args['expiredDate'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), 
-                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), 
-                news: List<Map<String, dynamic>>.from(args['news'] ?? []), 
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
+                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), // ✅ aman
+                news: List<Map<String, dynamic>>.from(args['news'] ?? []), // ✅ aman
               ),
             );
 
-          // --- HOME PAGE ROUTE (YANG DIPERBAIKI) ---
           case '/home':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => HomePage(
-                isGroup: false, // <--- TAMBAHKAN INI (Default ke Bug Contact)
                 username: args['username'],
                 password: args['password'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
                 role: args['role'],
                 expiredDate: args['expiredDate'],
                 sessionKey: args['sessionKey'],

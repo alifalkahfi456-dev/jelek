@@ -40,40 +40,39 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "Flutter.main.dart.executor": "Run",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "ScreenRecorder.SavePath": "C:\\Users\\User\\Videos",
-    "ScreenshotViewer.SavePath": "C:/Users/User/Pictures",
-    "cf.first.check.clang-format": "false",
-    "cidr.known.project.marker": "true",
-    "com.google.services.firebase.aqiPopupShown": "true",
-    "dart.analysis.tool.window.visible": "false",
-    "io.flutter.reload.alreadyRun": "true",
-    "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/Users/User/Desktop/night/assets/icon",
-    "settings.editor.selected.configurable": "dart.settings",
-    "show.migrate.to.gradle.popup": "false"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;Flutter.main.dart.executor&quot;: &quot;Run&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;ScreenshotViewer.SavePath&quot;: &quot;C:/Users/User/Pictures&quot;,
+    &quot;cf.first.check.clang-format&quot;: &quot;false&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;com.google.services.firebase.aqiPopupShown&quot;: &quot;true&quot;,
+    &quot;dart.analysis.tool.window.visible&quot;: &quot;false&quot;,
+    &quot;io.flutter.reload.alreadyRun&quot;: &quot;true&quot;,
+    &quot;kotlin-language-version-configured&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Users/User/Desktop/EvociusVelxy&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;AndroidSdkUpdater&quot;,
+    &quot;show.migrate.to.gradle.popup&quot;: &quot;false&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\Users\User\Desktop\night\assets\icon" />
-      <recent name="C:\Users\User\Desktop\night\assets\icon\icon" />
-      <recent name="C:\Users\User\Desktop\night\assets\videos" />
-      <recent name="C:\Users\User\Desktop\tr4sflox\assets\icon\icon" />
-      <recent name="C:\Users\User\Desktop\tr4sflox\assets\icon" />
+      <recent name="C:\Users\User\Desktop\EvociusVelxy\assets\icon" />
+      <recent name="C:\Users\User\Desktop\luxdior\assets\icon\icon" />
+      <recent name="C:\Users\User\Desktop\luxdior\assets\icon" />
+      <recent name="C:\Users\User\Desktop\luxdior\assets\videos" />
+      <recent name="C:\Users\User\Desktop\darkverse\assets\icon\icon" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
-      <recent name="C:\Users\User\Desktop\tr4sflox\assets\videos" />
+      <recent name="C:\Users\User\Desktop\darkverse\assets\images" />
+      <recent name="C:\Users\User\Desktop\darkverse\assets\videos" />
       <recent name="C:\Users\User\Desktop\xxo25\assets\videos" />
       <recent name="C:\Users\User\Desktop\xxo25\assets\icon\icon" />
       <recent name="C:\Users\User\Desktop\xxo25\assets\images" />
-      <recent name="C:\Users\User\Desktop\orbits\cursed\assets\images" />
     </key>
   </component>
   <component name="RunManager">
@@ -92,5 +91,16 @@
       <updated>1750994740538</updated>
     </task>
     <servers />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="Dart">
+          <url>file://$PROJECT_DIR$/lib/main.dart</url>
+          <line>15</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

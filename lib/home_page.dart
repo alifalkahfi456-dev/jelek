@@ -1,27 +1,25 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:video_player/video_player.dart'; // Wajib ada untuk background video
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 
 class HomePage extends StatefulWidget {
-  final bool isGroup; // Mode: false = Contact, true = Group
   final String username;
   final String password;
-  final String role;
-  final String expiredDate;
   final String sessionKey;
   final List<Map<String, dynamic>> listBug;
+  final String role;
+  final String expiredDate;
 
   const HomePage({
     super.key,
-    required this.isGroup,
     required this.username,
     required this.password,
-    required this.role,
-    required this.expiredDate,
     required this.sessionKey,
     required this.listBug,
+    required this.role,
+    required this.expiredDate,
   });
 
   @override
@@ -29,163 +27,447 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  // Controller Video & Input
-  late VideoPlayerController _videoController;
-  final inputController = TextEditingController();
-  
-  // Controller Animasi
+  final targetController = TextEditingController();
+  late AnimationController _fadeController;
   late AnimationController _slideController;
   late AnimationController _pulseController;
+  late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  late Animation<double> _pulseAnimation;
 
   String selectedBugId = "";
   bool _isSending = false;
-  bool _isVideoInitialized = false;
+  String? _responseMessage;
 
-  // Palet Warna
-  final Color deepRed = const Color(0xFF4A148C);
-  final Color mainRed = const Color(0xFF6A1B9A);
-  final Color accentRed = const Color(0xFF9C27B0);
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0A0A);
+  final Color primaryBlue = const Color(0xFF8B0000);
+  final Color accentBlue = const Color(0xFFDC143C);
+  final Color lightBlue = const Color(0xFFFF6B6B);
+  final Color cardDark = const Color(0xFF1A1A1A);
+  final Color cardDarker = const Color(0xFF141414);
+  final Color successGreen = const Color(0xFF10B981);
+  final Color warningOrange = const Color(0xFFF59E0B);
+  final Color dangerRed = const Color(0xFFEF4444);
+
+  // Video Player Variables
+  late VideoPlayerController _videoController;
+  late ChewieController _chewieController;
+  bool _isVideoInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    
-    // 1. SETUP VIDEO BACKGROUND (Langsung di halaman ini)
-    _videoController = VideoPlayerController.asset("assets/videos/vann.mp4")
-      ..initialize().then((_) {
-        setState(() {
-          _isVideoInitialized = true;
-        });
-        _videoController.setLooping(true);
-        _videoController.setVolume(0); // Mute
-        _videoController.play();
-      });
 
-    // 2. Setup Animasi Slide (Konten masuk dari bawah)
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
     _slideController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
-    )..forward();
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    // 3. Setup Animasi Pulse (Denyut Tombol)
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
 
-    // Default Bug Selection
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _fadeController.forward();
+    _slideController.forward();
+
     if (widget.listBug.isNotEmpty) {
       selectedBugId = widget.listBug[0]['bug_id'];
     }
+
+    // Initialize video player from assets
+    _initializeVideoPlayer();
+  }
+
+  void _initializeVideoPlayer() {
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/banner.mp4',
+    );
+
+    _videoController.initialize().then((_) {
+      setState(() {
+        _videoController.setVolume(0.1);
+        _chewieController = ChewieController(
+          videoPlayerController: _videoController,
+          autoPlay: true,
+          looping: true,
+          showControls: false,
+          autoInitialize: true,
+        );
+        _isVideoInitialized = true;
+      });
+    }).catchError((error) {
+      print("Video initialization error: $error");
+      setState(() {
+        _isVideoInitialized = false;
+      });
+    });
   }
 
   @override
   void dispose() {
-    _videoController.dispose(); // Hapus video agar tidak leak
+    _fadeController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
-    inputController.dispose();
+    targetController.dispose();
+    _videoController.dispose();
+    _chewieController.dispose();
     super.dispose();
   }
 
-  // --- LOGIKA PENGIRIMAN ---
-  Future<void> _sendPayload() async {
-    final input = inputController.text.trim();
+  String? formatPhoneNumber(String input) {
+    final cleaned = input.replaceAll(RegExp(r'[^\d+]'), '');
+    if (!cleaned.startsWith('+') || cleaned.length < 8) return null;
+    return cleaned;
+  }
 
-    if (input.isEmpty) {
-      _showPopup("Error", "Input tidak boleh kosong!", isError: true);
+  Future<void> _sendBug() async {
+    final rawInput = targetController.text.trim();
+    final target = formatPhoneNumber(rawInput);
+    final key = widget.sessionKey;
+
+    if (target == null || key.isEmpty) {
+      _showNotification("Invalid Number",
+          "Gunakan nomor internasional (misal: +62, 1, 44), bukan 08xxx.",
+          dangerRed);
       return;
     }
-    
-    if (widget.isGroup && !input.contains("chat.whatsapp.com")) {
-      _showPopup("Invalid Link", "Link Group tidak valid!", isError: true);
-      return;
-    }
 
-    setState(() => _isSending = true);
+    setState(() {
+      _isSending = true;
+      _responseMessage = null;
+    });
 
     try {
-      final endpoint = widget.isGroup ? "sendGroupBug" : "sendBug";
-      final paramName = widget.isGroup ? "link" : "target";
-      final encodedInput = widget.isGroup ? Uri.encodeComponent(input) : input;
-
-      final url = "http://dianaxyz-offc.hostingercloud.web.id:4042/$endpoint?key=${widget.sessionKey}&$paramName=$encodedInput&bug=$selectedBugId";
-      
-      final res = await http.get(Uri.parse(url));
+      final res = await http.get(Uri.parse(
+          "http://senzlinodepriv.senzhosting.my.id:11016/sendBug?key=$key&target=$target&bug=$selectedBugId"));
       final data = jsonDecode(res.body);
 
-      bool isSuccess = false;
-      String msg = "";
-
-      if (widget.isGroup) {
-        if (data["sended"] == true) {
-          isSuccess = true;
-          msg = "Bug berhasil dikirim ke Group!";
-        } else {
-          msg = data["message"] ?? "Gagal mengirim ke group.";
-        }
+      if (data["cooldown"] == true) {
+        setState(() => _responseMessage = "⏳ Cooldown: Tunggu beberapa saat.");
+      } else if (data["valid"] == false) {
+        setState(() => _responseMessage = "❌ Key Invalid: Silakan login ulang.");
+      } else if (data["sended"] == false) {
+        setState(() => _responseMessage =
+        "⚠️ Gagal: Server sedang maintenance.");
       } else {
-        if (data["cooldown"] == true) {
-          msg = "Cooldown: Tunggu ${data['wait']} detik.";
-        } else if (data["valid"] == false) {
-          msg = "Sesi Invalid.";
-        } else if (data["sended"] == false) {
-          msg = "Gagal: Server Maintenance.";
-        } else {
-          isSuccess = true;
-          msg = "Bug berhasil dikirim ke Target!";
-        }
+        setState(() => _responseMessage = "✅ Berhasil mengirim bug ke $target!");
+        targetController.clear();
       }
-
-      if (isSuccess) {
-        _showPopup("Success", msg, isError: false);
-        if (!widget.isGroup) inputController.clear();
-      } else {
-        _showPopup("Failed", msg, isError: true);
-      }
-
-    } catch (e) {
-      _showPopup("Connection Error", "Gagal menghubungi server.", isError: true);
+    } catch (_) {
+      setState(() =>
+      _responseMessage = "❌ Error: Terjadi kesalahan. Coba lagi.");
     } finally {
-      setState(() => _isSending = false);
+      setState(() {
+        _isSending = false;
+      });
     }
   }
 
-  void _showPopup(String title, String message, {bool isError = false}) {
-    showDialog(
-      context: context,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF111111).withOpacity(0.95),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: isError ? deepRed : mainRed, width: 1.5),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                isError ? Icons.error_outline : Icons.check_circle_outline, 
-                color: isError ? accentRed : Colors.greenAccent
+  void _showNotification(String title, String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
               ),
-              const SizedBox(width: 10),
-              Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ],
           ),
-          content: Text(message, style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: accentRed)),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  color == successGreen ? Icons.check_circle :
+                  color == dangerRed ? Icons.error : Icons.info,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      msg,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: primaryDark,
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Header Section
+                _buildHeaderSection(),
+
+                const SizedBox(height: 24),
+
+                // Video Section
+                _buildVideoSection(),
+
+                const SizedBox(height: 24),
+
+                // Control Panel
+                _buildControlPanel(),
+
+                const SizedBox(height: 24),
+
+                // Send Button
+                _buildSendButton(),
+
+                const SizedBox(height: 16),
+
+                // Response Message
+                if (_responseMessage != null) _buildResponseMessage(),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [primaryBlue, accentBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accentBlue.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              AnimatedBuilder(
+                animation: _pulseAnimation,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: _pulseAnimation.value,
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo.jpg',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.username,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        widget.role.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      "EXPIRES",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Text(
+                      widget.expiredDate,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoSection() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: cardDark,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            if (_isVideoInitialized)
+              Chewie(controller: _chewieController)
+            else
+              Container(
+                color: cardDarker,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: accentBlue,
+                  ),
+                ),
+              ),
+            // Overlay gradient
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+            ),
+            // Overlay text
+            Positioned(
+              bottom: 16,
+              left: 16,
+              right: 16,
+              child: Text(
+                "One Tap, One Dead",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      color: Colors.black.withOpacity(0.5),
+                      blurRadius: 5,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
@@ -193,302 +475,256 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold( // Gunakan Scaffold agar layout aman
-      backgroundColor: Colors.black, // Fallback color
-      body: Stack(
+  Widget _buildControlPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. VIDEO BACKGROUND (Full Screen)
-          if (_isVideoInitialized)
-            SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoController.value.size.width,
-                  height: _videoController.value.size.height,
-                  child: VideoPlayer(_videoController),
-                ),
-              ),
-            )
-          else
-            Container(color: Colors.black), // Hitam jika video belum load
-
-          // 2. OVERLAY GELAP (Agar teks terbaca)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6), // Gelap transparan
+          const Text(
+            "Control Panel",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
             ),
           ),
+          const SizedBox(height: 16),
 
-          // 3. KONTEN UTAMA
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // --- CARD PROFIL ---
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08), // Efek Kaca
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 15)
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Row(
-                            children: [
-                              // Foto Profil
-                              Container(
-                                padding: const EdgeInsets.all(3),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: accentRed, width: 2),
-                                ),
-                                child: const CircleAvatar(
-                                  radius: 32,
-                                  backgroundImage: AssetImage('assets/images/icon.jpg'),
-                                ),
-                              ),
-                              const SizedBox(width: 15),
-                              
-                              // Info User & Role
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text("Regards,", 
-                                      style: TextStyle(color: Colors.white70, fontSize: 12)
-                                    ),
-                                    Text(
-                                      widget.username,
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 22,
-                                        fontFamily: 'Orbitron',
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    
-                                    // Label Role (Di dalam layout)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: mainRed.withOpacity(0.6),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: accentRed.withOpacity(0.5)),
-                                      ),
-                                      child: Text(
-                                        widget.role.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 11,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+          // Target Input
+          _buildModernInput(
+            controller: targetController,
+            label: "Target Number",
+            hint: "e.g. +62xxxxxxxxxx",
+            icon: Icons.phone_android,
+            keyboardType: TextInputType.phone,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Bug Selection
+          _buildModernDropdown(
+            label: "Select Bug",
+            value: selectedBugId,
+            items: widget.listBug,
+            onChanged: (value) {
+              setState(() {
+                selectedBugId = value!;
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernInput({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentBlue.withOpacity(0.3)),
+          ),
+          child: TextField(
+            controller: controller,
+            keyboardType: keyboardType,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              prefixIcon: Icon(icon, color: accentBlue),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernDropdown({
+    required String label,
+    required String value,
+    required List<Map<String, dynamic>> items,
+    required Function(String?) onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: accentBlue.withOpacity(0.3)),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              dropdownColor: cardDarker,
+              isExpanded: true,
+              icon: Icon(Icons.arrow_drop_down, color: accentBlue),
+              style: const TextStyle(color: Colors.white),
+              items: items.map((bug) {
+                return DropdownMenuItem<String>(
+                  value: bug['bug_id'],
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      bug['bug_name'],
+                      style: const TextStyle(color: Colors.white),
                     ),
+                  ),
+                );
+              }).toList(),
+              onChanged: onChanged,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-                    const SizedBox(height: 35),
-
-                    // --- INPUT AREA ---
-                    Row(
-                      children: [
-                        Icon(widget.isGroup ? Icons.link : Icons.phone_android, color: accentRed),
-                        const SizedBox(width: 10),
-                        Text(
-                          widget.isGroup ? "Group Link" : "Target Number",
-                          style: const TextStyle(
-                            color: Colors.white, 
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 16
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      child: TextField(
-                        controller: inputController,
-                        style: const TextStyle(color: Colors.white),
-                        cursorColor: accentRed,
-                        decoration: InputDecoration(
-                          hintText: widget.isGroup ? "https://chat.whatsapp.com/..." : "628xxxxxxxx",
-                          hintStyle: TextStyle(color: Colors.grey[500]),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.white54),
-                            onPressed: inputController.clear,
-                          )
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 25),
-
-                    // --- DROPDOWN AREA ---
-                    Row(
-                      children: [
-                        const Icon(Icons.bug_report, color: Colors.greenAccent),
-                        const SizedBox(width: 10),
-                        const Text(
-                          "Select Payload",
-                          style: TextStyle(
-                            color: Colors.white, 
-                            fontWeight: FontWeight.bold, 
-                            fontSize: 16
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: Colors.white.withOpacity(0.2)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          dropdownColor: const Color(0xFF1A1A1A),
-                          value: selectedBugId,
-                          isExpanded: true,
-                          icon: Icon(Icons.arrow_drop_down, color: accentRed),
-                          style: const TextStyle(color: Colors.white, fontSize: 15),
-                          items: widget.listBug.map((bug) {
-                            return DropdownMenuItem<String>(
-                              value: bug['bug_id'],
-                              child: Text(
-                                bug['bug_name'],
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (val) => setState(() => selectedBugId = val!),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 35),
-
-                    // --- DECORATION ICONS ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildFeatureIcon(Icons.local_fire_department, Colors.orange),
-                        _buildFeatureIcon(Icons.security, Colors.blue),
-                        _buildFeatureIcon(Icons.dns, Colors.purple),
-                      ],
-                    ),
-
-                    const SizedBox(height: 35),
-
-                    // --- SEND BUTTON (Pulse Animation) ---
-                    AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, child) {
-                        return Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: deepRed.withOpacity(0.3 * _pulseController.value),
-                                blurRadius: 15 * _pulseController.value,
-                                spreadRadius: 2 * _pulseController.value,
-                              ),
-                            ],
-                          ),
-                          child: child,
-                        );
-                      },
-                      child: SizedBox(
-                        width: double.infinity,
-                        height: 55,
-                        child: ElevatedButton(
-                          onPressed: _isSending ? null : _sendPayload,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            padding: EdgeInsets.zero,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                            elevation: 0,
-                          ),
-                          child: Ink(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [deepRed, accentRed],
-                                begin: Alignment.centerLeft,
-                                end: Alignment.centerRight
-                              ),
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: mainRed.withOpacity(0.5), 
-                                  blurRadius: 15, 
-                                  offset: const Offset(0, 4)
-                                )
-                              ],
-                            ),
-                            child: Container(
-                              alignment: Alignment.center,
-                              child: _isSending
-                                  ? const SizedBox(
-                                      width: 24, 
-                                      height: 24, 
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                                    )
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.send, color: Colors.white),
-                                        const SizedBox(width: 10),
-                                        const Text(
-                                          "Send Bug",
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                            letterSpacing: 1,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 100), // Spasi bawah
-                  ],
+  Widget _buildSendButton() {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Container(
+          width: double.infinity,
+          height: 56,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            gradient: LinearGradient(
+              colors: [accentBlue, lightBlue],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: accentBlue.withOpacity(0.4),
+                blurRadius: 10 + (_pulseAnimation.value - 1.0) * 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ElevatedButton(
+            onPressed: _isSending ? null : _sendBug,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+            child: _isSending
+                ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
+                : const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.send, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  "SEND BUG",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResponseMessage() {
+    Color backgroundColor;
+    Color borderColor;
+    Color textColor;
+    IconData icon;
+
+    if (_responseMessage!.startsWith('✅')) {
+      backgroundColor = successGreen.withOpacity(0.2);
+      borderColor = successGreen;
+      textColor = successGreen;
+      icon = Icons.check_circle;
+    } else if (_responseMessage!.startsWith('❌')) {
+      backgroundColor = dangerRed.withOpacity(0.2);
+      borderColor = dangerRed;
+      textColor = dangerRed;
+      icon = Icons.error;
+    } else {
+      backgroundColor = warningOrange.withOpacity(0.2);
+      borderColor = warningOrange;
+      textColor = warningOrange;
+      icon = Icons.info;
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: textColor),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _responseMessage!,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ),
@@ -496,20 +732,4 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
-  Widget _buildFeatureIcon(IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(color: color.withOpacity(0.1), blurRadius: 8)
-        ]
-      ),
-      child: Icon(icon, color: color, size: 28),
-    );
-  }
 }
-

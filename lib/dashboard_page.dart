@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -7,18 +6,16 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:video_player/video_player.dart';
-import 'package:url_launcher/url_launcher.dart';
-
-// Import halaman-halaman
-import 'anime_home.dart';
-import 'change_password.dart';
 import 'bug_sender.dart';
+
 import 'nik_check.dart';
 import 'admin_page.dart';
-import 'home_page.dart'; // Ini file bug nya (Contact & Group)
+import 'home_page.dart';
 import 'seller_page.dart';
+import 'change_password_page.dart';
 import 'tools_gateway.dart';
 import 'login_page.dart';
+import 'anime_home.dart';
 
 class DashboardPage extends StatefulWidget {
   final String username;
@@ -47,9 +44,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _fadeController;
   late Animation<double> _animation;
+  late Animation<double> _fadeAnimation;
   late WebSocketChannel channel;
 
   late String sessionKey;
@@ -62,16 +61,23 @@ class _DashboardPageState extends State<DashboardPage>
   late List<dynamic> newsList;
   String androidId = "unknown";
 
-  int _bottomNavIndex = 0;
+  int _selectedTabIndex = 0;
   Widget _selectedPage = const Placeholder();
 
-  // --- PALET WARNA DEEP VIOLET ---
-  final Color deepRed = const Color(0xFF2A003D);
-  final Color mainRed = const Color(0xFF4A148C);
-  final Color lightRed = const Color(0xFFB388FF); 
-  final Color bgBlack = const Color(0xFF000000); 
-  final Color cardBlack = const Color(0xFF0F0F0F); 
+  int onlineUsers = 0;
+  int activeConnections = 0;
 
+  final Color primaryDark = Color(0xFF0A0A0A);
+  final Color primaryRed = Color(0xFF8B0000);
+  final Color accentRed = Color(0xFFDC143C);
+  final Color lightRed = Color(0xFFFF6B6B);
+  final Color primaryWhite = Colors.white;
+  final Color accentGrey = Colors.grey.shade400;
+  final Color cardDark = Color(0xFF1A1A1A);
+  final Color cardDarker = Color(0xFF141414);
+  final Color redGradientStart = Color(0xFF8B0000);
+  final Color redGradientEnd = Color(0xFFDC143C);
+  
   @override
   void initState() {
     super.initState();
@@ -85,14 +91,25 @@ class _DashboardPageState extends State<DashboardPage>
     newsList = widget.news;
 
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    _controller.forward();
 
-    // Default Page: Dashboard Home
-    _selectedPage = _buildEnhancedDashboard();
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _controller.forward();
+    _fadeController.forward();
+
+    _selectedPage = _buildNewsPage();
+
     _initAndroidIdAndConnect();
   }
 
@@ -102,764 +119,301 @@ class _DashboardPageState extends State<DashboardPage>
     _connectToWebSocket();
   }
 
-  void _connectToWebSocket() {
-    channel = WebSocketChannel.connect(Uri.parse('http://dianaxyz-offc.hostingercloud.web.id:4042'));
-    channel.sink.add(jsonEncode({
-      "type": "validate",
-      "key": sessionKey,
-      "androidId": androidId,
-    }));
-    channel.sink.add(jsonEncode({"type": "stats"}));
+void _connectToWebSocket() async {
+  try {
+    final validateResponse = await http.post(
+      Uri.parse('http://188.166.209.9:3101/validate'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        "type": "validate",
+        "key": sessionKey,
+        "androidId": androidId,
+      }),
+    );
 
-    channel.stream.listen((event) {
-      final data = jsonDecode(event);
-      if (data['type'] == 'myInfo') {
-        if (data['valid'] == false) {
-          _handleInvalidSession("Session invalid, please re-login.");
+    if (validateResponse.statusCode == 200) {
+      final validateData = jsonDecode(validateResponse.body);
+      
+      if (validateData['type'] == 'myInfo') {
+        if (validateData['valid'] == false) {
+          if (validateData['reason'] == 'androidIdMismatch') {
+            _handleInvalidSession("Your account has logged on another device.");
+          } else if (validateData['reason'] == 'keyInvalid') {
+            _handleInvalidSession("Key is not valid. Please login again.");
+          }
+          return;
         }
       }
-    });
+    }
+
+    final statsResponse = await http.post(
+      Uri.parse('http://188.166.209.9:3101/stats'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({"type": "stats"}),
+    );
+
+    if (statsResponse.statusCode == 200) {
+      final statsData = jsonDecode(statsResponse.body);
+      if (statsData['type'] == 'stats') {
+        setState(() {
+          onlineUsers = statsData['onlineUsers'] ?? 0;
+          activeConnections = statsData['activeConnections'] ?? 0;
+        });
+      }
+    }
+  } catch (error) {
+    print('HTTP Error: $error');
   }
+}
 
   void _handleInvalidSession(String message) async {
+    await Future.delayed(const Duration(milliseconds: 300));
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+
     if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: AlertDialog(
-          backgroundColor: bgBlack,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: mainRed, width: 1),
+      builder: (_) => AlertDialog(
+        backgroundColor: cardDarker,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text("⚠️ Session Expired", style: TextStyle(color: accentRed, fontWeight: FontWeight.bold)),
+        content: Text(message, style: TextStyle(color: accentGrey)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (route) => false,
+              );
+            },
+            child: Text("OK", style: TextStyle(color: accentRed, fontWeight: FontWeight.bold)),
           ),
-          title: Row(
-            children: [
-              Icon(Icons.warning_rounded, color: mainRed, size: 28),
-              const SizedBox(width: 10),
-              Text("Session Expired",
-                  style: TextStyle(color: mainRed, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Text(message, style: const TextStyle(color: Colors.white70)),
-          actions: [
+        ],
+      ),
+    );
+  }
+
+  void _onTabTapped(int index) {
+    setState(() {
+      _selectedTabIndex = index;
+      if (index == 0) {
+        _selectedPage = _buildNewsPage();
+      } else if (index == 1) {
+        _selectedPage = HomePage(
+          username: username,
+          password: password,
+          listBug: listBug,
+          role: role,
+          expiredDate: expiredDate,
+          sessionKey: sessionKey,
+        );
+      } else if (index == 2) {
+        _selectedPage = ToolsPage(
+            sessionKey: sessionKey, userRole: role, listDoos: listDoos);
+    } else if (index == 3) {
+      _selectedPage = HomeAnimePage();
+      }
+    });
+  }
+
+  void _onDrawerItemSelected(int index) {
+    setState(() {
+      if (index == 3) _selectedPage = NikCheckerPage();
+      else if (index == 4) _selectedPage = ChangePasswordPage(username: username, sessionKey: sessionKey);
+      else if (index == 5) _selectedPage = SellerPage(keyToken: sessionKey);
+      else if (index == 6) _selectedPage = AdminPage(sessionKey: sessionKey);
+    });
+  }
+
+  Widget _buildNewsPage() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeaderSection(),
+
+            const SizedBox(height: 24),
+
+            _buildNewsSection(),
+
+            const SizedBox(height: 24),
+
+            _buildStatsCards(),
+
+            const SizedBox(height: 24),
+
+            _buildAccountInfo(),
+            
+            const SizedBox(height: 12),
+
             Container(
-              decoration: BoxDecoration(
-                color: mainRed,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextButton(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: Icon(FontAwesomeIcons.whatsapp, color: primaryWhite, size: 18),
+                label: Text(
+                  "MANAGE BUG SENDER",
+                  style: TextStyle(
+                    color: primaryWhite,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Orbitron',
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xFFDC143C),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: BorderSide(color: Color(0xFFFF6B6B).withOpacity(0.5)),
+                  ),
+                  elevation: 4,
+                  shadowColor: Color(0xFFDC143C).withOpacity(0.5),
+                ),
                 onPressed: () {
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const LoginPage()),
-                        (route) => false,
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BugSenderPage(
+                        sessionKey: sessionKey,
+                        username: username,
+                        role: role,
+                      ),
+                    ),
                   );
                 },
-                child: const Text("OK", style: TextStyle(color: Colors.white)),
               ),
             ),
+
           ],
         ),
       ),
     );
   }
 
-  // --- MODIFIKASI NAVIGASI DI SINI ---
-  void _onBottomNavTapped(int index) {
-    if (index == 1) {
-      // Jika tombol WhatsApp (Index 1) ditekan, Munculkan Dropdown Menu
-      _showWhatsAppMenu();
-    } else {
-      // Navigasi biasa untuk tombol lain
-      setState(() {
-        _bottomNavIndex = index;
-        if (index == 0) {
-          _selectedPage = _buildEnhancedDashboard();
-        } else if (index == 2) {
-          _selectedPage = ToolsPage(sessionKey: sessionKey, userRole: role, listDoos: listDoos);
-        } else if (index == 3) {
-          _selectedPage = HomeAnimePage();
-        }
-      });
-    }
-  }
-
-  // --- FUNGSI MENAMPILKAN MENU WHATSAPP ---
-  void _showWhatsAppMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF111111).withOpacity(0.95),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          border: Border.all(color: mainRed.withOpacity(0.5)),
-          boxShadow: [
-            BoxShadow(
-              color: deepRed.withOpacity(0.2),
-              blurRadius: 20,
-              spreadRadius: 5,
-            )
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Garis Indikator
-            Container(width: 50, height: 4, decoration: BoxDecoration(color: Colors.grey, borderRadius: BorderRadius.circular(2))),
-            const SizedBox(height: 20),
-            
-            // Pilihan 1: Bug Contact
-            _buildMenuOption(
-              icon: Icons.person,
-              title: "Bug Contact",
-              subtitle: "Send bug to specific number",
-              onTap: () {
-                Navigator.pop(context); // Tutup modal
-                setState(() {
-                  _bottomNavIndex = 1; // Set aktif ke icon WA
-                  // Panggil HomePage dengan isGroup: false
-                  _selectedPage = HomePage(
-                    isGroup: false, 
-                    username: username,
-                    password: password,
-                    sessionKey: sessionKey,
-                    listBug: listBug,
-                    role: role,
-                    expiredDate: expiredDate,
-                  );
-                });
-              },
-            ),
-            const SizedBox(height: 10),
-            
-            // Pilihan 2: Bug Group
-            _buildMenuOption(
-              icon: Icons.groups,
-              title: "Bug Group",
-              subtitle: "Send bug to group link",
-              onTap: () {
-                Navigator.pop(context); // Tutup modal
-                setState(() {
-                  _bottomNavIndex = 1; // Set aktif ke icon WA
-                  // Panggil HomePage dengan isGroup: true
-                  _selectedPage = HomePage(
-                    isGroup: true,
-                    username: username,
-                    password: password,
-                    sessionKey: sessionKey,
-                    listBug: listBug,
-                    role: role,
-                    expiredDate: expiredDate,
-                  );
-                });
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Widget Helper untuk Menu Option
-  Widget _buildMenuOption({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: mainRed.withOpacity(0.2),
-          shape: BoxShape.circle,
-          border: Border.all(color: lightRed.withOpacity(0.3)),
-        ),
-        child: Icon(icon, color: Colors.white),
-      ),
-      title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Orbitron')),
-      subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[400], fontSize: 12)),
-      trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.white10)),
-      tileColor: Colors.white.withOpacity(0.05),
-    );
-  }
-
-  void _navigateToAdminPage() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPage(sessionKey: sessionKey)));
-  }
-
-  void _navigateToSellerPage() {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => SellerPage(keyToken: sessionKey)));
-  }
-
-  // --- MAIN DASHBOARD CONTENT (Halaman Utama) ---
-
-  Widget _buildEnhancedDashboard() {
+  Widget _buildHeaderSection() {
     return Container(
-      color: bgBlack,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          children: [
-            // 1. Banner Slider (Top)
-            if (newsList.isNotEmpty)
-              SizedBox(
-                height: 180,
-                child: PageView.builder(
-                  controller: PageController(viewportFraction: 0.9),
-                  itemCount: newsList.length,
-                  itemBuilder: (context, i) {
-                    final item = newsList[i];
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 5),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: mainRed.withOpacity(0.3), width: 1),
-                        boxShadow: [
-                          BoxShadow(color: deepRed.withOpacity(0.1), blurRadius: 10)
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            if (item['image'] != null)
-                              NewsMedia(url: item['image']),
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: [Colors.transparent, Colors.black.withOpacity(0.9)],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: 15,
-                              left: 15,
-                              right: 15,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item['title'] ?? 'No Title',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                  Text(
-                                    item['desc'] ?? '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            const SizedBox(height: 25),
-
-            // 2. User Info Card
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardBlack,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: mainRed.withOpacity(0.4)),
-                  boxShadow: [
-                    BoxShadow(color: mainRed.withOpacity(0.1), blurRadius: 15)
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Welcome Back",
-                      style: TextStyle(
-                        color: Colors.white54,
-                        fontSize: 12,
-                        letterSpacing: 2,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: LinearGradient(colors: [mainRed, deepRed]),
-                          ),
-                          child: const CircleAvatar(
-                            radius: 26,
-                            backgroundImage: AssetImage('assets/images/icon.jpg'),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                username,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Orbitron',
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                children: [
-                                  _buildMiniBadge("EXP: $expiredDate", isRole: false),
-                                  const SizedBox(width: 8),
-                                  _buildMiniBadge(role.toUpperCase(), isRole: true),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 3. New Update Slider (Enhanced Design)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  "New Update",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    shadows: [Shadow(color: mainRed, blurRadius: 10)],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  _buildEnhancedUpdateCard(Icons.bar_chart, "HOXTEN CLOUD Is Comming", "New Update Session HOXTEN CLOUD"),
-                  const SizedBox(width: 15),
-                  _buildEnhancedUpdateCard(FontAwesomeIcons.whatsapp, "Bug Group Come", "New Update Fiture Bug"),
-                  const SizedBox(width: 15),
-                  _buildEnhancedUpdateCard(Icons.public, "Global Network", "Network Stability Improved"),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 4. TELEGRAM CHANNEL BUTTON (Redesigned Theme)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cardBlack, deepRed],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: mainRed.withOpacity(0.5)), 
-                  boxShadow: [
-                    BoxShadow(color: deepRed.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(15),
-                    onTap: () async {
-                      const url = 'https://t.me/HoxtenCloud1';
-                      final uri = Uri.parse(url);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: mainRed.withOpacity(0.2), 
-                              shape: BoxShape.circle,
-                              border: Border.all(color: lightRed.withOpacity(0.5)),
-                            ),
-                            child: const Icon(FontAwesomeIcons.telegram, color: Colors.white, size: 24),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: const [
-                                Text(
-                                  "Join Channels To Get Info",
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                SizedBox(height: 4),
-                                Text(
-                                  "Tap here to open Telegram",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 16),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 25),
-
-            // 5. Manage Sender Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [deepRed, mainRed, lightRed],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(color: mainRed.withOpacity(0.4), blurRadius: 15, offset: const Offset(0, 4)),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(15),
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BugSenderPage(
-                            sessionKey: sessionKey,
-                            username: username,
-                            role: role,
-                          ),
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.phone_android_rounded, color: Colors.white, size: 24),
-                          const SizedBox(width: 12),
-                          Text(
-                            "Management Sender",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Orbitron',
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 80), // Extra space for floating nav
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- HELPER WIDGETS ---
-
-  Widget _buildMiniBadge(String text, {required bool isRole}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isRole ? mainRed.withOpacity(0.2) : Colors.black,
-        border: Border.all(color: isRole ? lightRed : Colors.grey.shade700),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: isRole ? lightRed : Colors.grey.shade400,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEnhancedUpdateCard(IconData icon, String title, String subtitle) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
-          colors: [Colors.black, deepRed.withOpacity(0.2)],
+          colors: [redGradientStart, redGradientEnd],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: mainRed.withOpacity(0.5),
-          width: 1.5,
-        ),
         boxShadow: [
           BoxShadow(
-            color: mainRed.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 1,
+            color: accentRed.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: deepRed.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: lightRed.withOpacity(0.3)),
-            ),
-            child: Icon(icon, color: lightRed, size: 20),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 14,
-              letterSpacing: 0.5,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: Colors.grey.shade400,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCustomMenuIcon() {
-    return Builder(
-      builder: (context) => IconButton(
-        icon: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(width: 24, height: 2.5, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(5))),
-            const SizedBox(height: 5),
-            Container(width: 16, height: 2.5, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(5))),
-            const SizedBox(height: 5),
-            Container(width: 8, height: 2.5, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(5))),
-          ],
-        ),
-        onPressed: () => Scaffold.of(context).openDrawer(),
-      ),
-    );
-  }
-
-  // --- SCAFFOLD & APPBAR ---
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgBlack,
-      drawer: _buildDrawer(),
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        centerTitle: true,
-        leading: _buildCustomMenuIcon(),
-        title: Padding(
-          padding: const EdgeInsets.only(right: 15.0), 
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          Row(
             children: [
-              Transform.translate(
-                offset: const Offset(-5, 0),
-                child: Image.asset(
-                  'assets/images/reven.png',
-                  height: 40,
-                  fit: BoxFit.contain,
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.dashboard,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
-              const SizedBox(width: 5), 
-              const Text(
-                "HOXTEN",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 20,
-                  fontFamily: 'Orbitron',
-                  letterSpacing: 1,
+              const SizedBox(width: 16),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Welcome back",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭 Dashboard",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help, color: Colors.white, size: 28),
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  backgroundColor: const Color(0xFF1A1A1A),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
-                    side: BorderSide(color: mainRed, width: 1),
-                  ),
-                  title: Row(
-                    children: [
-                      Icon(Icons.info_outline, color: lightRed),
-                      const SizedBox(width: 10),
-                      const Text("Information", style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                  content: const Text(
-                    "HOXTEN CLOUD Dashboard v3.0\n\nThis application is designed for management and monitoring tools. Stay tuned for upcoming features!",
-                    style: TextStyle(color: Colors.white70),
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text("Close", style: TextStyle(color: lightRed)),
-                    ),
-                  ],
-                ),
-              );
-            },
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildQuickStat(
+                icon: Icons.people,
+                label: "Online Users",
+                value: "$onlineUsers",
+              ),
+              const SizedBox(width: 16),
+              _buildQuickStat(
+                icon: Icons.link,
+                label: "Connections",
+                value: "$activeConnections",
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white, size: 28),
-            onPressed: () => _showLogoutDialog(),
-          ),
-          const SizedBox(width: 8),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(
-            color: mainRed.withOpacity(0.2),
-            height: 1,
-          ),
-        ),
       ),
-      body: FadeTransition(opacity: _animation, child: _selectedPage),
-      extendBody: true,
-      bottomNavigationBar: _buildFloatingBottomNav(),
     );
   }
 
-  // --- FLOATING NAV BAR ---
-  Widget _buildFloatingBottomNav() {
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111111).withOpacity(0.95),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: mainRed.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: mainRed.withOpacity(0.2),
-            blurRadius: 20,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          type: BottomNavigationBarType.fixed,
-          
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          
-          selectedItemColor: lightRed,
-          unselectedItemColor: Colors.grey.shade600,
-          currentIndex: _bottomNavIndex,
-          onTap: _onBottomNavTapped,
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_filled, size: 28),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_rounded, size: 26),
-              label: "WhatsApp",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.construction_rounded, size: 26),
-              label: "Tools",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.movie_filter_outlined, size: 26),
-              label: "Anime",
+  Widget _buildQuickStat({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white70, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -867,25 +421,362 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111111),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(color: mainRed.withOpacity(0.5)),
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: const Text("Logout", style: TextStyle(color: Colors.white)),
-        content: const Text("Are you sure you want to logout?", style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text("Cancel", style: TextStyle(color: lightRed)),
+  Widget _buildNewsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Latest News",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
           ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(context);
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 200,
+          child: PageView.builder(
+            controller: PageController(viewportFraction: 0.9),
+            itemCount: newsList.length,
+            itemBuilder: (context, index) {
+              final item = newsList[index];
+              return Container(
+                margin: const EdgeInsets.only(right: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: cardDark,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (item['image'] != null && item['image'].toString().isNotEmpty)
+                        NewsMedia(url: item['image']),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.black.withOpacity(0.7),
+                              Colors.transparent,
+                            ],
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        right: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['title'] ?? 'No Title',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item['desc'] ?? '',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsCards() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Account Statistics",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.person,
+                title: "Username",
+                value: username,
+                color: accentRed,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.verified_user,
+                title: "Role",
+                value: role.toUpperCase(),
+                color: _getRoleColor(role),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildStatCard(
+          icon: Icons.calendar_today,
+          title: "Account Expires",
+          value: expiredDate,
+          color: Colors.orange,
+          fullWidth: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required String title,
+    required String value,
+    required Color color,
+    bool fullWidth = false,
+  }) {
+    return Container(
+      width: fullWidth ? double.infinity : null,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountInfo() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Quick Actions",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.5,
+            children: [
+              if (role == "reseller" || role == "owner")
+                _buildActionCard(
+                  icon: Icons.store,
+                  label: "Seller Page",
+                  onTap: () => _onDrawerItemSelected(5),
+                ),
+              if (role == "owner")
+                _buildActionCard(
+                  icon: Icons.admin_panel_settings,
+                  label: "Admin Panel",
+                  onTap: () => _onDrawerItemSelected(6),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardDarker,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: accentRed.withOpacity(0.3)),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: accentRed, size: 28),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case "owner":
+        return Colors.red;
+      case "vip":
+        return accentRed;
+      case "reseller":
+        return Colors.green;
+      case "premium":
+        return Colors.orange;
+      default:
+        return lightRed;
+    }
+  }
+
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: cardDarker,
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [redGradientStart, redGradientEnd],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildDrawerInfo("User:", username),
+                _buildDrawerInfo("Role:", role),
+                _buildDrawerInfo("Expired:", expiredDate),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (role == "reseller" || role == "owner")
+            _buildDrawerItem(
+              icon: Icons.store,
+              label: "Seller Page",
+              onTap: () {
+                Navigator.pop(context);
+                _onDrawerItemSelected(5);
+              },
+            ),
+          if (role == "owner")
+            _buildDrawerItem(
+              icon: Icons.admin_panel_settings,
+              label: "Admin Page",
+              onTap: () {
+                Navigator.pop(context);
+                _onDrawerItemSelected(6);
+              },
+            ),
+          const Divider(color: Colors.white24),
+          _buildDrawerItem(
+            icon: Icons.logout,
+            label: "Logout",
+            onTap: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
               if (!mounted) return;
@@ -894,125 +785,265 @@ class _DashboardPageState extends State<DashboardPage>
                     (route) => false,
               );
             },
-            child: Text("Logout", style: TextStyle(color: lightRed)),
           ),
         ],
       ),
     );
   }
 
-  // --- REDESIGNED DRAWER ---
-  Widget _buildDrawer() {
-    return Drawer(
-      backgroundColor: bgBlack,
-      child: Column(
+  Widget _buildDrawerInfo(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: accentRed),
+      title: Text(
+        label,
+        style: const TextStyle(color: Colors.white),
+      ),
+      onTap: onTap,
+    );
+  }
+
+  void _showAccountMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: cardDarker,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: accentRed,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              "Account Information",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _infoCard(FontAwesomeIcons.user, "Username", username),
+            _infoCard(FontAwesomeIcons.calendar, "Expired", expiredDate),
+            _infoCard(FontAwesomeIcons.shieldAlt, "Role", role),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.lock_reset, color: Colors.white),
+                    label: const Text("Change Password"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentRed,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangePasswordPage(
+                            username: username,
+                            sessionKey: sessionKey,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    label: const Text("Logout"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade700,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.clear();
+                      if (!mounted) return;
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginPage()),
+                            (route) => false,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoCard(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentRed.withOpacity(0.3)),
+      ),
+      child: Row(
         children: [
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.only(top: 50, bottom: 20, left: 20, right: 20),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              image: const DecorationImage(
-                image: AssetImage('assets/images/neken.jpg'),
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(Colors.black54, BlendMode.darken),
-              ),
-              border: Border(bottom: BorderSide(color: mainRed, width: 2)),
+              color: accentRed.withOpacity(0.2),
+              shape: BoxShape.circle,
             ),
+            child: Icon(icon, color: accentRed),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: const CircleAvatar(
-                    radius: 35,
-                    backgroundImage: AssetImage('assets/images/icon.jpg'),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
                   ),
                 ),
-                const SizedBox(height: 15),
                 Text(
-                  "Hallo, $username",
+                  value,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    shadows: [Shadow(color: Colors.black, blurRadius: 5)],
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: mainRed,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    role.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
                   ),
                 ),
               ],
             ),
           ),
-          
-          Expanded(
-            child: Container(
-              color: bgBlack,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 20),
-                children: [
-                  if (role == "owner")
-                    _buildDrawerItem(Icons.admin_panel_settings, 'Admin Page', _navigateToAdminPage),
-                  if (role == "reseller")
-                    _buildDrawerItem(Icons.add_shopping_cart, 'Seller Page', _navigateToSellerPage),
-                  
-                  _buildDrawerItem(Icons.lock_clock, 'Change Password', () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ChangePasswordPage(username: username, sessionKey: sessionKey)));
-                  }),
-                  _buildDrawerItem(Icons.person, 'NIK Check', () {
-                    Navigator.pop(context);
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => NikCheckerPage()));
-                  }),
-                ],
-              ),
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Text(
-              "HOXTEN CLOUD v3.0",
-              style: TextStyle(color: Colors.grey.shade800, fontSize: 10),
-            ),
-          )
         ],
       ),
     );
   }
 
-  Widget _buildDrawerItem(IconData icon, String title, VoidCallback onTap) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111111),
-        borderRadius: BorderRadius.circular(8),
-        border: Border(left: BorderSide(color: mainRed, width: 3)),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: primaryDark,
+      appBar: AppBar(
+        title: const Text(
+          "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭",
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: primaryDark,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_circle, color: Colors.white),
+            onPressed: _showAccountMenu,
+          ),
+        ],
       ),
-      child: ListTile(
-        leading: Icon(icon, color: lightRed),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
-        trailing: Icon(Icons.arrow_forward_ios, color: Colors.grey.shade800, size: 14),
-        onTap: onTap,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      drawer: _buildDrawer(),
+      body: FadeTransition(opacity: _animation, child: _selectedPage),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: cardDarker,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 10,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          backgroundColor: Colors.transparent,
+          selectedItemColor: accentRed,
+          unselectedItemColor: Colors.white54,
+          currentIndex: _selectedTabIndex,
+          onTap: _onTabTapped,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: "Home",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.message_outlined),
+              activeIcon: Icon(Icons.message),
+              label: "WhatsApp",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.build_outlined),
+              activeIcon: Icon(Icons.build),
+              label: "Tools",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.movie_filter_outlined),
+              activeIcon: Icon(Icons.movie_filter),
+              label: "Anime",
+            ),
+
+          ],
+        ),
       ),
     );
   }
@@ -1021,23 +1052,73 @@ class _DashboardPageState extends State<DashboardPage>
   void dispose() {
     channel.sink.close(status.goingAway);
     _controller.dispose();
+    _fadeController.dispose();
     super.dispose();
   }
 }
 
-class NewsMedia extends StatelessWidget {
+class NewsMedia extends StatefulWidget {
   final String url;
   const NewsMedia({super.key, required this.url});
 
   @override
+  State<NewsMedia> createState() => _NewsMediaState();
+}
+
+class _NewsMediaState extends State<NewsMedia> {
+  VideoPlayerController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isVideo(widget.url)) {
+      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+        ..initialize().then((_) {
+          setState(() {});
+          _controller?.setLooping(true);
+          _controller?.setVolume(0.0);
+          _controller?.play();
+        });
+    }
+  }
+
+  bool _isVideo(String url) {
+    return url.endsWith(".mp4") ||
+        url.endsWith(".webm") ||
+        url.endsWith(".mov") ||
+        url.endsWith(".mkv");
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Image.network(
-      url, 
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => Container(
-        color: Colors.black,
-        child: const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-      ),
-    );
+    if (_isVideo(widget.url)) {
+      if (_controller != null && _controller!.value.isInitialized) {
+        return AspectRatio(
+          aspectRatio: _controller!.value.aspectRatio,
+          child: VideoPlayer(_controller!),
+        );
+      } else {
+        return Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFFDC143C),
+          ),
+        );
+      }
+    } else {
+      return Image.network(
+        widget.url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Container(
+          color: Colors.grey.shade800,
+          child: const Icon(Icons.error, color: Color(0xFFDC143C)),
+        ),
+      );
+    }
   }
 }
