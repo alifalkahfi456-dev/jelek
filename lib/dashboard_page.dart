@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -6,17 +8,72 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:video_player/video_player.dart';
-import 'bug_sender.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'nik_check.dart';
 import 'admin_page.dart';
+import 'owner_page.dart';
 import 'home_page.dart';
 import 'seller_page.dart';
 import 'change_password_page.dart';
 import 'tools_gateway.dart';
 import 'login_page.dart';
-import 'anime_home.dart';
+import 'bug_sender.dart';
+import 'contact_page.dart';
+import 'profile_page.dart';
+import 'riwayat_page.dart';
+import 'info_page.dart';
 
+// ─── Palette ──────────────────────────────────────────────────────────────────
+class _C {
+  static const bg        = Color(0xFF060B14);
+  static const surface   = Color(0xFF0C1424);
+  static const card      = Color(0xFF101A2E);
+  static const border    = Color(0xFF1A2D4A);
+  static const borderLit = Color(0xFF1E3A5F);
+
+  static const blue      = Color(0xFF1B6FBD);
+  static const blueMid   = Color(0xFF2D8FE8);
+  static const blueLight = Color(0xFF56AEF5);
+  static const blueFrost = Color(0xFF90CEF7);
+
+  static const green     = Color(0xFF22C55E);
+  static const amber     = Color(0xFFF59E0B);
+  static const red       = Color(0xFFEF4444);
+
+  static const text      = Color(0xFFE2EDF9);
+  static const textSub   = Color(0xFF7A9BBF);
+  static const textDim   = Color(0xFF3A5470);
+
+  static const LinearGradient btnGrad = LinearGradient(
+    colors: [blueMid, blueLight],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
+// ─── Role helpers ─────────────────────────────────────────────────────────────
+Color _roleColor(String role) {
+  switch (role.toLowerCase()) {
+    case 'owner':   return const Color(0xFFF59E0B);
+    case 'admin':   return const Color(0xFFEF4444);
+    case 'reseller':return const Color(0xFF22C55E);
+    case 'vip':     return const Color(0xFFA78BFA);
+    default:        return _C.blueLight;
+  }
+}
+
+IconData _roleIcon(String role) {
+  switch (role.toLowerCase()) {
+    case 'owner':   return Icons.workspace_premium_rounded;
+    case 'admin':   return Icons.admin_panel_settings_rounded;
+    case 'reseller':return Icons.storefront_rounded;
+    case 'vip':     return Icons.star_rounded;
+    default:        return Icons.person_rounded;
+  }
+}
+
+// ─── Dashboard Page ───────────────────────────────────────────────────────────
 class DashboardPage extends StatefulWidget {
   final String username;
   final String password;
@@ -45,373 +102,797 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage>
     with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late AnimationController _fadeController;
-  late Animation<double> _animation;
-  late Animation<double> _fadeAnimation;
-  late WebSocketChannel channel;
-
-  late String sessionKey;
-  late String username;
-  late String password;
-  late String role;
-  late String expiredDate;
-  late List<Map<String, dynamic>> listBug;
-  late List<Map<String, dynamic>> listDoos;
+  // ── State ────────────────────────────────────────────────────────────────
+  late String sessionKey, username, password, role, expiredDate;
+  late List<Map<String, dynamic>> listBug, listDoos;
   late List<dynamic> newsList;
-  String androidId = "unknown";
 
-  int _selectedTabIndex = 0;
-  Widget _selectedPage = const Placeholder();
+  late WebSocketChannel channel;
+  String androidId    = 'unknown';
+  File?  _profileImage;
+  VideoPlayerController? _menuVideoCtrl;
 
-  int onlineUsers = 0;
-  int activeConnections = 0;
+  int _navIndex      = 0;
+  Widget _body       = const SizedBox();
+  int onlineUsers    = 0;
+  int activeConns    = 0;
 
-  final Color primaryDark = Color(0xFF0A0A0A);
-  final Color primaryRed = Color(0xFF8B0000);
-  final Color accentRed = Color(0xFFDC143C);
-  final Color lightRed = Color(0xFFFF6B6B);
-  final Color primaryWhite = Colors.white;
-  final Color accentGrey = Colors.grey.shade400;
-  final Color cardDark = Color(0xFF1A1A1A);
-  final Color cardDarker = Color(0xFF141414);
-  final Color redGradientStart = Color(0xFF8B0000);
-  final Color redGradientEnd = Color(0xFFDC143C);
-  
+  // ── Animation controllers ────────────────────────────────────────────────
+  late AnimationController _bgCtrl;
+  late AnimationController _pageCtrl;
+  late AnimationController _drawerHeaderCtrl;
+
+  late Animation<double> _pageFade;
+  late Animation<Offset>  _pageSlide;
+
+  // News carousel
+  final PageController _newsPageCtrl = PageController(viewportFraction: 0.88);
+  int _newsPage = 0;
+
   @override
   void initState() {
     super.initState();
-    sessionKey = widget.sessionKey;
-    username = widget.username;
-    password = widget.password;
-    role = widget.role;
+    sessionKey  = widget.sessionKey;
+    username    = widget.username;
+    password    = widget.password;
+    role        = widget.role;
     expiredDate = widget.expiredDate;
-    listBug = widget.listBug;
-    listDoos = widget.listDoos;
-    newsList = widget.news;
+    listBug     = widget.listBug;
+    listDoos    = widget.listDoos;
+    newsList    = widget.news;
 
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
+    // Bg orbit
+    _bgCtrl = AnimationController(
+      vsync: this, duration: const Duration(seconds: 20),
+    )..repeat();
+
+    // Page transition
+    _pageCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 400),
+    );
+    _pageFade  = CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOut);
+    _pageSlide = Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _pageCtrl, curve: Curves.easeOutCubic));
+
+    // Drawer header
+    _drawerHeaderCtrl = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 700),
     );
 
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
+    _body = _newsPage_();
+    _pageCtrl.forward();
 
-    _animation = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _controller.forward();
-    _fadeController.forward();
-
-    _selectedPage = _buildNewsPage();
-
-    _initAndroidIdAndConnect();
+    _initAndroidId();
+    _loadProfileImage();
+    _initMenuVideo();
   }
 
-  Future<void> _initAndroidIdAndConnect() async {
-    final deviceInfo = await DeviceInfoPlugin().androidInfo;
-    androidId = deviceInfo.id;
-    _connectToWebSocket();
+  @override
+  void dispose() {
+    channel.sink.close(status.goingAway);
+    _bgCtrl.dispose();
+    _pageCtrl.dispose();
+    _drawerHeaderCtrl.dispose();
+    _menuVideoCtrl?.dispose();
+    _newsPageCtrl.dispose();
+    super.dispose();
   }
 
-void _connectToWebSocket() async {
-  try {
-    final validateResponse = await http.post(
-      Uri.parse('http://188.166.209.9:3101/validate'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "type": "validate",
-        "key": sessionKey,
-        "androidId": androidId,
-      }),
-    );
-
-    if (validateResponse.statusCode == 200) {
-      final validateData = jsonDecode(validateResponse.body);
-      
-      if (validateData['type'] == 'myInfo') {
-        if (validateData['valid'] == false) {
-          if (validateData['reason'] == 'androidIdMismatch') {
-            _handleInvalidSession("Your account has logged on another device.");
-          } else if (validateData['reason'] == 'keyInvalid') {
-            _handleInvalidSession("Key is not valid. Please login again.");
-          }
-          return;
-        }
-      }
+  // ── Init helpers ──────────────────────────────────────────────────────────
+  Future<void> _loadProfileImage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final path  = prefs.getString('profile_image_$username');
+    if (path != null && path.isNotEmpty && mounted) {
+      setState(() => _profileImage = File(path));
     }
+  }
 
-    final statsResponse = await http.post(
-      Uri.parse('http://188.166.209.9:3101/stats'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({"type": "stats"}),
-    );
+  void _initMenuVideo() {
+    _menuVideoCtrl = VideoPlayerController.asset('assets/videos/banner.mp4')
+      ..initialize().then((_) {
+        if (mounted) setState(() {});
+        _menuVideoCtrl?.setLooping(true);
+        _menuVideoCtrl?.play();
+      });
+  }
 
-    if (statsResponse.statusCode == 200) {
-      final statsData = jsonDecode(statsResponse.body);
-      if (statsData['type'] == 'stats') {
+  Future<void> _initAndroidId() async {
+    final info = await DeviceInfoPlugin().androidInfo;
+    androidId = info.id;
+    _connectWS();
+  }
+
+  void _connectWS() {
+    channel = WebSocketChannel.connect(
+        Uri.parse('http://tirzzmalesddos.sano.biz.id:11478'));
+    channel.sink.add(jsonEncode({
+      'type': 'validate', 'key': sessionKey, 'androidId': androidId,
+    }));
+    channel.sink.add(jsonEncode({'type': 'stats'}));
+
+    channel.stream.listen((event) {
+      final data = jsonDecode(event);
+      if (data['type'] == 'myInfo' && data['valid'] == false) {
+        final reason = data['reason'];
+        _handleInvalidSession(reason == 'androidIdMismatch'
+            ? 'Akun ini login di perangkat lain.'
+            : 'Sesi tidak valid. Silakan login ulang.');
+      }
+      if (data['type'] == 'stats' && mounted) {
         setState(() {
-          onlineUsers = statsData['onlineUsers'] ?? 0;
-          activeConnections = statsData['activeConnections'] ?? 0;
+          onlineUsers  = data['onlineUsers']       ?? 0;
+          activeConns  = data['activeConnections'] ?? 0;
         });
       }
-    }
-  } catch (error) {
-    print('HTTP Error: $error');
+    });
   }
-}
+
+  Future<void> _openUrl(String url) async {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
 
   void _handleInvalidSession(String message) async {
     await Future.delayed(const Duration(milliseconds: 300));
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
-
     if (!mounted) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: cardDarker,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: Text("⚠️ Session Expired", style: TextStyle(color: accentRed, fontWeight: FontWeight.bold)),
-        content: Text(message, style: TextStyle(color: accentGrey)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-              );
-            },
-            child: Text("OK", style: TextStyle(color: accentRed, fontWeight: FontWeight.bold)),
-          ),
-        ],
+    _showSystemDialog(
+      title: 'Sesi Berakhir',
+      message: message,
+      icon: Icons.lock_outline_rounded,
+      color: _C.red,
+      onOk: () => Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (_) => false,
       ),
     );
   }
 
-  void _onTabTapped(int index) {
-    setState(() {
-      _selectedTabIndex = index;
-      if (index == 0) {
-        _selectedPage = _buildNewsPage();
-      } else if (index == 1) {
-        _selectedPage = HomePage(
-          username: username,
-          password: password,
-          listBug: listBug,
-          role: role,
-          expiredDate: expiredDate,
-          sessionKey: sessionKey,
-        );
-      } else if (index == 2) {
-        _selectedPage = ToolsPage(
-            sessionKey: sessionKey, userRole: role, listDoos: listDoos);
-    } else if (index == 3) {
-      _selectedPage = HomeAnimePage();
-      }
-    });
+  // ── Navigation ────────────────────────────────────────────────────────────
+  void _navigate(Widget page) {
+    setState(() => _body = page);
+    _pageCtrl.forward(from: 0);
   }
 
-  void _onDrawerItemSelected(int index) {
-    setState(() {
-      if (index == 3) _selectedPage = NikCheckerPage();
-      else if (index == 4) _selectedPage = ChangePasswordPage(username: username, sessionKey: sessionKey);
-      else if (index == 5) _selectedPage = SellerPage(keyToken: sessionKey);
-      else if (index == 6) _selectedPage = AdminPage(sessionKey: sessionKey);
-    });
+  void _onNavTap(int index) {
+    setState(() => _navIndex = index);
+    switch (index) {
+      case 0:
+        _navigate(_newsPage_());
+        break;
+      case 1:
+        _navigate(HomePage(
+          username: username, password: password,
+          listBug: listBug, role: role,
+          expiredDate: expiredDate, sessionKey: sessionKey,
+        ));
+        break;
+      case 2:
+        _navigate(InfoPage(sessionKey: sessionKey));
+        break;
+      case 3:
+        _navigate(ToolsPage(
+            sessionKey: sessionKey, userRole: role, listDoos: listDoos));
+        break;
+    }
   }
 
-  Widget _buildNewsPage() {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHeaderSection(),
+  void _onDrawerNav(int index) {
+    Navigator.pop(context);
+    switch (index) {
+      case 1: _navigate(SellerPage(keyToken: sessionKey)); break;
+      case 2: _navigate(AdminPage(sessionKey: sessionKey)); break;
+      case 3: _navigate(OwnerPage(sessionKey: sessionKey, username: username)); break;
+    }
+  }
 
-            const SizedBox(height: 24),
-
-            _buildNewsSection(),
-
-            const SizedBox(height: 24),
-
-            _buildStatsCards(),
-
-            const SizedBox(height: 24),
-
-            _buildAccountInfo(),
-            
-            const SizedBox(height: 12),
-
+  // ── System dialog ─────────────────────────────────────────────────────────
+  void _showSystemDialog({
+    required String title,
+    required String message,
+    required IconData icon,
+    required Color color,
+    VoidCallback? onOk,
+  }) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: '',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 320),
+      transitionBuilder: (_, anim, __, child) => ScaleTransition(
+        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        child: FadeTransition(opacity: anim, child: child),
+      ),
+      pageBuilder: (ctx, _, __) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _C.card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+            boxShadow: [BoxShadow(color: color.withOpacity(0.15), blurRadius: 50)],
+          ),
+          padding: const EdgeInsets.all(28),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: Icon(FontAwesomeIcons.whatsapp, color: primaryWhite, size: 18),
-                label: Text(
-                  "MANAGE BUG SENDER",
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.1),
+                border: Border.all(color: color.withOpacity(0.3)),
+              ),
+              child: Icon(icon, color: color, size: 26),
+            ),
+            const SizedBox(height: 16),
+            Text(title,
+                style: const TextStyle(
+                    color: _C.text, fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text(message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: _C.textSub, fontSize: 13, height: 1.5)),
+            const SizedBox(height: 24),
+            _GradBtn(label: 'OK', fullWidth: true, onTap: () {
+              Navigator.pop(ctx);
+              onOk?.call();
+            }),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  // ── NEWS PAGE ─────────────────────────────────────────────────────────────
+  Widget _newsPage_() {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 8),
+
+          // ── Stats strip ──────────────────────────────────────────────────
+          _StatsStrip(online: onlineUsers, connections: activeConns),
+          const SizedBox(height: 20),
+
+          // ── News header ──────────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Container(
+                width: 4, height: 18,
+                decoration: BoxDecoration(
+                  gradient: _C.btnGrad,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text('Berita Terbaru',
                   style: TextStyle(
-                    color: primaryWhite,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Orbitron',
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFFDC143C),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(color: Color(0xFFFF6B6B).withOpacity(0.5)),
-                  ),
-                  elevation: 4,
-                  shadowColor: Color(0xFFDC143C).withOpacity(0.5),
-                ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BugSenderPage(
-                        sessionKey: sessionKey,
-                        username: username,
-                        role: role,
-                      ),
+                      color: _C.text, fontSize: 15, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text('${newsList.length} artikel',
+                  style: const TextStyle(color: _C.textSub, fontSize: 11)),
+            ]),
+          ),
+          const SizedBox(height: 14),
+
+          // ── News carousel ────────────────────────────────────────────────
+          if (newsList.isNotEmpty) ...[
+            SizedBox(
+              height: 210,
+              child: PageView.builder(
+                controller: _newsPageCtrl,
+                onPageChanged: (i) => setState(() => _newsPage = i),
+                itemCount: newsList.length,
+                itemBuilder: (_, i) {
+                  final item = newsList[i];
+                  final isActive = i == _newsPage;
+                  return AnimatedScale(
+                    scale: isActive ? 1.0 : 0.94,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOutCubic,
+                    child: _NewsCard(
+                      item: item,
+                      isActive: isActive,
                     ),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 12),
 
+            // Dot indicators
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(newsList.length, (i) {
+                final active = i == _newsPage;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 250),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: active ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: active ? _C.blueMid : _C.border,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                );
+              }),
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // ── Quick actions header ──────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Container(
+                width: 4, height: 18,
+                decoration: BoxDecoration(
+                  gradient: _C.btnGrad,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Text('Aksi Cepat',
+                  style: TextStyle(
+                      color: _C.text, fontSize: 15, fontWeight: FontWeight.w700)),
+            ]),
+          ),
+          const SizedBox(height: 14),
+
+          // ── Telegram join card ───────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _ActionCard(
+              icon: FontAwesomeIcons.telegram,
+              iconColor: const Color(0xFF39A7E0),
+              iconBg: const Color(0xFF1A4D6E),
+              title: 'Info Channel',
+              subtitle: 'Gabung DemonOverLord Info Channel',
+              trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: _C.textSub),
+              onTap: () => _openUrl('https://t.me/+TSgF7zXwQ303YzQ1'),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Bug sender card (tanpa text Buka, pakai icon panah) ──────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: _ActionCard(
+              icon: Icons.wifi_tethering_error_rounded,
+              iconColor: _C.blueLight,
+              iconBg: _C.blue.withOpacity(0.2),
+              title: 'Bug Sender',
+              subtitle: 'Kelola WhatsApp sender aktif',
+              trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                  size: 14, color: _C.textSub),
+              onTap: () => Navigator.push(
+                context,
+                _slideRoute(BugSenderPage(
+                    sessionKey: sessionKey, username: username, role: role)),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // ── Scaffold ──────────────────────────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _C.bg,
+      extendBodyBehindAppBar: true,
+      appBar: _buildAppBar(),
+      drawer: _buildDrawer(),
+      body: Stack(
+        children: [
+          Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
+          SafeArea(
+            child: FadeTransition(
+              opacity: _pageFade,
+              child: SlideTransition(
+                position: _pageSlide,
+                child: _body,
+              ),
+            ),
+          ),
+        ],
+      ),
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  // ── AppBar ────────────────────────────────────────────────────────────────
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      titleSpacing: 0,
+      leading: Builder(builder: (ctx) => _MenuBtn(onTap: () => Scaffold.of(ctx).openDrawer())),
+      title: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Halo, $username 👋',
+              style: const TextStyle(
+                color: _C.text,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+            Row(children: [
+              Container(
+                width: 6, height: 6,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle, color: _C.green,
+                  boxShadow: [BoxShadow(color: Color(0x5522C55E), blurRadius: 6)],
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                role.toUpperCase(),
+                style: TextStyle(
+                  color: _roleColor(role),
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '· Exp: $expiredDate',
+                style: const TextStyle(color: _C.textSub, fontSize: 10),
+              ),
+            ]),
+          ],
+        ),
+      ),
+      actions: [
+        _AppBarIconBtn(
+          icon: Icons.headset_mic_outlined,
+          onTap: () => Navigator.push(context, _slideRoute(const ContactPage())),
+        ),
+        _AppBarIconBtn(
+          icon: Icons.account_circle_outlined,
+          onTap: () => Navigator.push(
+            context,
+            _slideRoute(ProfilePage(
+              username: username, password: password,
+              role: role, expiredDate: expiredDate,
+              sessionKey: sessionKey,
+            )),
+          ),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  // ── Bottom Nav ────────────────────────────────────────────────────────────
+  Widget _buildBottomNav() {
+    final items = [
+      _NavItem(icon: Icons.home_rounded, label: 'Beranda'),
+      _NavItem(icon: FontAwesomeIcons.whatsapp, label: 'WA Blast'),
+      _NavItem(icon: Icons.campaign_rounded, label: 'Informasi'),
+      _NavItem(icon: Icons.tune_rounded, label: 'Menu'),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: _C.card,
+        border: const Border(top: BorderSide(color: _C.border)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          child: Row(
+            children: items.asMap().entries.map((e) {
+              final i      = e.key;
+              final item   = e.value;
+              final active = _navIndex == i;
+              return Expanded(
+                child: _NavButton(
+                  icon: item.icon,
+                  label: item.label,
+                  active: active,
+                  onTap: () => _onNavTap(i),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Drawer ────────────────────────────────────────────────────────────────
+  Widget _buildDrawer() {
+    return Drawer(
+      backgroundColor: Colors.transparent,
+      width: MediaQuery.of(context).size.width * 0.78,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: _C.surface,
+          border: Border(right: BorderSide(color: _C.border)),
+        ),
+        child: Column(
+          children: [
+            // ── Header ────────────────────────────────────────────────────
+            _DrawerHeader(
+              username: username,
+              role: role,
+              expiredDate: expiredDate,
+              profileImage: _profileImage,
+              videoCtrl: _menuVideoCtrl,
+            ),
+
+            // ── Menu items ────────────────────────────────────────────────
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                children: [
+                  if (role == 'reseller')
+                    _DrawerItem(
+                      icon: Icons.storefront_rounded,
+                      label: 'Seller Page',
+                      onTap: () => _onDrawerNav(1),
+                    ),
+                  if (role == 'admin')
+                    _DrawerItem(
+                      icon: Icons.admin_panel_settings_rounded,
+                      label: 'Admin Page',
+                      onTap: () => _onDrawerNav(2),
+                    ),
+                  if (role == 'owner')
+                    _DrawerItem(
+                      icon: Icons.workspace_premium_rounded,
+                      label: 'Owner Page',
+                      onTap: () => _onDrawerNav(3),
+                    ),
+                  _DrawerItem(
+                    icon: Icons.history_rounded,
+                    label: 'Riwayat Aktivitas',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        _slideRoute(RiwayatPage(
+                            sessionKey: sessionKey, role: role)),
+                      );
+                    },
+                  ),
+                  _DrawerItem(
+                    icon: Icons.lock_outline_rounded,
+                    label: 'Ganti Password',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        _slideRoute(ChangePasswordPage(
+                            username: username, sessionKey: sessionKey)),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Logout ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+              child: _DrawerItem(
+                icon: Icons.logout_rounded,
+                label: 'Keluar',
+                isDestructive: true,
+                onTap: () async {
+                  Navigator.pop(context);
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.clear();
+                  if (!mounted) return;
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const LoginPage()),
+                    (_) => false,
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildHeaderSection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [redGradientStart, redGradientEnd],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: accentRed.withOpacity(0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.dashboard,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Welcome back",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                    Text(
-                      "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭 Dashboard",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildQuickStat(
-                icon: Icons.people,
-                label: "Online Users",
-                value: "$onlineUsers",
-              ),
-              const SizedBox(width: 16),
-              _buildQuickStat(
-                icon: Icons.link,
-                label: "Connections",
-                value: "$activeConnections",
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+// ─── Stats Strip ──────────────────────────────────────────────────────────────
+class _StatsStrip extends StatelessWidget {
+  final int online;
+  final int connections;
+  const _StatsStrip({required this.online, required this.connections});
 
-  Widget _buildQuickStat({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Expanded(
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
+          color: _C.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _C.border),
         ),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white70, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
+            _StatItem(
+              icon: Icons.people_alt_rounded,
+              label: 'Online',
+              value: '$online',
+              color: _C.green,
+            ),
+            Container(
+              width: 1, height: 32, color: _C.border,
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            _StatItem(
+              icon: Icons.wifi_rounded,
+              label: 'Koneksi',
+              value: '$connections',
+              color: _C.blueLight,
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: _C.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: _C.green.withOpacity(0.3)),
+              ),
+              child: const Text('LIVE',
+                  style: TextStyle(
+                      color: _C.green,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.8)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Icon(icon, color: color, size: 16),
+      const SizedBox(width: 8),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(value,
+            style: TextStyle(
+                color: color, fontSize: 15, fontWeight: FontWeight.w800)),
+        Text(label,
+            style: const TextStyle(color: _C.textSub, fontSize: 10)),
+      ]),
+    ]);
+  }
+}
+
+// ─── News Card ────────────────────────────────────────────────────────────────
+class _NewsCard extends StatelessWidget {
+  final dynamic item;
+  final bool isActive;
+  const _NewsCard({required this.item, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      decoration: BoxDecoration(
+        color: _C.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive ? _C.borderLit : _C.border,
+          width: isActive ? 1.5 : 1,
+        ),
+        boxShadow: isActive
+            ? [BoxShadow(color: _C.blue.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 8))]
+            : [],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Media
+            if (item['image'] != null && item['image'].toString().isNotEmpty)
+              NewsMedia(url: item['image']),
+
+            // Gradient overlay
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xE6060B14), Colors.transparent],
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  stops: [0.0, 0.7],
+                ),
+              ),
+            ),
+
+            // Content
+            Positioned(
+              bottom: 16, left: 16, right: 16,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _C.blueMid.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: _C.blueMid.withOpacity(0.3)),
                     ),
+                    child: const Text('NEWS',
+                        style: TextStyle(
+                            color: _C.blueLight, fontSize: 9,
+                            fontWeight: FontWeight.w800, letterSpacing: 1)),
                   ),
+                  const SizedBox(height: 6),
                   Text(
-                    value,
+                    item['title'] ?? 'No Title',
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      color: _C.text,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  if (item['desc'] != null && item['desc'].toString().isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item['desc'],
+                      style: const TextStyle(
+                          color: _C.textSub, fontSize: 11, height: 1.4),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -420,643 +901,574 @@ void _connectToWebSocket() async {
       ),
     );
   }
+}
 
-  Widget _buildNewsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Latest News",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 200,
-          child: PageView.builder(
-            controller: PageController(viewportFraction: 0.9),
-            itemCount: newsList.length,
-            itemBuilder: (context, index) {
-              final item = newsList[index];
-              return Container(
-                margin: const EdgeInsets.only(right: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: cardDark,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 5),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      if (item['image'] != null && item['image'].toString().isNotEmpty)
-                        NewsMedia(url: item['image']),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.black.withOpacity(0.7),
-                              Colors.transparent,
-                            ],
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 16,
-                        left: 16,
-                        right: 16,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item['title'] ?? 'No Title',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item['desc'] ?? '',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 14,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+// ─── Action Card ──────────────────────────────────────────────────────────────
+class _ActionCard extends StatefulWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+  final VoidCallback onTap;
 
-  Widget _buildStatsCards() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Account Statistics",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.person,
-                title: "Username",
-                value: username,
-                color: accentRed,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _buildStatCard(
-                icon: Icons.verified_user,
-                title: "Role",
-                value: role.toUpperCase(),
-                color: _getRoleColor(role),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _buildStatCard(
-          icon: Icons.calendar_today,
-          title: "Account Expires",
-          value: expiredDate,
-          color: Colors.orange,
-          fullWidth: true,
-        ),
-      ],
-    );
-  }
+  const _ActionCard({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.trailing,
+  });
 
-  Widget _buildStatCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-    bool fullWidth = false,
-  }) {
-    return Container(
-      width: fullWidth ? double.infinity : null,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  @override
+  State<_ActionCard> createState() => _ActionCardState();
+}
 
-  Widget _buildAccountInfo() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            "Quick Actions",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
-            children: [
-              if (role == "reseller" || role == "owner")
-                _buildActionCard(
-                  icon: Icons.store,
-                  label: "Seller Page",
-                  onTap: () => _onDrawerItemSelected(5),
-                ),
-              if (role == "owner")
-                _buildActionCard(
-                  icon: Icons.admin_panel_settings,
-                  label: "Admin Panel",
-                  onTap: () => _onDrawerItemSelected(6),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionCard({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardDarker,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: accentRed.withOpacity(0.3)),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: accentRed, size: 28),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Color _getRoleColor(String role) {
-    switch (role.toLowerCase()) {
-      case "owner":
-        return Colors.red;
-      case "vip":
-        return accentRed;
-      case "reseller":
-        return Colors.green;
-      case "premium":
-        return Colors.orange;
-      default:
-        return lightRed;
-    }
-  }
-
-  Widget _buildDrawer() {
-    return Drawer(
-      backgroundColor: cardDarker,
-      child: ListView(
-        padding: EdgeInsets.zero,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [redGradientStart, redGradientEnd],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildDrawerInfo("User:", username),
-                _buildDrawerInfo("Role:", role),
-                _buildDrawerInfo("Expired:", expiredDate),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (role == "reseller" || role == "owner")
-            _buildDrawerItem(
-              icon: Icons.store,
-              label: "Seller Page",
-              onTap: () {
-                Navigator.pop(context);
-                _onDrawerItemSelected(5);
-              },
-            ),
-          if (role == "owner")
-            _buildDrawerItem(
-              icon: Icons.admin_panel_settings,
-              label: "Admin Page",
-              onTap: () {
-                Navigator.pop(context);
-                _onDrawerItemSelected(6);
-              },
-            ),
-          const Divider(color: Colors.white24),
-          _buildDrawerItem(
-            icon: Icons.logout,
-            label: "Logout",
-            onTap: () async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.clear();
-              if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginPage()),
-                    (route) => false,
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerInfo(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: accentRed),
-      title: Text(
-        label,
-        style: const TextStyle(color: Colors.white),
-      ),
-      onTap: onTap,
-    );
-  }
-
-  void _showAccountMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardDarker,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: accentRed,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Account Information",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 24),
-            _infoCard(FontAwesomeIcons.user, "Username", username),
-            _infoCard(FontAwesomeIcons.calendar, "Expired", expiredDate),
-            _infoCard(FontAwesomeIcons.shieldAlt, "Role", role),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.lock_reset, color: Colors.white),
-                    label: const Text("Change Password"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentRed,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ChangePasswordPage(
-                            username: username,
-                            sessionKey: sessionKey,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.logout, color: Colors.white),
-                    label: const Text("Logout"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade700,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.clear();
-                      if (!mounted) return;
-                      Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const LoginPage()),
-                            (route) => false,
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _infoCard(IconData icon, String label, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: accentRed.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: accentRed.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: accentRed),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.7),
-                    fontSize: 14,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+class _ActionCardState extends State<_ActionCard> {
+  bool _pressed = false;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryDark,
-      appBar: AppBar(
-        title: const Text(
-          "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 130),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: _pressed ? _C.card.withOpacity(0.9) : _C.card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: _pressed
+                  ? widget.iconColor.withOpacity(0.3)
+                  : _C.border,
+            ),
+            boxShadow: _pressed
+                ? [BoxShadow(color: widget.iconColor.withOpacity(0.12),
+                    blurRadius: 16, offset: const Offset(0, 4))]
+                : [],
           ),
-        ),
-        backgroundColor: primaryDark,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_circle, color: Colors.white),
-            onPressed: _showAccountMenu,
-          ),
-        ],
-      ),
-      drawer: _buildDrawer(),
-      body: FadeTransition(opacity: _animation, child: _selectedPage),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: cardDarker,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 10,
-              offset: const Offset(0, -5),
+          child: Row(children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: widget.iconBg,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: widget.iconColor.withOpacity(0.2)),
+              ),
+              child: Icon(widget.icon, color: widget.iconColor, size: 20),
             ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          selectedItemColor: accentRed,
-          unselectedItemColor: Colors.white54,
-          currentIndex: _selectedTabIndex,
-          onTap: _onTabTapped,
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.message_outlined),
-              activeIcon: Icon(Icons.message),
-              label: "WhatsApp",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.build_outlined),
-              activeIcon: Icon(Icons.build),
-              label: "Tools",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.movie_filter_outlined),
-              activeIcon: Icon(Icons.movie_filter),
-              label: "Anime",
-            ),
-
-          ],
+            const SizedBox(width: 14),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.title,
+                    style: const TextStyle(
+                        color: _C.text, fontSize: 14,
+                        fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(widget.subtitle,
+                    style: const TextStyle(color: _C.textSub, fontSize: 11)),
+              ],
+            )),
+            if (widget.trailing != null) ...[
+              const SizedBox(width: 10),
+              widget.trailing!,
+            ],
+          ]),
         ),
       ),
     );
   }
+}
+
+// ─── Drawer Header ────────────────────────────────────────────────────────────
+class _DrawerHeader extends StatefulWidget {
+  final String username;
+  final String role;
+  final String expiredDate;
+  final File? profileImage;
+  final VideoPlayerController? videoCtrl;
+
+  const _DrawerHeader({
+    required this.username,
+    required this.role,
+    required this.expiredDate,
+    required this.profileImage,
+    required this.videoCtrl,
+  });
 
   @override
-  void dispose() {
-    channel.sink.close(status.goingAway);
-    _controller.dispose();
-    _fadeController.dispose();
-    super.dispose();
+  State<_DrawerHeader> createState() => _DrawerHeaderState();
+}
+
+class _DrawerHeaderState extends State<_DrawerHeader>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _c;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 600));
+    _fade  = CurvedAnimation(parent: _c, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _c, curve: Curves.easeOutCubic));
+    _c.forward();
+  }
+
+  @override
+  void dispose() { _c.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final rColor = _roleColor(widget.role);
+    return Container(
+      height: 240,
+      clipBehavior: Clip.hardEdge,
+      decoration: const BoxDecoration(
+        color: _C.card,
+        border: Border(bottom: BorderSide(color: _C.border)),
+      ),
+      child: Stack(
+        children: [
+          // Video bg
+          if (widget.videoCtrl != null && widget.videoCtrl!.value.isInitialized)
+            Positioned.fill(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width:  widget.videoCtrl!.value.size.width,
+                  height: widget.videoCtrl!.value.size.height,
+                  child:  VideoPlayer(widget.videoCtrl!),
+                ),
+              ),
+            ),
+
+          // Gradient overlay
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0x33060B14), Color(0xE6060B14)],
+                ),
+              ),
+            ),
+          ),
+
+          // Content
+          Positioned.fill(
+            child: SafeArea(
+              child: FadeTransition(
+                opacity: _fade,
+                child: SlideTransition(
+                  position: _slide,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Avatar
+                      Stack(
+                        children: [
+                          Container(
+                            width: 78, height: 78,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: rColor, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                    color: rColor.withOpacity(0.4),
+                                    blurRadius: 18)
+                              ],
+                            ),
+                            child: ClipOval(
+                              child: widget.profileImage != null
+                                  ? Image.file(widget.profileImage!,
+                                      fit: BoxFit.cover)
+                                  : Container(
+                                      color: _C.surface,
+                                      child: Icon(_roleIcon(widget.role),
+                                          size: 36,
+                                          color: rColor.withOpacity(0.9)),
+                                    ),
+                            ),
+                          ),
+                          // Role badge
+                          Positioned(
+                            right: 0, bottom: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: rColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: _C.card, width: 2),
+                              ),
+                              child: Icon(_roleIcon(widget.role),
+                                  size: 10, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Text(widget.username,
+                          style: const TextStyle(
+                              color: _C.text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800)),
+
+                      const SizedBox(height: 4),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: rColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: rColor.withOpacity(0.3)),
+                        ),
+                        child: Text(
+                          widget.role.toUpperCase(),
+                          style: TextStyle(
+                              color: rColor,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1),
+                        ),
+                      ),
+
+                      const SizedBox(height: 6),
+
+                      Text('Exp: ${widget.expiredDate}',
+                          style: const TextStyle(
+                              color: _C.textSub, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
+// ─── Drawer Item ──────────────────────────────────────────────────────────────
+class _DrawerItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _DrawerItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  State<_DrawerItem> createState() => _DrawerItemState();
+}
+
+class _DrawerItemState extends State<_DrawerItem> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = widget.isDestructive ? _C.red : _C.textSub;
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        decoration: BoxDecoration(
+          color: _pressed
+              ? color.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _pressed ? color.withOpacity(0.25) : _C.border,
+          ),
+        ),
+        child: Row(children: [
+          Icon(widget.icon, color: color, size: 18),
+          const SizedBox(width: 14),
+          Text(widget.label,
+              style: TextStyle(
+                  color: widget.isDestructive ? _C.red : _C.text,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600)),
+          const Spacer(),
+          Icon(Icons.arrow_forward_ios_rounded,
+              color: _C.textDim, size: 12),
+        ]),
+      ),
+    );
+  }
+}
+
+// ─── Bottom Nav Button (Text abu saat tidak aktif, putih saat aktif) ─────────
+class _NavButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _NavButton({
+    required this.icon,
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+            decoration: BoxDecoration(
+              color: active ? _C.blueMid.withOpacity(0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              size: 22,
+              color: active ? _C.blueLight : _C.textDim,
+            ),
+          ),
+          const SizedBox(height: 2),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              // Text putih saat aktif, abu-abu (textDim) saat tidak aktif
+              color: active ? _C.text : _C.textDim,
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w400,
+            ),
+            child: Text(label),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── AppBar Icon Button ───────────────────────────────────────────────────────
+class _AppBarIconBtn extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _AppBarIconBtn({required this.icon, required this.onTap});
+
+  @override
+  State<_AppBarIconBtn> createState() => _AppBarIconBtnState();
+}
+
+class _AppBarIconBtnState extends State<_AppBarIconBtn> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _down = true),
+        onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
+        onTapCancel: () => setState(() => _down = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: 36, height: 36,
+          decoration: BoxDecoration(
+            color: _down ? _C.border : _C.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _C.border),
+          ),
+          child: Icon(widget.icon, color: _C.textSub, size: 18),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Menu (Hamburger) Button ──────────────────────────────────────────────────
+class _MenuBtn extends StatefulWidget {
+  final VoidCallback onTap;
+  const _MenuBtn({required this.onTap});
+
+  @override
+  State<_MenuBtn> createState() => _MenuBtnState();
+}
+
+class _MenuBtnState extends State<_MenuBtn> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(10),
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _down = true),
+        onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
+        onTapCancel: () => setState(() => _down = false),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          decoration: BoxDecoration(
+            color: _down ? _C.border : _C.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _C.border),
+          ),
+          child: const Icon(Icons.menu_rounded, color: _C.textSub, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Animated Background ──────────────────────────────────────────────────────
+class _AnimatedBg extends StatelessWidget {
+  final AnimationController controller;
+  const _AnimatedBg({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (_, __) => CustomPaint(painter: _BgPainter(controller.value)),
+    );
+  }
+}
+
+class _BgPainter extends CustomPainter {
+  final double t;
+  _BgPainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = _C.border.withOpacity(0.25)
+      ..strokeWidth = 0.5;
+    const step = 38.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+
+    // Top glow
+    final glow = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.blue.withOpacity(0.10 + math.sin(t * math.pi * 2) * 0.03),
+        Colors.transparent,
+      ], radius: 0.9).createShader(
+          Rect.fromCircle(
+              center: Offset(size.width / 2, 0), radius: size.width));
+    canvas.drawCircle(Offset(size.width / 2, 0), size.width, glow);
+  }
+
+  @override
+  bool shouldRepaint(_BgPainter old) => old.t != t;
+}
+
+// ─── Shared Primitives ────────────────────────────────────────────────────────
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
+}
+
+PageRoute _slideRoute(Widget page) => PageRouteBuilder(
+  pageBuilder: (_, __, ___) => page,
+  transitionDuration: const Duration(milliseconds: 350),
+  transitionsBuilder: (_, anim, __, child) => SlideTransition(
+    position: Tween<Offset>(
+      begin: const Offset(1, 0), end: Offset.zero,
+    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+    child: FadeTransition(opacity: anim, child: child),
+  ),
+);
+
+class _GradBtn extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool fullWidth;
+  final LinearGradient gradient;
+
+  const _GradBtn({
+    required this.label,
+    required this.onTap,
+    this.fullWidth = false,
+    this.gradient = _C.btnGrad,
+  });
+
+  @override
+  State<_GradBtn> createState() => _GradBtnState();
+}
+
+class _GradBtnState extends State<_GradBtn> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          height: 46,
+          width: widget.fullWidth ? double.infinity : null,
+          padding: widget.fullWidth
+              ? EdgeInsets.zero
+              : const EdgeInsets.symmetric(horizontal: 28),
+          decoration: BoxDecoration(
+            gradient: widget.gradient,
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: _down ? [] : [
+              BoxShadow(
+                  color: _C.blueMid.withOpacity(0.3),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Center(
+            child: Text(widget.label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── NewsMedia (unchanged logic, improved loading state) ──────────────────────
 class NewsMedia extends StatefulWidget {
   final String url;
   const NewsMedia({super.key, required this.url});
@@ -1066,59 +1478,72 @@ class NewsMedia extends StatefulWidget {
 }
 
 class _NewsMediaState extends State<NewsMedia> {
-  VideoPlayerController? _controller;
+  VideoPlayerController? _ctrl;
 
   @override
   void initState() {
     super.initState();
     if (_isVideo(widget.url)) {
-      _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url))
+      _ctrl = VideoPlayerController.networkUrl(Uri.parse(widget.url))
         ..initialize().then((_) {
-          setState(() {});
-          _controller?.setLooping(true);
-          _controller?.setVolume(0.0);
-          _controller?.play();
+          if (mounted) setState(() {});
+          _ctrl?.setLooping(true);
+          _ctrl?.setVolume(0);
+          _ctrl?.play();
         });
     }
   }
 
-  bool _isVideo(String url) {
-    return url.endsWith(".mp4") ||
-        url.endsWith(".webm") ||
-        url.endsWith(".mov") ||
-        url.endsWith(".mkv");
-  }
+  bool _isVideo(String url) =>
+      url.endsWith('.mp4') || url.endsWith('.webm') ||
+      url.endsWith('.mov') || url.endsWith('.mkv');
 
   @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl?.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
     if (_isVideo(widget.url)) {
-      if (_controller != null && _controller!.value.isInitialized) {
+      if (_ctrl?.value.isInitialized == true) {
         return AspectRatio(
-          aspectRatio: _controller!.value.aspectRatio,
-          child: VideoPlayer(_controller!),
-        );
-      } else {
-        return Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFFDC143C),
-          ),
+          aspectRatio: _ctrl!.value.aspectRatio,
+          child: VideoPlayer(_ctrl!),
         );
       }
-    } else {
-      return Image.network(
-        widget.url,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Container(
-          color: Colors.grey.shade800,
-          child: const Icon(Icons.error, color: Color(0xFFDC143C)),
+      return Container(
+        color: _C.surface,
+        child: const Center(
+          child: SizedBox(
+            width: 20, height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: _C.blueMid),
+          ),
         ),
       );
     }
+    return Image.network(
+      widget.url,
+      fit: BoxFit.cover,
+      loadingBuilder: (_, child, progress) => progress == null
+          ? child
+          : Container(
+              color: _C.surface,
+              child: Center(
+                child: CircularProgressIndicator(
+                  value: progress.expectedTotalBytes != null
+                      ? progress.cumulativeBytesLoaded /
+                          progress.expectedTotalBytes!
+                      : null,
+                  strokeWidth: 2,
+                  color: _C.blueMid,
+                ),
+              ),
+            ),
+      errorBuilder: (_, __, ___) => Container(
+        color: _C.surface,
+        child: const Icon(Icons.broken_image_outlined,
+            color: _C.textDim, size: 32),
+      ),
+    );
   }
 }

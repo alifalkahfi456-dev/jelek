@@ -1,6 +1,5 @@
-import 'dart:ui';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'manage_server.dart';
 import 'wifi_internal.dart';
 import 'wifi_external.dart';
@@ -12,6 +11,63 @@ import 'qr_gen.dart';
 import 'domain_page.dart';
 import 'spam_ngl.dart';
 
+// ─── Palette: Biru Tua Metalik ────────────────────────────────────────────────
+class _C {
+  static const bg        = Color(0xFF060B14);
+  static const surface   = Color(0xFF0C1424);
+  static const card      = Color(0xFF101A2E);
+  static const border    = Color(0xFF1A2D4A);
+  static const borderLit = Color(0xFF1E3A5F);
+
+  static const steel     = Color(0xFF1A4F8A);
+  static const blueMid   = Color(0xFF2370BE);
+  static const blueLight = Color(0xFF4A94E8);
+  static const chrome    = Color(0xFF7AB4E8);
+  static const frost     = Color(0xFFADD4F5);
+
+  static const red       = Color(0xFFEF4444);
+  static const amber     = Color(0xFFF59E0B);
+  static const green     = Color(0xFF22C55E);
+  static const purple    = Color(0xFFA78BFA);
+  static const pink      = Color(0xFFEC4899);
+  static const teal      = Color(0xFF14B8A6);
+
+  static const text      = Color(0xFFDEEEFB);
+  static const textSub   = Color(0xFF6A92B8);
+  static const textDim   = Color(0xFF2E4E6E);
+
+  static const LinearGradient metalGrad = LinearGradient(
+    colors: [steel, blueMid, blueLight],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
+
+// ─── Tool Category Data ───────────────────────────────────────────────────────
+class _ToolCategory {
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color accent;
+  final String count;
+
+  const _ToolCategory({
+    required this.id, required this.title, required this.subtitle,
+    required this.icon, required this.accent, required this.count,
+  });
+}
+
+const _categories = [
+  _ToolCategory(id: 'ddos',       title: 'DDoS Tools',  subtitle: 'Attack & Server',   icon: Icons.bolt_rounded,               accent: _C.red,      count: '2'),
+  _ToolCategory(id: 'network',    title: 'Network',      subtitle: 'WiFi & Spam',       icon: Icons.wifi_tethering_rounded,     accent: _C.amber,    count: '3'),
+  _ToolCategory(id: 'osint',      title: 'OSINT',        subtitle: 'Investigation',     icon: Icons.travel_explore_rounded,     accent: _C.purple,   count: '4'),
+  _ToolCategory(id: 'downloader', title: 'Downloader',   subtitle: 'Social Media',      icon: Icons.cloud_download_rounded,     accent: _C.pink,     count: '2'),
+  _ToolCategory(id: 'utilities',  title: 'Utilities',    subtitle: 'Extra Tools',       icon: Icons.construction_rounded,       accent: _C.teal,     count: '3'),
+  _ToolCategory(id: 'quick',      title: 'Quick Access', subtitle: 'Favorites',         icon: Icons.rocket_launch_rounded,      accent: _C.green,    count: '—'),
+];
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 class ToolsPage extends StatefulWidget {
   final String sessionKey;
   final String userRole;
@@ -29,74 +85,154 @@ class ToolsPage extends StatefulWidget {
 }
 
 class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
-  late AnimationController _bgController;
-  late AnimationController _cardController;
-  late Animation<double> _bgAnimation;
-  late Animation<double> _cardAnimation;
+  late AnimationController _bgCtrl;
+  late AnimationController _headerCtrl;
 
-  // Warna tema hitam biru
-  final Color primaryDark = const Color(0xFF0A0A0A);
-  final Color primaryBlue = const Color(0xFF8B0000);
-  final Color accentBlue = const Color(0xFFDC143C);
-  final Color lightBlue = const Color(0xFFFF6B6B);
-  final Color cardDark = const Color(0xFF1A1A1A);
-  final Color cardDarker = const Color(0xFF141414);
-  final Color successGreen = const Color(0xFF10B981);
-  final Color warningOrange = const Color(0xFFF59E0B);
-  final Color dangerRed = const Color(0xFFEF4444);
-  final Color primaryWhite = Colors.white;
-  final Color accentGrey = Colors.grey.shade400;
+  late Animation<double> _headerFade;
+  late Animation<Offset>  _headerSlide;
 
   @override
   void initState() {
     super.initState();
-    _bgController = AnimationController(
-      duration: const Duration(seconds: 20),
-      vsync: this,
-    )..repeat();
+    _bgCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 16))
+      ..repeat();
 
-    _cardController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
+    _headerCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 700));
+    _headerFade  = CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOut);
+    _headerSlide = Tween<Offset>(begin: const Offset(0, -0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _headerCtrl, curve: Curves.easeOutCubic));
 
-    _bgAnimation = Tween<double>(begin: 0, end: 1).animate(_bgController);
-    _cardAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _cardController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    _cardController.forward();
+    _headerCtrl.forward();
   }
 
   @override
   void dispose() {
-    _bgController.dispose();
-    _cardController.dispose();
+    _bgCtrl.dispose();
+    _headerCtrl.dispose();
     super.dispose();
   }
 
+  // ─── Navigation helpers ───────────────────────────────────────────────────
+  void _push(Widget page) {
+    Navigator.push(context, _slideRoute(page));
+  }
+
+  void _comingSoon() {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Row(children: [
+        Icon(Icons.hourglass_top_rounded, color: Colors.white, size: 16),
+        SizedBox(width: 8),
+        Text('Coming Soon!', style: TextStyle(
+            color: Colors.white, fontWeight: FontWeight.w600)),
+      ]),
+      backgroundColor: _C.blueMid,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  // ─── Category tap handler ─────────────────────────────────────────────────
+  void _onCategoryTap(String id) {
+    switch (id) {
+      case 'ddos':       _showSheet(_ddosItems()); break;
+      case 'network':    _showSheet(_networkItems()); break;
+      case 'osint':      _showSheet(_osintItems()); break;
+      case 'downloader': _showSheet(_downloaderItems()); break;
+      case 'utilities':  _showSheet(_utilityItems()); break;
+      case 'quick':      _comingSoon(); break;
+    }
+  }
+
+  // ─── Tool items per category ──────────────────────────────────────────────
+  List<_ToolItem> _ddosItems() => [
+    _ToolItem(icon: Icons.bolt_rounded,     label: 'Attack Panel',  accent: _C.red,
+        onTap: () => _push(AttackPanel(sessionKey: widget.sessionKey, listDoos: widget.listDoos))),
+    _ToolItem(icon: Icons.dns_rounded,      label: 'Manage Server', accent: _C.amber,
+        onTap: () => _push(ManageServerPage(keyToken: widget.sessionKey))),
+  ];
+
+  List<_ToolItem> _networkItems() => [
+    _ToolItem(icon: Icons.newspaper_outlined,  label: 'Spam NGL',              accent: _C.purple,
+        onTap: () => _push(NglPage())),
+    _ToolItem(icon: Icons.wifi_off_rounded,    label: 'WiFi Killer (Internal)', accent: _C.amber,
+        onTap: () => _push(WifiKillerPage())),
+    if (widget.userRole == 'vip' || widget.userRole == 'owner')
+      _ToolItem(icon: Icons.router_rounded,    label: 'WiFi Killer (External)', accent: _C.red,
+          onTap: () => _push(WifiInternalPage(sessionKey: widget.sessionKey))),
+  ];
+
+  List<_ToolItem> _osintItems() => [
+    _ToolItem(icon: Icons.badge_outlined,      label: 'NIK Detail',    accent: _C.purple,
+        onTap: () => _push(const NikCheckerPage())),
+    _ToolItem(icon: Icons.travel_explore_rounded, label: 'Domain OSINT', accent: _C.blueLight,
+        onTap: () => _push(const DomainOsintPage())),
+    _ToolItem(icon: Icons.person_search_rounded, label: 'Phone Lookup', accent: _C.teal,
+        onTap: _comingSoon, comingSoon: true),
+    _ToolItem(icon: Icons.alternate_email_rounded, label: 'Email OSINT', accent: _C.pink,
+        onTap: _comingSoon, comingSoon: true),
+  ];
+
+  List<_ToolItem> _downloaderItems() => [
+    _ToolItem(icon: Icons.video_library_rounded, label: 'TikTok Downloader',    accent: _C.pink,
+        onTap: () => _push(const TiktokDownloaderPage())),
+    _ToolItem(icon: Icons.camera_alt_rounded,    label: 'Instagram Downloader', accent: _C.purple,
+        onTap: () => _push(const InstagramDownloaderPage())),
+  ];
+
+  List<_ToolItem> _utilityItems() => [
+    _ToolItem(icon: Icons.qr_code_2_rounded,      label: 'QR Generator', accent: _C.teal,
+        onTap: () => _push(const QrGeneratorPage())),
+    _ToolItem(icon: Icons.security_rounded,        label: 'IP Scanner',   accent: _C.amber,
+        onTap: _comingSoon, comingSoon: true),
+    _ToolItem(icon: Icons.network_check_rounded,   label: 'Port Scanner', accent: _C.green,
+        onTap: _comingSoon, comingSoon: true),
+  ];
+
+  // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: primaryDark,
+      backgroundColor: _C.bg,
       body: Stack(
         children: [
-          // Background dengan animasi partikel
-          _buildAnimatedBackground(),
-
-          // Konten utama
+          Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
           SafeArea(
             child: Column(
               children: [
-                // Header dengan desain baru
-                _buildNewHeader(),
+                // Header
+                FadeTransition(
+                  opacity: _headerFade,
+                  child: SlideTransition(
+                    position: _headerSlide,
+                    child: _buildHeader(),
+                  ),
+                ),
 
-                // Kategori tools dengan desain baru
+                // Grid
                 Expanded(
-                  child: _buildToolCategories(),
+                  child: GridView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.05,
+                    ),
+                    itemCount: _categories.length,
+                    itemBuilder: (_, i) => _StaggerItem(
+                      index: i,
+                      child: _CategoryCard(
+                        category: _categories[i],
+                        onTap: () => _onCategoryTap(_categories[i].id),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -106,679 +242,274 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildAnimatedBackground() {
-    return AnimatedBuilder(
-      animation: _bgAnimation,
-      builder: (context, child) {
-        return Stack(
-          children: [
-            // Background gradient
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    primaryDark,
-                    const Color(0xFF151937),
-                    const Color(0xFF0F172A),
-                  ],
-                ),
-              ),
-            ),
-
-            // Partikel animasi
-            ...List.generate(20, (index) {
-              final top = (_bgAnimation.value + index * 0.05) % 1.0;
-              final left = (index * 0.1) % 1.0;
-              final size = 10.0 + (index % 5) * 5.0;
-              final opacity = 0.1 + (index % 3) * 0.1;
-
-              return Positioned(
-                top: top * MediaQuery.of(context).size.height,
-                left: left * MediaQuery.of(context).size.width,
-                child: Container(
-                  width: size,
-                  height: size,
-                  decoration: BoxDecoration(
-                    color: lightBlue.withOpacity(opacity),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: lightBlue.withOpacity(opacity * 0.5),
-                        blurRadius: size,
-                        spreadRadius: size / 2,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }),
-
-            // Efek cahaya
-            Positioned(
-              top: -100,
-              right: -100,
-              child: AnimatedBuilder(
-                animation: _bgAnimation,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _bgAnimation.value * 2 * 3.14159,
-                    child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            accentBlue.withOpacity(0.2),
-                            Colors.transparent,
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildNewHeader() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Column(
-        children: [
-          // Logo dan judul
-          Row(
-            children: [
-              // Logo dengan animasi
-              TweenAnimationBuilder(
-                tween: Tween<double>(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 800),
-                builder: (context, double value, child) {
-                  return Transform.scale(
-                    scale: value,
-                    child: Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [primaryBlue, accentBlue],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(15),
-                        boxShadow: [
-                          BoxShadow(
-                            color: accentBlue.withOpacity(0.4),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.security,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(width: 16),
-
-              // Judul
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Misc Tools",
-                      style: TextStyle(
-                        color: primaryWhite,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Orbitron',
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    Text(
-                      "Advanced Security Suite",
-                      style: TextStyle(
-                        color: lightBlue,
-                        fontSize: 14,
-                        fontFamily: 'ShareTechMono',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Status user
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: accentBlue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: accentBlue.withOpacity(0.5)),
-                ),
-                child: Text(
-                  widget.userRole.toUpperCase(),
-                  style: TextStyle(
-                    color: lightBlue,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Orbitron',
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          // Search bar
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolCategories() {
-    return AnimatedBuilder(
-      animation: _cardAnimation,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, (1 - _cardAnimation.value) * 50),
-          child: Opacity(
-            opacity: _cardAnimation.value,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  // Bar kategori dengan scroll horizontal
-                  // Grid tools dengan desain baru
-                  Expanded(
-                    child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 15,
-                        mainAxisSpacing: 15,
-                        childAspectRatio: 0.85,
-                      ),
-                      itemCount: 6,
-                      itemBuilder: (context, index) {
-                        return _buildNewToolCard(index);
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryChip(String label, bool isSelected) {
+  Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? accentBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? accentBlue : accentBlue.withOpacity(0.3),
-          ),
+          color: _C.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _C.border),
+          boxShadow: [
+            BoxShadow(color: _C.steel.withOpacity(0.1),
+                blurRadius: 20, offset: const Offset(0, 6)),
+          ],
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? primaryWhite : lightBlue,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNewToolCard(int index) {
-    final List<Map<String, dynamic>> tools = [
-      {
-        "icon": Icons.flash_on,
-        "title": "DDoS",
-        "subtitle": "Attack Tools",
-        "color": accentBlue,
-        "onTap": () => _showDDoSTools(context),
-      },
-      {
-        "icon": Icons.wifi,
-        "title": "Network",
-        "subtitle": "WiFi & Spam",
-        "color": accentBlue,
-        "onTap": () => _showNetworkTools(context),
-      },
-      {
-        "icon": Icons.search,
-        "title": "OSINT",
-        "subtitle": "Investigation",
-        "color": accentBlue,
-        "onTap": () => _showOSINTTools(context),
-      },
-      {
-        "icon": Icons.download,
-        "title": "Downloader",
-        "subtitle": "Social Media",
-        "color": accentBlue,
-        "onTap": () => _showDownloaderTools(context),
-      },
-      {
-        "icon": Icons.build,
-        "title": "Utilities",
-        "subtitle": "Extra Tools",
-        "color": accentBlue,
-        "onTap": () => _showUtilityTools(context),
-      },
-      {
-        "icon": Icons.rocket_launch,
-        "title": "Quick Access",
-        "subtitle": "Favorites",
-        "color": accentBlue,
-        "onTap": () => _showQuickAccess(context),
-      },
-    ];
-
-    final tool = tools[index];
-
-    return TweenAnimationBuilder(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: Duration(milliseconds: 500 + (index * 100)),
-      curve: Curves.easeOutBack,
-      builder: (context, double value, child) {
-        return Transform.scale(
-          scale: value,
-          child: GestureDetector(
-            onTap: tool["onTap"],
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.3),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: tool["color"].withOpacity(0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: tool["color"].withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Icon dengan background gradien
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [primaryBlue, tool["color"]],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(15),
-                            boxShadow: [
-                              BoxShadow(
-                                color: tool["color"].withOpacity(0.4),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            tool["icon"],
-                            color: primaryWhite,
-                            size: 28,
-                          ),
-                        ),
-
-                        const Spacer(),
-
-                        // Judul dan subtitle
-                        Text(
-                          tool["title"],
-                          style: TextStyle(
-                            color: primaryWhite,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Orbitron',
-                          ),
-                        ),
-
-                        const SizedBox(height: 4),
-
-                        Text(
-                          tool["subtitle"],
-                          style: TextStyle(
-                            color: lightBlue,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showDDoSTools(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildNewModalSheet(
-        context,
-        "DDoS Tools",
-        Icons.flash_on,
-        [
-          _buildModalOption(
-            icon: Icons.flash_on,
-            label: "Attack Panel",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AttackPanel(
-                    sessionKey: widget.sessionKey,
-                    listDoos: widget.listDoos,
-                  ),
-                ),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.dns,
-            label: "Manage Server",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ManageServerPage(keyToken: widget.sessionKey),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showNetworkTools(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildNewModalSheet(
-        context,
-        "Network Tools",
-        Icons.wifi,
-        [
-          _buildModalOption(
-            icon: Icons.newspaper_outlined,
-            label: "Spam NGL",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => NglPage()),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.wifi_off,
-            label: "WiFi Killer (Internal)",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => WifiKillerPage()),
-              );
-            },
-          ),
-          if (widget.userRole == "vip" || widget.userRole == "owner")
-            _buildModalOption(
-              icon: Icons.router,
-              label: "WiFi Killer (External)",
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => WifiInternalPage(sessionKey: widget.sessionKey),
-                  ),
-                );
-              },
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _showOSINTTools(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildNewModalSheet(
-        context,
-        "OSINT Tools",
-        Icons.search,
-        [
-          _buildModalOption(
-            icon: Icons.badge,
-            label: "NIK Detail",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const NikCheckerPage()),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.domain,
-            label: "Domain OSINT",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const DomainOsintPage()),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.person_search,
-            label: "Phone Lookup",
-            onTap: () => _showComingSoon(context),
-          ),
-          _buildModalOption(
-            icon: Icons.email,
-            label: "Email OSINT",
-            onTap: () => _showComingSoon(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDownloaderTools(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildNewModalSheet(
-        context,
-        "Media Downloader",
-        Icons.download,
-        [
-          _buildModalOption(
-            icon: Icons.video_library,
-            label: "TikTok Downloader",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TiktokDownloaderPage()),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.camera_alt,
-            label: "Instagram Downloader",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InstagramDownloaderPage()),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showUtilityTools(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _buildNewModalSheet(
-        context,
-        "Utility Tools",
-        Icons.build,
-        [
-          _buildModalOption(
-            icon: Icons.qr_code,
-            label: "QR Generator",
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const QrGeneratorPage()),
-              );
-            },
-          ),
-          _buildModalOption(
-            icon: Icons.security,
-            label: "IP Scanner",
-            onTap: () => _showComingSoon(context),
-          ),
-          _buildModalOption(
-            icon: Icons.network_check,
-            label: "Port Scanner",
-            onTap: () => _showComingSoon(context),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showQuickAccess(BuildContext context) {
-    _showComingSoon(context);
-  }
-
-  Widget _buildNewModalSheet(
-      BuildContext context,
-      String title,
-      IconData icon,
-      List<Widget> options,
-      ) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.6,
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(30),
-          topRight: Radius.circular(30),
-        ),
-        border: Border.all(color: accentBlue.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: accentBlue.withOpacity(0.2),
-            blurRadius: 20,
-            spreadRadius: 5,
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Header modal
+        child: Row(children: [
+          // Icon
           Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
+            width: 42, height: 42,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [primaryBlue, accentBlue],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(30),
-                topRight: Radius.circular(30),
-              ),
+              gradient: _C.metalGrad,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: _C.blueMid.withOpacity(0.3), blurRadius: 12),
+              ],
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: primaryWhite),
-                ),
-                const SizedBox(width: 16),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: primaryWhite,
-                    fontSize: 20,
-                    fontFamily: 'Orbitron',
-                    fontWeight: FontWeight.bold,
-                  ),
+            child: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 14),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            ShaderMask(
+              shaderCallback: (b) => _C.metalGrad.createShader(b),
+              child: const Text('Tools Dashboard',
+                  style: TextStyle(color: Colors.white, fontSize: 17,
+                      fontWeight: FontWeight.w800, letterSpacing: -0.3)),
+            ),
+            const Text('Security & OSINT Suite',
+                style: TextStyle(color: _C.textSub, fontSize: 11)),
+          ]),
+          const Spacer(),
+          // Tool count badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: _C.surface,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _C.border),
+            ),
+            child: Text('${_categories.length} tools',
+                style: const TextStyle(color: _C.textSub, fontSize: 11,
+                    fontWeight: FontWeight.w600)),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  // ─── Bottom Sheet ─────────────────────────────────────────────────────────
+  void _showSheet(List<_ToolItem> items) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (_) => _ToolSheet(items: items),
+    );
+  }
+}
+
+// ─── Category Card ────────────────────────────────────────────────────────────
+class _CategoryCard extends StatefulWidget {
+  final _ToolCategory category;
+  final VoidCallback onTap;
+
+  const _CategoryCard({required this.category, required this.onTap});
+
+  @override
+  State<_CategoryCard> createState() => _CategoryCardState();
+}
+
+class _CategoryCardState extends State<_CategoryCard>
+    with SingleTickerProviderStateMixin {
+  bool _pressed = false;
+  late AnimationController _glowCtrl;
+  late Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _glowCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.2, end: 0.5)
+        .animate(CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() { _glowCtrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    final cat = widget.category;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.94 : 1.0,
+        duration: const Duration(milliseconds: 130),
+        child: AnimatedBuilder(
+          animation: _glow,
+          builder: (_, __) => Container(
+            decoration: BoxDecoration(
+              color: _pressed
+                  ? cat.accent.withOpacity(0.08)
+                  : _C.card,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _pressed
+                    ? cat.accent.withOpacity(0.4)
+                    : _C.border,
+                width: _pressed ? 1.5 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: cat.accent.withOpacity(
+                      _pressed ? 0.2 : _glow.value * 0.08),
+                  blurRadius: _pressed ? 16 : 12,
+                  offset: const Offset(0, 4),
                 ),
               ],
             ),
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    // Icon
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 44, height: 44,
+                      decoration: BoxDecoration(
+                        color: cat.accent.withOpacity(
+                            _pressed ? 0.18 : 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: cat.accent.withOpacity(
+                              _pressed ? 0.4 : 0.2),
+                        ),
+                      ),
+                      child: Icon(cat.icon, color: cat.accent, size: 20),
+                    ),
+                    const Spacer(),
+                    // Count badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: cat.accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(7),
+                        border: Border.all(
+                            color: cat.accent.withOpacity(0.25)),
+                      ),
+                      child: Text(cat.count,
+                          style: TextStyle(
+                            color: cat.accent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          )),
+                    ),
+                  ]),
+
+                  const Spacer(),
+
+                  Text(cat.title,
+                      style: const TextStyle(
+                          color: _C.text, fontSize: 14,
+                          fontWeight: FontWeight.w700, height: 1.1)),
+                  const SizedBox(height: 3),
+                  Text(cat.subtitle,
+                      style: const TextStyle(
+                          color: _C.textSub, fontSize: 11)),
+
+                  const SizedBox(height: 10),
+
+                  // Bottom accent line
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    height: 2,
+                    width: _pressed ? 44 : 24,
+                    decoration: BoxDecoration(
+                      color: cat.accent.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Tool Sheet ───────────────────────────────────────────────────────────────
+class _ToolSheet extends StatelessWidget {
+  final List<_ToolItem> items;
+  const _ToolSheet({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.72,
+      ),
+      decoration: const BoxDecoration(
+        color: _C.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(
+          top:   BorderSide(color: _C.borderLit),
+          left:  BorderSide(color: _C.border),
+          right: BorderSide(color: _C.border),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 8),
+            width: 36, height: 4,
+            decoration: BoxDecoration(
+              color: _C.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
           ),
 
-          // Opsi-opsi
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: ListView(
-                children: options,
+          // Shimmer accent
+          Container(
+            height: 1,
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.transparent, _C.blueMid, Colors.transparent],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 8),
+
+          // Tool list
+          Flexible(
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              shrinkWrap: true,
+              physics: const BouncingScrollPhysics(),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (ctx, i) => _StaggerItem(
+                index: i,
+                child: _ToolRow(
+                  item: items[i],
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    items[i].onTap();
+                  },
+                ),
               ),
             ),
           ),
@@ -786,81 +517,215 @@ class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
       ),
     );
   }
+}
 
-  Widget _buildModalOption({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: accentBlue.withOpacity(0.2)),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [primaryBlue, accentBlue],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+// ─── Tool Row ─────────────────────────────────────────────────────────────────
+class _ToolRow extends StatefulWidget {
+  final _ToolItem item;
+  final VoidCallback onTap;
+
+  const _ToolRow({required this.item, required this.onTap});
+
+  @override
+  State<_ToolRow> createState() => _ToolRowState();
+}
+
+class _ToolRowState extends State<_ToolRow> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: _pressed
+              ? item.accent.withOpacity(0.08)
+              : _C.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: _pressed
+                ? item.accent.withOpacity(0.35)
+                : _C.border,
+          ),
+          boxShadow: _pressed
+              ? [BoxShadow(color: item.accent.withOpacity(0.1),
+                  blurRadius: 12, offset: const Offset(0, 4))]
+              : [],
+        ),
+        child: Row(children: [
+          // Icon
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 42, height: 42,
+            decoration: BoxDecoration(
+              color: item.accent.withOpacity(_pressed ? 0.18 : 0.1),
+              borderRadius: BorderRadius.circular(11),
+              border: Border.all(
+                  color: item.accent.withOpacity(_pressed ? 0.4 : 0.2)),
             ),
-            borderRadius: BorderRadius.circular(10),
+            child: Icon(item.icon, color: item.accent, size: 19),
           ),
-          child: Icon(icon, color: primaryWhite),
-        ),
-        title: Text(
-          label,
-          style: TextStyle(
-            color: primaryWhite,
-            fontFamily: 'Orbitron',
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        trailing: Container(
-          width: 30,
-          height: 30,
-          decoration: BoxDecoration(
-            color: accentBlue.withOpacity(0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.arrow_forward_ios, color: lightBlue, size: 14),
-        ),
-        onTap: onTap,
+          const SizedBox(width: 14),
+
+          // Label
+          Expanded(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(item.label,
+                  style: const TextStyle(color: _C.text, fontSize: 14,
+                      fontWeight: FontWeight.w700)),
+              if (item.comingSoon)
+                const Text('Coming Soon',
+                    style: TextStyle(color: _C.textSub, fontSize: 10,
+                        fontWeight: FontWeight.w500)),
+            ],
+          )),
+
+          // Arrow / badge
+          item.comingSoon
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _C.amber.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: _C.amber.withOpacity(0.25)),
+                  ),
+                  child: const Text('SOON',
+                      style: TextStyle(color: _C.amber, fontSize: 9,
+                          fontWeight: FontWeight.w800, letterSpacing: 0.5)),
+                )
+              : AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                    color: _pressed
+                        ? item.accent.withOpacity(0.15)
+                        : _C.surface,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: _pressed
+                          ? item.accent.withOpacity(0.3)
+                          : _C.border,
+                    ),
+                  ),
+                  child: Icon(Icons.arrow_forward_ios_rounded,
+                      color: _pressed ? item.accent : _C.textSub, size: 13),
+                ),
+        ]),
       ),
     );
   }
+}
 
-  void _showComingSoon(BuildContext context) {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.hourglass_top, color: primaryWhite),
-            const SizedBox(width: 8),
-            Text(
-              'Feature Coming Soon!',
-              style: TextStyle(
-                fontFamily: 'Orbitron',
-                fontWeight: FontWeight.bold,
-                color: primaryWhite,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: primaryBlue,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        duration: const Duration(seconds: 2),
+// ─── Stagger Item ─────────────────────────────────────────────────────────────
+class _StaggerItem extends StatelessWidget {
+  final int index;
+  final Widget child;
+  const _StaggerItem({required this.index, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 350 + (index * 70).clamp(0, 450)),
+      curve: Curves.easeOutCubic,
+      builder: (_, v, ch) => Opacity(
+        opacity: v,
+        child: Transform.translate(offset: Offset(0, 18 * (1 - v)), child: ch),
       ),
+      child: child,
     );
   }
+}
+
+// ─── Animated Background ──────────────────────────────────────────────────────
+class _AnimatedBg extends StatelessWidget {
+  final AnimationController controller;
+  const _AnimatedBg({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (_, __) =>
+          CustomPaint(painter: _BgPainter(controller.value)),
+    );
+  }
+}
+
+class _BgPainter extends CustomPainter {
+  final double t;
+  _BgPainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = _C.border.withOpacity(0.26)
+      ..strokeWidth = 0.5;
+    const step = 40.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+
+    // Top glow
+    final glow = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.steel.withOpacity(0.12 + math.sin(t * math.pi * 2) * 0.04),
+        Colors.transparent,
+      ], radius: 0.9).createShader(
+          Rect.fromCircle(center: Offset(size.width / 2, 0),
+              radius: size.width));
+    canvas.drawCircle(Offset(size.width / 2, 0), size.width, glow);
+
+    // Secondary bottom orb
+    final glow2 = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.blueMid.withOpacity(0.06 + math.cos(t * math.pi * 2) * 0.02),
+        Colors.transparent,
+      ], radius: 0.5).createShader(Rect.fromCircle(
+          center: Offset(size.width * 0.85, size.height * 0.75),
+          radius: size.width * 0.4));
+    canvas.drawCircle(
+        Offset(size.width * 0.85, size.height * 0.75), size.width * 0.4, glow2);
+  }
+
+  @override
+  bool shouldRepaint(_BgPainter old) => old.t != t;
+}
+
+// ─── Page transition helper ───────────────────────────────────────────────────
+PageRoute _slideRoute(Widget page) => PageRouteBuilder(
+  pageBuilder: (_, __, ___) => page,
+  transitionDuration: const Duration(milliseconds: 350),
+  transitionsBuilder: (_, anim, __, child) => SlideTransition(
+    position: Tween<Offset>(
+      begin: const Offset(1, 0), end: Offset.zero,
+    ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+    child: FadeTransition(opacity: anim, child: child),
+  ),
+);
+
+// ─── Data model ───────────────────────────────────────────────────────────────
+class _ToolItem {
+  final IconData icon;
+  final String label;
+  final Color accent;
+  final VoidCallback onTap;
+  final bool comingSoon;
+
+  const _ToolItem({
+    required this.icon, required this.label, required this.accent,
+    required this.onTap, this.comingSoon = false,
+  });
 }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -6,7 +7,37 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'splash.dart';
 
-const String baseUrl = "http://senzlinodepriv.senzhosting.my.id:11016";
+const String baseUrl = 'http://tirzzmalesddos.sano.biz.id:11478';
+
+// ─── Palette: Biru Modern ─────────────────────────────────────────────────────
+class _C {
+  static const bg         = Color(0xFF0A1929);      // Biru gelap background
+  static const surface    = Color(0xFF0F2B40);      // Biru tua surface
+  static const card       = Color(0xFF143D5C);      // Biru card
+  static const border     = Color(0xFF1A5A8A);      // Biru border
+  static const borderLit  = Color(0xFF2B7ABF);      // Biru terang border
+  
+  // Warna biru gradasi
+  static const blueDark   = Color(0xFF0A4D8C);
+  static const blueMid    = Color(0xFF1A6FB0);
+  static const blueLight  = Color(0xFF2D8FD9);
+  static const blueAccent = Color(0xFF4AA5F0);
+  
+  static const green      = Color(0xFF22C55E);
+  static const amber      = Color(0xFFF59E0B);
+  static const red        = Color(0xFFEF4444);
+  
+  static const text       = Color(0xFFF0F8FF);      // Putih kebiruan
+  static const textSub    = Color(0xFFB0D4F0);      // Biru muda
+  static const textDim    = Color(0xFF5A9BC0);      // Biru redup
+  
+  // Gradien biru
+  static const LinearGradient blueGrad = LinearGradient(
+    colors: [Color(0xFF1A6FB0), Color(0xFF0A4D8C), Color(0xFF063A6B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,513 +48,784 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage>
     with TickerProviderStateMixin {
-  final userController = TextEditingController();
-  final passController = TextEditingController();
-  final _formKey = GlobalKey<FormState>();
+  final userCtrl    = TextEditingController();
+  final passCtrl    = TextEditingController();
+  final _formKey    = GlobalKey<FormState>();
 
-  bool isLoading = false;
-  bool _obscurePassword = true;
-  String? androidId;
+  bool _isLoading       = false;
+  bool _obscurePass     = true;
+  String? _androidId;
 
-  late AnimationController _slideController;
-  late AnimationController _rotateController;
-  late Animation<Offset> _slideAnim;
-  late Animation<double> _rotateAnim;
+  // Animations
+  late AnimationController _bgCtrl;
+  late AnimationController _entranceCtrl;
+  late AnimationController _logoCtrl;
+  late AnimationController _btnCtrl;
+  late AnimationController _shakeCtrl;
+
+  late Animation<double> _fade;
+  late Animation<Offset>  _slide;
+  late Animation<double>  _logoGlow;
+  late Animation<double>  _btnPulse;
+  late Animation<double>  _shake;
 
   @override
   void initState() {
     super.initState();
-    _initAnim();
-    initLogin();
+
+    _bgCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 18))
+      ..repeat();
+
+    _entranceCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1000));
+    _fade  = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(
+            parent: _entranceCtrl, curve: Curves.easeOutCubic));
+
+    _logoCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2200))
+      ..repeat(reverse: true);
+    _logoGlow = Tween<double>(begin: 0.3, end: 0.85)
+        .animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInOut));
+
+    _btnCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1600))
+      ..repeat(reverse: true);
+    _btnPulse = Tween<double>(begin: 1.0, end: 1.03)
+        .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeInOut));
+
+    _shakeCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 500));
+    _shake = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 10.0, end: -7.0),  weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -7.0, end: 7.0),   weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 7.0, end: 0.0),    weight: 1),
+    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
+
+    _entranceCtrl.forward();
+    _initLogin();
   }
 
-  void _initAnim() {
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    )..forward();
-
-    _rotateController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 20),
-    )..repeat();
-
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic));
-
-    _rotateAnim = Tween<double>(begin: 0, end: 1).animate(_rotateController);
+  @override
+  void dispose() {
+    _bgCtrl.dispose();
+    _entranceCtrl.dispose();
+    _logoCtrl.dispose();
+    _btnCtrl.dispose();
+    _shakeCtrl.dispose();
+    userCtrl.dispose();
+    passCtrl.dispose();
+    super.dispose();
   }
 
-  Future<void> initLogin() async {
-    androidId = await getAndroidId();
+  // ─── Init auto-login ──────────────────────────────────────────────────────
+  Future<void> _initLogin() async {
+    final info = await DeviceInfoPlugin().androidInfo;
+    _androidId = info.id;
 
-    final prefs = await SharedPreferences.getInstance();
-    final savedUser = prefs.getString("username");
-    final savedPass = prefs.getString("password");
-    final savedKey = prefs.getString("key");
+    final prefs    = await SharedPreferences.getInstance();
+    final savedUser = prefs.getString('username');
+    final savedPass = prefs.getString('password');
+    final savedKey  = prefs.getString('key');
 
     if (savedUser != null && savedPass != null && savedKey != null) {
-      final uri = Uri.parse(
-          "$baseUrl/myInfo?username=$savedUser&password=$savedPass&androidId=$androidId&key=$savedKey");
-
       try {
-        final res = await http.get(uri);
+        final res  = await http.get(Uri.parse(
+            '$baseUrl/myInfo?username=$savedUser&password=$savedPass&androidId=$_androidId&key=$savedKey'));
         final data = jsonDecode(res.body);
 
-        if (data['valid'] == true) {
+        if (data['valid'] == true && mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(
-              builder: (_) => SplashScreen(
-                username: savedUser,
-                password: savedPass,
-                role: data['role'],
-                sessionKey: data['key'],
-                expiredDate: data['expiredDate'],
-                listBug: (data['listBug'] as List? ?? [])
-                    .map((e) => Map<String, dynamic>.from(e as Map))
-                    .toList(),
-                listDoos: (data['listDDoS'] as List? ?? [])
-                    .map((e) => Map<String, dynamic>.from(e as Map))
-                    .toList(),
-                news: (data['news'] as List? ?? [])
-                    .map((e) => Map<String, dynamic>.from(e as Map))
-                    .toList(),
-              ),
-            ),
+            MaterialPageRoute(builder: (_) => SplashScreen(
+              username: savedUser, password: savedPass,
+              role: data['role'], sessionKey: data['key'],
+              expiredDate: data['expiredDate'],
+              listBug:  _parseList(data['listBug']),
+              listDoos: _parseList(data['listDDoS']),
+              news:     _parseList(data['news']),
+            )),
           );
         }
       } catch (_) {}
     }
   }
 
-  Future<String> getAndroidId() async {
-    final deviceInfo = DeviceInfoPlugin();
-    final android = await deviceInfo.androidInfo;
-    return android.id ?? "unknown_device";
-  }
+  List<Map<String, dynamic>> _parseList(dynamic raw) =>
+      (raw as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
-  Future<void> login() async {
+  // ─── Login ────────────────────────────────────────────────────────────────
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-    final username = userController.text.trim();
-    final password = passController.text.trim();
 
-    setState(() => isLoading = true);
+    final username = userCtrl.text.trim();
+    final password = passCtrl.text.trim();
+
+    setState(() => _isLoading = true);
 
     try {
-      final validate = await http.post(
-        Uri.parse("$baseUrl/validate"),
-        body: {
-          "username": username,
-          "password": password,
-          "androidId": androidId ?? "unknown_device",
-        },
-      );
+      final res  = await http.post(Uri.parse('$baseUrl/validate'), body: {
+        'username': username,
+        'password': password,
+        'androidId': _androidId ?? 'unknown',
+      });
+      final data = jsonDecode(res.body);
 
-      final validData = jsonDecode(validate.body);
-
-      if (validData['expired'] == true) {
-        _showPopup(
-          title: "⏳ Access Expired",
-          message: "Your access has expired.\nPlease renew it.",
-          color: Colors.amber,
+      if (data['expired'] == true) {
+        _shakeCtrl.forward(from: 0);
+        _showAlert(
+          title:   'Akses Habis',
+          message: 'Masa akses Anda telah berakhir. Silakan perpanjang.',
+          type:    _AlertType.warning,
           showContact: true,
         );
-      } else if (validData['valid'] != true) {
-        _showPopup(
-          title: "❌ Login Failed",
-          message: "Invalid username or password.",
-          color: Colors.redAccent,
-        );
+      } else if (data['valid'] != true) {
+        _shakeCtrl.forward(from: 0);
+        final msg = (data['message'] ?? '').toString().toLowerCase();
+        if (msg.contains('perangkat') || msg.contains('device') ||
+            msg.contains('another')) {
+          _showAlert(
+            title:   'Sesi Aktif',
+            message: 'Akun ini sedang login di perangkat lain.',
+            type:    _AlertType.warning,
+          );
+        } else {
+          _showAlert(
+            title:   'Login Gagal',
+            message: 'Username atau password salah.',
+            type:    _AlertType.error,
+          );
+        }
       } else {
         final prefs = await SharedPreferences.getInstance();
-        prefs.setString("username", username);
-        prefs.setString("password", password);
-        prefs.setString("key", validData['key']);
+        prefs.setString('username', username);
+        prefs.setString('password', password);
+        prefs.setString('key', data['key']);
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SplashScreen(
-              username: username,
-              password: password,
-              role: validData['role'],
-              sessionKey: validData['key'],
-              expiredDate: validData['expiredDate'],
-              listBug: (validData['listBug'] as List? ?? [])
-                  .map((e) => Map<String, dynamic>.from(e as Map))
-                  .toList(),
-              listDoos: (validData['listDDoS'] as List? ?? [])
-                  .map((e) => Map<String, dynamic>.from(e as Map))
-                  .toList(),
-              news: (validData['news'] as List? ?? [])
-                  .map((e) => Map<String, dynamic>.from(e as Map))
-                  .toList(),
-            ),
-          ),
-        );
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => SplashScreen(
+              username: username, password: password,
+              role: data['role'], sessionKey: data['key'],
+              expiredDate: data['expiredDate'],
+              listBug:  _parseList(data['listBug']),
+              listDoos: _parseList(data['listDDoS']),
+              news:     _parseList(data['news']),
+            )),
+          );
+        }
       }
-    } catch (e) {
-      _showPopup(
-        title: "⚠️ Connection Error",
-        message: "Failed to connect to the server.\nPlease check your connection.",
-        color: Color(0xFF8B0000),
+    } catch (_) {
+      _shakeCtrl.forward(from: 0);
+      _showAlert(
+        title:   'Koneksi Error',
+        message: 'Gagal terhubung ke server. Periksa jaringan Anda.',
+        type:    _AlertType.error,
       );
     }
 
-    setState(() => isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
-  void _showPopup({
+  // ─── Alert dialog ─────────────────────────────────────────────────────────
+  void _showAlert({
     required String title,
     required String message,
-    Color color = Colors.redAccent,
+    required _AlertType type,
     bool showContact = false,
   }) {
-    showDialog(
+    final color = switch (type) {
+      _AlertType.error   => _C.red,
+      _AlertType.warning => _C.amber,
+      _AlertType.success => _C.green,
+    };
+    final icon = switch (type) {
+      _AlertType.error   => Icons.error_rounded,
+      _AlertType.warning => Icons.warning_amber_rounded,
+      _AlertType.success => Icons.check_circle_rounded,
+    };
+
+    showGeneralDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: Text(
-          title,
-          style: TextStyle(
-              color: color, fontWeight: FontWeight.bold, fontSize: 18),
-        ),
-        content: Text(
-          message,
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
-        ),
-        actions: [
-          if (showContact)
-            TextButton(
-              onPressed: () async {
-                await launchUrl(Uri.parse("https://t.me/RizzXybsRols"),
-                    mode: LaunchMode.externalApplication);
-              },
-              child: const Text(
-                "Contact Admin",
-                style: TextStyle(color: Color(0xFFDC143C)),
-              ),
-            ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child:
-            const Text("Close", style: TextStyle(color: Colors.white54)),
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 320),
+      transitionBuilder: (_, anim, __, child) => ScaleTransition(
+        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        child: FadeTransition(opacity: anim, child: child),
+      ),
+      pageBuilder: (ctx, _, __) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _C.card,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+            boxShadow: [
+              BoxShadow(color: color.withOpacity(0.15), blurRadius: 50),
+            ],
           ),
-        ],
+          padding: const EdgeInsets.all(28),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: 56, height: 56,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: color.withOpacity(0.1),
+                border: Border.all(color: color.withOpacity(0.3)),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(color: _C.text,
+                fontSize: 18, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center,
+                style: const TextStyle(color: _C.textSub,
+                    fontSize: 13, height: 1.5)),
+            const SizedBox(height: 22),
+            if (showContact) ...[
+              _GradBtn(
+                label: 'Hubungi Admin',
+                fullWidth: true,
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await launchUrl(Uri.parse('https://t.me/RamzMd'),
+                      mode: LaunchMode.externalApplication);
+                },
+              ),
+              const SizedBox(height: 10),
+            ],
+            _OutlineBtn(
+              label: showContact ? 'Tutup' : 'OK',
+              fullWidth: true,
+              onTap: () => Navigator.pop(ctx),
+            ),
+          ]),
+        ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _slideController.dispose();
-    _rotateController.dispose();
-    userController.dispose();
-    passController.dispose();
-    super.dispose();
-  }
-
+  // ─── Build ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF1A0000), Color(0xFF0A0A0A), Color(0xFF1A0000)],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -100,
-              left: -100,
-              child: AnimatedBuilder(
-                animation: _rotateAnim,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: _rotateAnim.value * 2 * 3.14159,
-                    child: Container(
-                      width: 300,
-                      height: 300,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Color(0xFFDC143C).withOpacity(0.1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            Positioned(
-              bottom: -150,
-              right: -150,
-              child: AnimatedBuilder(
-                animation: _rotateAnim,
-                builder: (context, child) {
-                  return Transform.rotate(
-                    angle: -_rotateAnim.value * 2 * 3.14159,
-                    child: Container(
-                      width: 400,
-                      height: 400,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Color(0xFF8B0000).withOpacity(0.1),
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            Center(
+      backgroundColor: _C.bg,
+      body: Stack(
+        children: [
+          Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fade,
               child: SlideTransition(
-                position: _slideAnim,
-                child: Container(
-                  margin: const EdgeInsets.all(24),
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.4),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(
-                      color: Color(0xFFDC143C).withOpacity(0.3),
-                      width: 1,
+                position: _slide,
+                child: Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildLogo(),
+                        const SizedBox(height: 32),
+                        _buildHeading(),
+                        const SizedBox(height: 36),
+                        AnimatedBuilder(
+                          animation: _shake,
+                          builder: (_, child) => Transform.translate(
+                            offset: Offset(_shake.value, 0),
+                            child: child,
+                          ),
+                          child: _buildForm(),
+                        ),
+                        const SizedBox(height: 28),
+                        _buildFooter(),
+                      ],
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.5),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFDC143C), Color(0xFF8B0000)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Color(0xFFDC143C).withOpacity(0.5),
-                              blurRadius: 15,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: ClipOval(
-                          child: Image.asset(
-                            'assets/images/logo.jpg',
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      const Text(
-                        "𝐌𝐚𝐧𝐭𝐚 𝐗 𝐑𝐚𝐭",
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      const Text(
-                        "Please Log-in",
-                        style: TextStyle(
-                          color: Colors.white54,
-                          fontSize: 14,
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          children: [
-                            _buildMinimalInput(
-                              userController,
-                              "Username",
-                              Icons.person,
-                            ),
-
-                            const SizedBox(height: 16),
-
-                            _buildMinimalInput(
-                              passController,
-                              "Password",
-                              Icons.lock,
-                              isPassword: true,
-                            ),
-
-                            const SizedBox(height: 32),
-
-                            _buildMinimalButton(),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
             ),
-
-            Positioned(
-              top: 40,
-              left: 24,
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Color(0xFFDC143C),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-
-            Positioned(
-              top: 40,
-              right: 24,
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Color(0xFF8B0000),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalInput(TextEditingController controller, String label, IconData icon, {bool isPassword = false}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: isPassword ? _obscurePassword : false,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          hintText: label,
-          hintStyle: const TextStyle(color: Colors.white38),
-          prefixIcon: Icon(icon, color: Color(0xFFDC143C).withOpacity(0.7)),
-          suffixIcon: isPassword
-              ? IconButton(
-            icon: Icon(
-              _obscurePassword
-                  ? Icons.visibility_off
-                  : Icons.visibility,
-              color: Colors.white38,
-              size: 20,
-            ),
-            onPressed: () {
-              setState(() {
-                _obscurePassword = !_obscurePassword;
-              });
-            },
-          )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(
-              color: Color(0xFFDC143C).withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(
-              color: Color(0xFFDC143C),
-              width: 2,
-            ),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalButton() {
-    return Container(
-      width: double.infinity,
-      height: 50,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        gradient: LinearGradient(
-          colors: [Color(0xFFDC143C), Color(0xFF8B0000)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0xFFDC143C).withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : login,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    );
+  }
+
+  // ─── Logo ─────────────────────────────────────────────────────────────────
+  Widget _buildLogo() {
+    return AnimatedBuilder(
+      animation: _logoGlow,
+      builder: (_, __) => Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer ring
+          Container(
+            width: 120, height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _C.blueLight.withOpacity(_logoGlow.value * 0.2),
+                width: 1,
+              ),
+            ),
           ),
-          elevation: 0,
-        ),
-        child: isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          // Mid ring
+          Container(
+            width: 100, height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _C.blueMid.withOpacity(_logoGlow.value * 0.35),
+                width: 1.5,
+              ),
+            ),
           ),
-        )
-            : const Text(
-          "LOGIN",
+          // Core
+          Hero(
+            tag: 'logo',
+            child: Container(
+              width: 80, height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF143D5C), Color(0xFF1A5A8A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: _C.blueAccent.withOpacity(_logoGlow.value * 0.6),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _C.blueMid.withOpacity(_logoGlow.value * 0.5),
+                    blurRadius: 28,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.asset('assets/images/logo.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.water_rounded, color: _C.blueAccent, size: 36)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeading() {
+    return Column(children: [
+      ShaderMask(
+        shaderCallback: (b) => const LinearGradient(
+          colors: [_C.blueAccent, _C.blueLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(b),
+        child: const Text(
+          'Welcome Back',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 1.2,
+            fontSize: 28,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+            letterSpacing: -0.5,
+          ),
+        ),
+      ),
+      const SizedBox(height: 6),
+      const Text('Masukan akunmu untuk melanjutkan',
+          style: TextStyle(color: _C.textSub, fontSize: 14)),
+    ]);
+  }
+
+  // ─── Form ─────────────────────────────────────────────────────────────────
+  Widget _buildForm() {
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: _C.card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _C.border),
+        boxShadow: [
+          BoxShadow(color: _C.blueDark.withOpacity(0.3),
+              blurRadius: 30, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(children: [
+          // Username field - tanpa label
+          _LoginField(
+            controller: userCtrl,
+            hintText: 'Username',
+            prefixIcon: Icons.person_outline_rounded,
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Username tidak boleh kosong' : null,
+          ),
+          const SizedBox(height: 14),
+
+          // Password field - tanpa label
+          _LoginField(
+            controller: passCtrl,
+            hintText: 'Password',
+            prefixIcon: Icons.lock_outline_rounded,
+            obscure: _obscurePass,
+            onToggleObscure: () =>
+                setState(() => _obscurePass = !_obscurePass),
+            validator: (v) => (v == null || v.isEmpty)
+                ? 'Password tidak boleh kosong' : null,
+          ),
+          const SizedBox(height: 24),
+
+          // Submit button
+          _LoginButton(
+            isLoading: _isLoading,
+            pulseAnim: _btnPulse,
+            onTap: _login,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(children: [
+      const SizedBox(height: 10),
+      Text('© 2026 Copyright By Tramsflok',
+          style: TextStyle(color: _C.textDim, fontSize: 11)),
+    ]);
+  }
+}
+
+// ─── Login Field (tanpa label, dengan hint) ───────────────────────────────────
+class _LoginField extends StatefulWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final IconData prefixIcon;
+  final bool obscure;
+  final VoidCallback? onToggleObscure;
+  final String? Function(String?)? validator;
+
+  const _LoginField({
+    required this.controller,
+    required this.hintText,
+    required this.prefixIcon,
+    this.obscure = false,
+    this.onToggleObscure,
+    this.validator,
+  });
+
+  @override
+  State<_LoginField> createState() => _LoginFieldState();
+}
+
+class _LoginFieldState extends State<_LoginField> {
+  bool _focused = false;
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() => _focused = _focus.hasFocus));
+  }
+
+  @override
+  void dispose() { _focus.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: _C.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _focused ? _C.blueLight : _C.border,
+          width: _focused ? 1.5 : 1.0,
+        ),
+        boxShadow: _focused
+            ? [BoxShadow(color: _C.blueMid.withOpacity(0.2),
+                blurRadius: 14, offset: const Offset(0, 4))]
+            : [],
+      ),
+      child: TextFormField(
+        controller: widget.controller,
+        focusNode: _focus,
+        obscureText: widget.obscure,
+        validator: widget.validator,
+        style: const TextStyle(color: _C.text, fontSize: 15,
+            fontWeight: FontWeight.w500),
+        cursorColor: _C.blueLight,
+        decoration: InputDecoration(
+          hintText: widget.hintText,
+          hintStyle: TextStyle(color: _C.textSub.withOpacity(0.7), fontSize: 14),
+          prefixIcon: Icon(widget.prefixIcon,
+              color: _focused ? _C.blueLight : _C.textSub, size: 20),
+          suffixIcon: widget.onToggleObscure != null
+              ? IconButton(
+                  icon: Icon(
+                    widget.obscure
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    color: _C.textSub, size: 20,
+                  ),
+                  onPressed: widget.onToggleObscure,
+                )
+              : null,
+          errorStyle: const TextStyle(color: _C.red, fontSize: 11),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Login Button ─────────────────────────────────────────────────────────────
+class _LoginButton extends StatefulWidget {
+  final bool isLoading;
+  final Animation<double> pulseAnim;
+  final VoidCallback onTap;
+
+  const _LoginButton({
+    required this.isLoading,
+    required this.pulseAnim,
+    required this.onTap,
+  });
+
+  @override
+  State<_LoginButton> createState() => _LoginButtonState();
+}
+
+class _LoginButtonState extends State<_LoginButton> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) {
+        setState(() => _down = false);
+        if (!widget.isLoading) widget.onTap();
+      },
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedBuilder(
+        animation: widget.pulseAnim,
+        builder: (_, __) => Transform.scale(
+          scale: widget.isLoading || _down ? 1.0 : widget.pulseAnim.value,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            height: 54,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: _C.blueGrad,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: _down || widget.isLoading
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: _C.blueMid.withOpacity(
+                            widget.pulseAnim.value * 0.5),
+                        blurRadius: 22,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+            ),
+            child: Center(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: widget.isLoading
+                    ? const SizedBox(
+                        key: ValueKey('loading'),
+                        width: 20, height: 20,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2.5, color: Colors.white),
+                      )
+                    : const Row(
+                        key: ValueKey('idle'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.login_rounded,
+                              color: Colors.white, size: 18),
+                          SizedBox(width: 10),
+                          Text('Login',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              )),
+                        ],
+                      ),
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 }
+
+// ─── Gradient Button ──────────────────────────────────────────────────────────
+class _GradBtn extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool fullWidth;
+
+  const _GradBtn({required this.label, required this.onTap,
+      this.fullWidth = false});
+
+  @override
+  State<_GradBtn> createState() => _GradBtnState();
+}
+
+class _GradBtnState extends State<_GradBtn> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.96 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        child: Container(
+          height: 46,
+          width: widget.fullWidth ? double.infinity : null,
+          decoration: BoxDecoration(
+            gradient: _C.blueGrad,
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: _down ? [] : [
+              BoxShadow(color: _C.blueMid.withOpacity(0.3),
+                  blurRadius: 14, offset: const Offset(0, 4)),
+            ],
+          ),
+          child: Center(
+            child: Text(widget.label,
+                style: const TextStyle(color: Colors.white,
+                    fontWeight: FontWeight.w700, fontSize: 14)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Outline Button ───────────────────────────────────────────────────────────
+class _OutlineBtn extends StatefulWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool fullWidth;
+
+  const _OutlineBtn({required this.label, required this.onTap,
+      this.fullWidth = false});
+
+  @override
+  State<_OutlineBtn> createState() => _OutlineBtnState();
+}
+
+class _OutlineBtnState extends State<_OutlineBtn> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        height: 46,
+        width: widget.fullWidth ? double.infinity : null,
+        decoration: BoxDecoration(
+          color: _down ? _C.border.withOpacity(0.5) : Colors.transparent,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: _C.border),
+        ),
+        child: Center(
+          child: Text(widget.label,
+              style: const TextStyle(color: _C.textSub,
+                  fontWeight: FontWeight.w600, fontSize: 14)),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Animated Background ──────────────────────────────────────────────────────
+class _AnimatedBg extends StatelessWidget {
+  final AnimationController controller;
+  const _AnimatedBg({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (_, __) =>
+          CustomPaint(painter: _BgPainter(controller.value)),
+    );
+  }
+}
+
+class _BgPainter extends CustomPainter {
+  final double t;
+  _BgPainter(this.t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final grid = Paint()
+      ..color = _C.border.withOpacity(0.2)
+      ..strokeWidth = 0.5;
+    const step = 40.0;
+    for (double x = 0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
+    }
+    for (double y = 0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+    
+    // Glow biru utama
+    final glow = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.blueMid.withOpacity(0.12 + math.sin(t * math.pi * 2) * 0.04),
+        Colors.transparent,
+      ], radius: 0.75).createShader(Rect.fromCircle(
+          center: Offset(size.width / 2, size.height * 0.35),
+          radius: size.width * 0.7));
+    canvas.drawCircle(
+        Offset(size.width / 2, size.height * 0.35), size.width * 0.7, glow);
+
+    // Secondary subtle orb biru
+    final glow2 = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.blueLight.withOpacity(0.08 + math.cos(t * math.pi * 2) * 0.03),
+        Colors.transparent,
+      ], radius: 0.5).createShader(Rect.fromCircle(
+          center: Offset(size.width * 0.1, size.height * 0.7),
+          radius: size.width * 0.4));
+    canvas.drawCircle(
+        Offset(size.width * 0.1, size.height * 0.7), size.width * 0.4, glow2);
+  }
+
+  @override
+  bool shouldRepaint(_BgPainter old) => old.t != t;
+}
+
+enum _AlertType { error, warning, success }

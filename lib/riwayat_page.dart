@@ -3,7 +3,34 @@ import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'api_config.dart';
+
+// ─── Palette: Biru Modern (sama dengan halaman lain) ─────────────────────────
+class _C {
+  static const bg         = Color(0xFF0A1929);      // Biru gelap background
+  static const surface    = Color(0xFF0F2B40);      // Biru tua surface
+  static const card       = Color(0xFF143D5C);      // Biru card
+  static const border     = Color(0xFF1A5A8A);      // Biru border
+  static const borderLit  = Color(0xFF2B7ABF);      // Biru terang border
+  
+  static const blueDark   = Color(0xFF0A4D8C);
+  static const blueMid    = Color(0xFF1A6FB0);
+  static const blueLight  = Color(0xFF2D8FD9);
+  static const blueAccent = Color(0xFF4AA5F0);
+  
+  static const green      = Color(0xFF22C55E);
+  static const amber      = Color(0xFFF59E0B);
+  static const red        = Color(0xFFEF4444);
+  
+  static const text       = Color(0xFFF0F8FF);      // Putih kebiruan
+  static const textSub    = Color(0xFFB0D4F0);      // Biru muda
+  static const textDim    = Color(0xFF5A9BC0);      // Biru redup
+  
+  static const LinearGradient btnGrad = LinearGradient(
+    colors: [Color(0xFF1A6FB0), Color(0xFF2D8FD9), Color(0xFF4AA5F0)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+}
 
 class RiwayatPage extends StatefulWidget {
   final String sessionKey;
@@ -20,16 +47,6 @@ class RiwayatPage extends StatefulWidget {
 }
 
 class _RiwayatPageState extends State<RiwayatPage> {
-  // --- TEMA WARNA CYAN ---
-  final Color bgDark = const Color(0xFF0B1A1A);
-  final Color primaryCyan = const Color(0xFF00ACC1);
-  final Color accentCyan = const Color(0xFF18FFFF);
-  final Color lightCyan = const Color(0xFF84FFFF);
-  final Color primaryWhite = Colors.white;
-  final Color accentGrey = Colors.grey.shade400;
-  final Color cardGlass = Colors.white.withOpacity(0.05);
-  final Color borderGlass = Colors.white.withOpacity(0.1);
-
   List<ActivityModel> activities = [];
   bool isLoading = true;
 
@@ -40,6 +57,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
   }
 
   Future<void> _loadActivities() async {
+    const baseUrl = "http://tirzzmalesddos.sano.biz.id:11478";
 
     try {
       final response = await http.get(
@@ -68,11 +86,11 @@ class _RiwayatPageState extends State<RiwayatPage> {
           setState(() => isLoading = false);
         }
       } else {
-        print("Server Error: ${response.statusCode}");
+        debugPrint("Server Error: ${response.statusCode}");
         setState(() => isLoading = false);
       }
     } catch (e) {
-      print("Error fetching history: $e");
+      debugPrint("Error fetching history: $e");
       setState(() => isLoading = false);
     }
   }
@@ -84,17 +102,17 @@ class _RiwayatPageState extends State<RiwayatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: bgDark,
+      backgroundColor: _C.bg,
       appBar: AppBar(
         title: Text(
           "Riwayat Aktivitas",
           style: TextStyle(
-            color: primaryWhite,
+            color: _C.text,
             fontFamily: 'Orbitron',
             fontWeight: FontWeight.bold,
             shadows: [
               Shadow(
-                color: primaryCyan.withOpacity(0.8),
+                color: _C.blueMid.withOpacity(0.8),
                 blurRadius: 10,
               ),
             ],
@@ -103,7 +121,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios, color: _C.text),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -113,49 +131,49 @@ class _RiwayatPageState extends State<RiwayatPage> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              bgDark,
-              primaryCyan.withOpacity(0.1),
-              bgDark,
+              _C.bg,
+              _C.blueDark.withOpacity(0.3),
+              _C.bg,
             ],
           ),
         ),
         child: isLoading
             ? const Center(
-          child: CircularProgressIndicator(
-            color: Color(0xFF00ACC1),
-          ),
-        )
+                child: CircularProgressIndicator(
+                  color: _C.blueMid,
+                ),
+              )
             : activities.isEmpty
-            ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.history_toggle_off, size: 60, color: accentGrey),
-              const SizedBox(height: 16),
-              Text(
-                "Belum ada aktivitas",
-                style: TextStyle(color: accentGrey, fontSize: 16),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Pastikan server aktif",
-                style: TextStyle(color: accentGrey.withOpacity(0.6), fontSize: 12),
-              ),
-            ],
-          ),
-        )
-            : RefreshIndicator(
-          onRefresh: _loadActivities,
-          color: accentCyan,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: activities.length,
-            itemBuilder: (context, index) {
-              final activity = activities[index];
-              return _buildActivityCard(activity);
-            },
-          ),
-        ),
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history_toggle_off, size: 60, color: _C.textDim),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Belum ada aktivitas",
+                          style: TextStyle(color: _C.textSub, fontSize: 16),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          "Pastikan server aktif",
+                          style: TextStyle(color: _C.textDim.withOpacity(0.6), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadActivities,
+                    color: _C.blueLight,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: activities.length,
+                      itemBuilder: (context, index) {
+                        final activity = activities[index];
+                        return _buildActivityCard(activity);
+                      },
+                    ),
+                  ),
       ),
     );
   }
@@ -167,22 +185,22 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
     switch (activity.type) {
       case 'login':
-        iconColor = Colors.greenAccent;
+        iconColor = _C.green;
         iconData = Icons.login_rounded;
         typeLabel = "LOGIN";
         break;
       case 'bug':
-        iconColor = Colors.orangeAccent;
+        iconColor = _C.amber;
         iconData = Icons.bug_report_outlined;
         typeLabel = "ATTACK";
         break;
       case 'create':
-        iconColor = accentCyan;
+        iconColor = _C.blueLight;
         iconData = Icons.person_add_alt_1_rounded;
         typeLabel = "ACCOUNT";
         break;
       default:
-        iconColor = accentGrey;
+        iconColor = _C.textDim;
         iconData = Icons.info_outline;
         typeLabel = "SYSTEM";
     }
@@ -191,12 +209,12 @@ class _RiwayatPageState extends State<RiwayatPage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: cardGlass,
+        color: _C.card.withOpacity(0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderGlass, width: 1),
+        border: Border.all(color: _C.border, width: 1),
         boxShadow: [
           BoxShadow(
-            color: primaryCyan.withOpacity(0.1),
+            color: _C.blueDark.withOpacity(0.15),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -226,7 +244,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
                       child: Text(
                         activity.title,
                         style: TextStyle(
-                          color: primaryWhite,
+                          color: _C.text,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -236,13 +254,13 @@ class _RiwayatPageState extends State<RiwayatPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: primaryCyan.withOpacity(0.3),
+                        color: _C.blueMid.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         typeLabel,
                         style: TextStyle(
-                          color: accentCyan,
+                          color: _C.blueLight,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1,
@@ -255,19 +273,19 @@ class _RiwayatPageState extends State<RiwayatPage> {
                 Text(
                   activity.description,
                   style: TextStyle(
-                    color: accentGrey,
+                    color: _C.textSub,
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.access_time, size: 12, color: accentGrey.withOpacity(0.7)),
+                    Icon(Icons.access_time, size: 12, color: _C.textDim.withOpacity(0.7)),
                     const SizedBox(width: 4),
                     Text(
                       _formatDate(activity.timestamp),
                       style: TextStyle(
-                        color: accentGrey.withOpacity(0.7),
+                        color: _C.textDim.withOpacity(0.7),
                         fontSize: 11,
                         fontFamily: 'ShareTechMono',
                       ),

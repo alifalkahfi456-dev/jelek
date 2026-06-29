@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'api_config.dart';
 
 class OwnerPage extends StatefulWidget {
   final String sessionKey;
@@ -59,7 +58,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('$baseUrl/listUsers?key=$sessionKey'),
+        Uri.parse('http://tirzzmalesddos.sano.biz.id:11478/listUsers?key=$sessionKey'),
       );
       final data = jsonDecode(res.body);
       if (data['valid'] == true && data['authorized'] == true) {
@@ -104,7 +103,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('$baseUrl/deleteUser?key=$sessionKey&username=$username'),
+        Uri.parse('http://tirzzmalesddos.sano.biz.id:11478/deleteUser?key=$sessionKey&username=$username'),
       );
       final data = jsonDecode(res.body);
 
@@ -134,7 +133,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        '$baseUrl/userAdd?key=$sessionKey&username=$u&password=$p&day=$d&role=$newUserRole',
+        'http://tirzzmalesddos.sano.biz.id:11478/userAdd?key=$sessionKey&username=$u&password=$p&day=$d&role=$newUserRole',
       );
       final res = await http.get(url);
       final data = jsonDecode(res.body);
@@ -167,7 +166,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        '$baseUrl/editUser?key=$sessionKey&username=$u&addDays=$d',
+        'http://tirzzmalesddos.sano.biz.id:11478/editUser?key=$sessionKey&username=$u&addDays=$d',
       );
       final res = await http.get(url);
       final data = jsonDecode(res.body);

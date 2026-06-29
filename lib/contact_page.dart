@@ -3,24 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-// ─── Palette (konsisten dengan halaman lain) ──────────────────────────────────
+// ─── Palette: Biru Modern (sama dengan halaman lain) ─────────────────────────
 class _C {
-  static const bg        = Color(0xFF060B14);
-  static const surface   = Color(0xFF0C1424);
-  static const card      = Color(0xFF101A2E);
-  static const border    = Color(0xFF1A2D4A);
-  static const borderLit = Color(0xFF1E3A5F);
-
-  static const blue      = Color(0xFF1B6FBD);
-  static const blueMid   = Color(0xFF2D8FE8);
-  static const blueLight = Color(0xFF56AEF5);
-
-  static const text      = Color(0xFFE2EDF9);
-  static const textSub   = Color(0xFF7A9BBF);
-  static const textDim   = Color(0xFF3A5470);
+  static const bg         = Color(0xFF0A1929);      // Biru gelap background
+  static const surface    = Color(0xFF0F2B40);      // Biru tua surface
+  static const card       = Color(0xFF143D5C);      // Biru card
+  static const border     = Color(0xFF1A5A8A);      // Biru border
+  static const borderLit  = Color(0xFF2B7ABF);      // Biru terang border
+  
+  static const blueDark   = Color(0xFF0A4D8C);
+  static const blueMid    = Color(0xFF1A6FB0);
+  static const blueLight  = Color(0xFF2D8FD9);
+  static const blueAccent = Color(0xFF4AA5F0);
+  
+  static const green      = Color(0xFF22C55E);
+  static const text       = Color(0xFFF0F8FF);      // Putih kebiruan
+  static const textSub    = Color(0xFFB0D4F0);      // Biru muda
+  static const textDim    = Color(0xFF5A9BC0);      // Biru redup
 }
 
-// ─── Contact data ─────────────────────────────────────────────────────────────
+// ─── Contact data (INSTAGRAM DIHAPUS) ─────────────────────────────────────────
 class _Contact {
   final String label;
   final String handle;
@@ -42,36 +44,29 @@ class _Contact {
 const _contacts = [
   _Contact(
     label:    'Telegram',
-    handle:   '@yanxz_emptiness',
+    handle:   '@RamzMd',
     icon:     FontAwesomeIcons.telegram,
     color:    Color(0xFF39A7E0),
     colorDim: Color(0xFF1A4D6E),
-    url:      'https://t.me/yanxz_emptiness',
+    url:      'https://t.me/RamzMd',
   ),
   _Contact(
     label:    'WhatsApp',
-    handle:   '+62 838-5036-4438',
+    handle:   '+62 857-9453-0375',
     icon:     FontAwesomeIcons.whatsapp,
     color:    Color(0xFF25D366),
     colorDim: Color(0xFF0D4A27),
-    url:      'https://wa.me/6283850364438',
+    url:      'https://wa.me/6285794530375',
   ),
   _Contact(
     label:    'TikTok',
-    handle:   '@yanxz_emptiness',
+    handle:   '@ramzofcial.id',
     icon:     FontAwesomeIcons.tiktok,
     color:    Color(0xFFEE1D52),
     colorDim: Color(0xFF4A0D1F),
-    url:      'https://www.tiktok.com/@yanxz_emptiness',
+    url:      'https://www.tiktok.com/@ramzofcial.id?_r=1&_t=ZS-95Xu8Hv3naq',
   ),
-  _Contact(
-    label:    'Instagram',
-    handle:   '@Unknow',
-    icon:     FontAwesomeIcons.instagram,
-    color:    Color(0xFFE1306C),
-    colorDim: Color(0xFF4A1030),
-    url:      'https://www.instagram.com/',
-  ),
+  // INSTAGRAM SUDAH DIHAPUS
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -255,7 +250,7 @@ class _ContactPageState extends State<ContactPage>
                           shape: BoxShape.circle,
                           gradient: LinearGradient(
                             colors: [
-                              _C.blue.withOpacity(0.9),
+                              _C.blueDark.withOpacity(0.9),
                               _C.blueMid,
                             ],
                             begin: Alignment.topLeft,
@@ -293,7 +288,7 @@ class _ContactPageState extends State<ContactPage>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Tim kami siap membantu kamu\nmelalui platform di bawah ini.',
+                'Halo pengguna apk Tramsflok ada kendala\nsilahkan hubungi akun kami di bawah ini.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _C.textSub,
@@ -320,7 +315,7 @@ class _ContactPageState extends State<ContactPage>
                       width: 7, height: 7,
                       decoration: const BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Color(0xFF22C55E),
+                        color: _C.green,
                         boxShadow: [
                           BoxShadow(
                             color: Color(0x5522C55E),
@@ -571,7 +566,7 @@ class _BgPainter extends CustomPainter {
     final glow = Paint()
       ..shader = RadialGradient(
         colors: [
-          _C.blue
+          _C.blueDark
               .withOpacity(0.10 + math.sin(t * math.pi * 2) * 0.03),
           Colors.transparent,
         ],

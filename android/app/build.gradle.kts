@@ -6,8 +6,8 @@ plugins {
 }
 
 android {
-    namespace = "com.nullx.evo"
-    compileSdk = 35
+    namespace = "com.nullx.cyber"
+    compileSdk = 36
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -20,8 +20,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nullx.evo"
-        minSdk = 23                         // ✅ ganti di sini
+        applicationId = "com.nullx.cyber"
+        minSdk = flutter.minSdkVersion                         // ✅ ganti di sini
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
