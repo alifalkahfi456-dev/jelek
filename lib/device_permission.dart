@@ -1,10 +1,9 @@
-import 'app_config.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-
+const _kBase = 'http://senzlinodepriv.senzhosting.my.id:10791';
 
 // ─── Permission Store — data disimpan di SERVER, bukan HP lokal ───────────────
 class DevicePermissionStore {
@@ -16,7 +15,7 @@ class DevicePermissionStore {
     }
     try {
       final res = await http.get(
-        Uri.parse('$kBaseUrl/devicePerms?key=$sessionKey&username=${Uri.encodeComponent(username)}'),
+        Uri.parse('$_kBase/devicePerms?key=$sessionKey&username=${Uri.encodeComponent(username)}'),
       ).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final d = jsonDecode(res.body);
@@ -39,7 +38,7 @@ class DevicePermissionStore {
       {required bool approved, required bool allDevices, required List<String> devices}) async {
     try {
       final res = await http.post(
-        Uri.parse('$kBaseUrl/setDevicePerm?key=$ownerKey'),
+        Uri.parse('$_kBase/setDevicePerm?key=$ownerKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'username': username,
@@ -66,7 +65,7 @@ class DevicePermissionStore {
   static Future<Map<String, dynamic>> getAll(String ownerKey) async {
     try {
       final res = await http.get(
-        Uri.parse('$kBaseUrl/listDevicePerms?key=$ownerKey'),
+        Uri.parse('$_kBase/listDevicePerms?key=$ownerKey'),
       ).timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final d = jsonDecode(res.body);
@@ -92,17 +91,17 @@ class PermissionResult {
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 class _C {
-  static const bg      = Color(0xFF020818);
-  static const s1      = Color(0xFF040F22);
-  static const s2      = Color(0xFF051525);
+  static const bg      = Color(0xFF120000);
+  static const s1      = Color(0xFF2A0000);
+  static const s2      = Color(0xFF3D0000);
   static const border  = Color(0xFF5C0000);
-  static const accent  = Color(0xFF1565C0);
-  static const accentL = Color(0xFF42A5F5);
+  static const accent  = Color(0xFFE53935);
+  static const accentL = Color(0xFFFF5252);
   static const green   = Color(0xFF4CAF50);
-  static const red     = Color(0xFF2979FF);
+  static const red     = Color(0xFFFF1744);
   static const textP   = Color(0xFFFFF0F5);
-  static const textS   = Color(0xFFBBDEFB);
-  static const textM   = Color(0xFF0A2472);
+  static const textS   = Color(0xFFFFCDD2);
+  static const textM   = Color(0xFF8B0000);
   static const white   = Color(0xFFFFFFFF);
 }
 
@@ -168,16 +167,16 @@ class _DPMState extends State<DevicePermissionManagerPage> {
     appBar: AppBar(
       backgroundColor: _C.s1,
       elevation: 0,
-      title: Text('Kelola Akses Device', style: TextStyle(color: _C.textP, fontSize: 15, fontWeight: FontWeight.bold)),
-      iconTheme: IconThemeData(color: _C.accentL),
+      title: const Text('Kelola Akses Device', style: TextStyle(color: _C.textP, fontSize: 15, fontWeight: FontWeight.bold)),
+      iconTheme: const IconThemeData(color: _C.accentL),
       actions: [
         if (_saving) const Padding(padding: EdgeInsets.only(right: 16),
           child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: _C.accentL, strokeWidth: 2))),
       ],
-      bottom: PreferredSize(preferredSize: Size.fromHeight(1), child: Container(height: 1, color: _C.border)),
+      bottom: PreferredSize(preferredSize: const Size.fromHeight(1), child: Container(height: 1, color: _C.border)),
     ),
     body: _loading
-        ? Center(child: CircularProgressIndicator(color: _C.accentL))
+        ? const Center(child: CircularProgressIndicator(color: _C.accentL))
         : Column(children: [
       // ─ Add user ──────────────────────────────────────────────────────
       Padding(padding: const EdgeInsets.all(14), child: Row(children: [
@@ -186,8 +185,8 @@ class _DPMState extends State<DevicePermissionManagerPage> {
           child: TextField(
             controller: _inputCtrl,
             onChanged: (v) => setState(() => _inputVal = v),
-            style: TextStyle(color: _C.textP, fontSize: 13),
-            decoration: InputDecoration(hintText: 'Ketik username...', hintStyle: TextStyle(color: _C.textM),
+            style: const TextStyle(color: _C.textP, fontSize: 13),
+            decoration: const InputDecoration(hintText: 'Ketik username...', hintStyle: TextStyle(color: _C.textM),
               prefixIcon: Icon(Icons.person_rounded, color: _C.textS, size: 18),
               border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 11, horizontal: 4)),
           ),
@@ -197,7 +196,7 @@ class _DPMState extends State<DevicePermissionManagerPage> {
           onTap: () => _addUser(_inputVal),
           child: Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
             decoration: BoxDecoration(color: _C.accent, borderRadius: BorderRadius.circular(10)),
-            child: Text('Tambah', style: TextStyle(color: _C.white, fontSize: 13, fontWeight: FontWeight.bold))),
+            child: const Text('Tambah', style: TextStyle(color: _C.white, fontSize: 13, fontWeight: FontWeight.bold))),
         ),
       ])),
 
@@ -205,15 +204,15 @@ class _DPMState extends State<DevicePermissionManagerPage> {
         Expanded(child: Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.group_off_rounded, color: _C.textM, size: 48),
           const SizedBox(height: 12),
-          Text('Belum ada user ditambahkan', style: TextStyle(color: _C.textS)),
+          const Text('Belum ada user ditambahkan', style: TextStyle(color: _C.textS)),
           const SizedBox(height: 6),
-          Text('Ketik username untuk memberi akses', style: TextStyle(color: _C.textM, fontSize: 11)),
+          const Text('Ketik username untuk memberi akses', style: TextStyle(color: _C.textM, fontSize: 11)),
         ])))
       else
         Expanded(child: SingleChildScrollView(padding: const EdgeInsets.fromLTRB(14, 0, 14, 20), child: Column(
           crossAxisAlignment: CrossAxisAlignment.start, children: [
           // User chips
-          Text('Pilih User:', style: TextStyle(color: _C.textS, fontSize: 11, letterSpacing: 1)),
+          const Text('Pilih User:', style: TextStyle(color: _C.textS, fontSize: 11, letterSpacing: 1)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 8, children: _users.map((u) {
             final active = u == _selectedUser;
@@ -243,9 +242,9 @@ class _DPMState extends State<DevicePermissionManagerPage> {
                 // Header + hapus
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Row(children: [
-                    Icon(Icons.person_rounded, color: _C.accentL, size: 16),
+                    const Icon(Icons.person_rounded, color: _C.accentL, size: 16),
                     const SizedBox(width: 8),
-                    Text(_selectedUser, style: TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(_selectedUser, style: const TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 15)),
                   ]),
                   GestureDetector(
                     onTap: () async {
@@ -258,11 +257,11 @@ class _DPMState extends State<DevicePermissionManagerPage> {
                       child: const Text('Hapus', style: TextStyle(color: Colors.pinkAccent, fontSize: 11))),
                   ),
                 ]),
-                Divider(color: _C.border, height: 20),
+                const Divider(color: _C.border, height: 20),
                 // Toggle approve
                 Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Setujui Akses', style: TextStyle(color: _C.textP, fontSize: 13)),
+                    const Text('Setujui Akses', style: TextStyle(color: _C.textP, fontSize: 13)),
                     Text(_approved(_selectedUser) ? 'User dapat akses sadap device' : 'Akses ditolak',
                       style: TextStyle(color: _approved(_selectedUser) ? Colors.greenAccent : Colors.pinkAccent, fontSize: 11)),
                   ]),
@@ -279,9 +278,9 @@ class _DPMState extends State<DevicePermissionManagerPage> {
                 decoration: BoxDecoration(color: _C.s1, borderRadius: BorderRadius.circular(14), border: Border.all(color: _C.border)),
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text('Pilih Device', style: TextStyle(color: _C.textS, fontSize: 11, letterSpacing: 1)),
+                    const Text('Pilih Device', style: TextStyle(color: _C.textS, fontSize: 11, letterSpacing: 1)),
                     const Spacer(),
-                    Text('${_devices(_selectedUser).length} dipilih', style: TextStyle(color: _C.accentL, fontSize: 11)),
+                    Text('${_devices(_selectedUser).length} dipilih', style: const TextStyle(color: _C.accentL, fontSize: 11)),
                   ]),
                   const SizedBox(height: 10),
                   if (widget.allDevices.isEmpty)
@@ -304,11 +303,11 @@ class _DPMState extends State<DevicePermissionManagerPage> {
                           const SizedBox(width: 10),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(model, style: TextStyle(color: allowed ? _C.textP : _C.textS, fontSize: 13, fontWeight: FontWeight.bold)),
-                            Text('ID: $id  •  IP: $ip', style: TextStyle(color: _C.textM, fontSize: 10)),
+                            Text('ID: $id  •  IP: $ip', style: const TextStyle(color: _C.textM, fontSize: 10)),
                           ])),
                           Checkbox(
                             value: allowed, activeColor: _C.accentL, checkColor: _C.bg,
-                            side: BorderSide(color: _C.border),
+                            side: const BorderSide(color: _C.border),
                             onChanged: (v) async {
                               final cur = List<String>.from(_devices(_selectedUser));
                               if (v == true) { if (!cur.contains(id)) cur.add(id); }

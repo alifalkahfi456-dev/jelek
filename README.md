@@ -1,4 +1,4 @@
-# xxo25
+# nomercy project
 
 Bug WhatsApp Crasher
 

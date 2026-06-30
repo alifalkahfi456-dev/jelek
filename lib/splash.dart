@@ -1,5 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'dashboard_page.dart';
 
@@ -30,62 +30,67 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  // ── Video Player ─────────────────────────────────────────────────────────
   late VideoPlayerController _videoController;
-  late AnimationController _fadeController;
-  bool _fadeOutStarted = false;
-  bool _videoReady = false;
-  bool _skipped = false;
+  late AnimationController _fadeInController;
+  late AnimationController _pulseController;
+  late AnimationController _tapHintController;
 
-  static const c1 = Color(0xFF020818);
-  static const c2 = Color(0xFF1565C0);
-  static const c3 = Color(0xFF020818);
+  late Animation<double> _fadeInAnim;
+  late Animation<double> _pulseAnim;
+  late Animation<double> _tapHintAnim;
+
+  bool _canSkip = false;
 
   @override
   void initState() {
     super.initState();
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-    _videoController = VideoPlayerController.asset("assets/videos/load.mp4")
+
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+
+    _videoController = VideoPlayerController.asset("assets/videos/splash.mp4")
       ..initialize().then((_) {
-        if (!mounted) return;
-        setState(() => _videoReady = true);
-        _videoController.setLooping(false);
+        setState(() {});
+        _videoController.setLooping(true);
+        _videoController.setVolume(0.5);
         _videoController.play();
-
-        _videoController.addListener(() {
-          if (!mounted || _skipped) return;
-          final position = _videoController.value.position;
-          final duration = _videoController.value.duration;
-
-          if (duration.inMilliseconds > 0 &&
-              position >= duration - const Duration(seconds: 1) &&
-              !_fadeOutStarted) {
-            _fadeOutStarted = true;
-            _fadeController.forward();
-          }
-
-          if (duration.inMilliseconds > 0 && position >= duration) {
-            _navigateToDashboard();
-          }
-        });
-      }).catchError((_) {
-        // fallback jika video gagal load
-        Future.delayed(const Duration(seconds: 2), _navigateToDashboard);
       });
-  }
 
-  void _skip() {
-    if (_skipped) return;
-    _skipped = true;
-    _videoController.pause();
-    _navigateToDashboard();
+    _fadeInController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _fadeInAnim = CurvedAnimation(
+      parent: _fadeInController,
+      curve: Curves.easeIn,
+    );
+    _fadeInController.forward();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+    _pulseAnim = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _tapHintController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _tapHintAnim = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _tapHintController, curve: Curves.easeInOut),
+    );
+
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (mounted) setState(() => _canSkip = true);
+    });
   }
 
   void _navigateToDashboard() {
     if (!mounted) return;
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => DashboardPage(
@@ -105,161 +110,181 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _videoController.dispose();
-    _fadeController.dispose();
+    _fadeInController.dispose();
+    _pulseController.dispose();
+    _tapHintController.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      backgroundColor: c3,
-      body: Stack(
-        alignment: Alignment.center,
-        children: [
-          // === 1. VIDEO ===
-          if (_videoReady && _videoController.value.isInitialized)
-            SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoController.value.size.width,
-                  height: _videoController.value.size.height,
-                  child: VideoPlayer(_videoController),
-                ),
+      backgroundColor: const Color(0xFF1A0A0A),
+      body: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _canSkip ? _navigateToDashboard : null,
+        child: Stack(
+          children: [
+            // ── 1. Background Video: splash.mp4 ────────────────────────────
+            Positioned.fill(
+              child: _videoController.value.isInitialized
+                  ? VideoPlayer(_videoController)
+                  : Container(
+                      color: const Color(0xFF1A0A0A),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFFF5252),
+                        ),
+                      ),
+                    ),
+            ),
+
+            // ── 2. Overlay hitam tipis di seluruh layar ────────────────────
+            Positioned.fill(
+              child: Container(
+                color: const Color(0xFF1A0A0A).withOpacity(0.55),
               ),
-            )
-          else
-            Container(
-              color: c3,
+            ),
+
+            // ── 3. Konten utama (logo + teks) ──────────────────────────────
+            FadeTransition(
+              opacity: _fadeInAnim,
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        color: c2,
-                        strokeWidth: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "Loading...",
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
-                        fontSize: 12,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // === 2. GRADIENT OVERLAY ===
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.transparent,
-                    c3.withOpacity(0.85),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.5, 1.0],
-                ),
-              ),
-            ),
-          ),
-
-          // === 3. LOGO ===
-          Positioned(
-            bottom: 90,
-            child: Column(
-              children: [
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [Color(0xFF42A5F5), Color(0xFF1565C0)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ).createShader(bounds),
-                  child: const Text(
-                    "AX RRG",
-                    style: TextStyle(
-                      fontSize: 35,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 4,
-                      fontFamily: 'Orbitron',
-                      shadows: [
-                        Shadow(
-                          color: Color(0xFF1565C0),
-                          blurRadius: 24,
-                          offset: Offset(0, 4),
+                    // Logo pulse
+                    ScaleTransition(
+                      scale: _pulseAnim,
+                      child: Container(
+                        width: 130,
+                        height: 130,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF5252).withOpacity(0.5),
+                              blurRadius: 40,
+                              spreadRadius: 6,
+                            ),
+                            BoxShadow(
+                              color: const Color(0xFFC62828).withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  "System Initializing...",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
-                    fontSize: 12,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // === 4. SKIP BUTTON ===
-          Positioned(
-            top: 48,
-            right: 20,
-            child: GestureDetector(
-              onTap: _skip,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white24),
-                ),
-                child: Row(
-                  children: [
-                    const Text(
-                      "Skip",
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        child: ClipOval(
+                          child: Image.asset(
+                            "assets/images/logo.png",
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(
-                      Icons.skip_next_rounded,
-                      color: Colors.white54,
-                      size: 16,
+
+                    const SizedBox(height: 28),
+
+                    // Judul "NoMercy Project"
+                    ShaderMask(
+                      shaderCallback: (bounds) => const LinearGradient(
+                        colors: [Color(0xFFFF5252), Color(0xFFFF8A8A), Color(0xFFFF5252)],
+                      ).createShader(bounds),
+                      child: Text(
+                        "NoMercy Project",
+                        style: TextStyle(
+                          fontSize: 38,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 3,
+                          fontFamily: 'Orbitron',
+                          shadows: [
+                            Shadow(
+                              color: const Color(0xFFFF5252).withOpacity(0.9),
+                              blurRadius: 18,
+                              offset: const Offset(2, 2),
+                            ),
+                            Shadow(
+                              color: const Color(0xFFC62828).withOpacity(0.6),
+                              blurRadius: 24,
+                              offset: const Offset(-2, -2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ── Overlay hitam + teks deskripsi ─────────────────────
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 36),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A0A0A).withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFC62828).withOpacity(0.35),
+                          width: 1.2,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFC62828).withOpacity(0.08),
+                            blurRadius: 20,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        "NoMercy Projectへようこそ。\n最新のエレガントで高級感のあるデザインをお楽しみください。\n最大限にご活用ください。",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: const Color(0xFFFF8A8A).withOpacity(0.9),
+                          fontSize: 13.5,
+                          height: 1.7,
+                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
 
-          // === 5. FADE OUT ===
-          if (_fadeOutStarted)
-            FadeTransition(
-              opacity: _fadeController.drive(
-                Tween(begin: 0.0, end: 1.0),
+            // ── 4. "tap to continue" — pojok bawah tengah ──────────────────
+            Positioned(
+              bottom: 48,
+              left: 0,
+              right: 0,
+              child: FadeTransition(
+                opacity: _fadeInAnim,
+                child: AnimatedBuilder(
+                  animation: _tapHintAnim,
+                  builder: (context, _) {
+                    return Opacity(
+                      opacity: _canSkip ? _tapHintAnim.value : 0.0,
+                      child: const Text(
+                        "tap to continue",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFFFF5252),
+                          fontSize: 12,
+                          letterSpacing: 2.5,
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-              child: Container(color: c3),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

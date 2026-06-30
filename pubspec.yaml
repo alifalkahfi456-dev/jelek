@@ -1,30 +1,30 @@
-name: xxo25
+name: nomercy
 description: "Bug WhatsApp Crasher"
 publish_to: 'none'
 version: 2.0.0
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ">=3.0.0 <4.0.0"  # Perbaiki: range versi yang valid
 
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.2.2
-  cached_network_image: ^3.3.0
+  http: ^0.13.5
+  image_picker: ^1.0.7
+  intl: ^0.19.0
   url_launcher: ^6.2.6
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
   device_info_plus: ^10.1.0
+  carousel_slider: 5.0.0
   web_socket_channel: ^2.4.0
-  network_info_plus: ^6.0.0
-  shimmer: ^3.0.0
+  network_info_plus: ^4.1.0
   permission_handler: ^11.0.0
   video_player: ^2.9.2
+  font_awesome_flutter: ^10.9.1
   path_provider: ^2.1.1
-  share_plus: ^10.0.0
-  chewie: ^1.4.0
-  audioplayers: ^6.1.0
-  image_picker: ^1.0.7
+  share_plus: ^7.0.1
+  chewie: ^1.5.2
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -38,25 +38,18 @@ flutter_launcher_icons:
   image_path_android: assets/icon/icon.jpg
   image_path_ios: assets/icon/icon/icon.jpg
   image_path: assets/icon/icon.jpg
-  min_sdk_android: 23
+  min_sdk_android: 21
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/logo.jpg
+    - assets/images/logo.png
+    - assets/images/reze.png
     - assets/videos/landing.mp4
+    - assets/videos/splash.mp4
     - assets/videos/banner.mp4
-    - assets/videos/bg.mp4
-    - assets/images/reven.png
-    - assets/images/icon.jpg
-    - assets/images/neken.jpg
-    - assets/images/wel.png
-    - assets/images/back.jpg
-    - assets/videos/login.mp4
-    - assets/videos/neven.mp4
-    - assets/videos/load.mp4
-    - assets/videos/vann.mp4
 
   fonts:
     - family: Orbitron
@@ -65,7 +58,3 @@ flutter:
     - family: ShareTechMono
       fonts:
         - asset: fonts/ShareTechMono-Regular.ttf
-
-dependency_overrides:
-  collection: ^1.18.0
-  meta: ^1.10.0

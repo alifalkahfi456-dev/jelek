@@ -16,14 +16,17 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   Map<String, dynamic>? _data;
   String? _errorMessage;
 
+  // --- TEMA CYAN/DARK ---
+  final Color primaryDark = const Color(0xFF0A0E14);
+  final Color primaryCyan = const Color(0xFF00BCD4);
+  final Color accentCyan = const Color(0xFF00E5FF);
+  final Color primaryWhite = Colors.white;
+  final Color accentGrey = Colors.grey.shade400;
+  final Color cardDark = const Color(0xFF0D1820);
+  final Color borderGlass = const Color(0xFF1A3A4A);
+
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
-
-  static const bloodRed = Color(0xFF040F22);
-  static const darkRed = Color(0xFF020818);
-  static const lightRed = Color(0xFFE040FB);
-  static const deepBlack = Color(0xFF020818);
-  static const cardDark = Color(0xFF040F22);
 
   @override
   void initState() {
@@ -98,10 +101,10 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
       decoration: BoxDecoration(
         color: cardDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
+        border: Border.all(color: primaryCyan.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: darkRed.withOpacity(0.2),
+            color: primaryCyan.withOpacity(0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -114,11 +117,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [darkRed, bloodRed],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
+              gradient: LinearGradient(colors: [primaryCyan, accentCyan]),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -126,12 +125,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             ),
             child: Row(
               children: [
-                Icon(icon, color: Colors.white, size: 20),
+                Icon(icon, color: primaryWhite, size: 20),
                 const SizedBox(width: 12),
                 Text(
                   title,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: primaryWhite,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'Orbitron',
@@ -163,9 +162,17 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: deepBlack,
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: darkRed.withOpacity(0.3)),
+        border: Border.all(color: primaryCyan.withOpacity(0.2)),
+        gradient: LinearGradient(
+          colors: [
+            Colors.transparent,
+            primaryCyan.withOpacity(0.05),
+          ],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +184,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 Text(
                   label,
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: accentGrey,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -186,7 +193,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 Text(
                   value,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: primaryWhite,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -195,12 +202,19 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             ),
           ),
           if (onCopy != null)
-            IconButton(
-              icon: Icon(copyIcon, color: lightRed, size: 20),
-              onPressed: onCopy,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40),
-              tooltip: 'Salin $label',
+            Container(
+              decoration: BoxDecoration(
+                color: primaryCyan.withOpacity(0.2),
+                shape: BoxShape.circle,
+                border: Border.all(color: primaryCyan.withOpacity(0.3)),
+              ),
+              child: IconButton(
+                icon: Icon(copyIcon, color: accentCyan, size: 18),
+                onPressed: onCopy,
+                padding: const EdgeInsets.all(6),
+                constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+                tooltip: 'Salin $label',
+              ),
             ),
         ],
       ),
@@ -211,12 +225,19 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$label disalin ke clipboard'),
-        backgroundColor: darkRed,
+        content: Text(
+          '$label disalin ke clipboard',
+          style: TextStyle(
+            color: primaryWhite,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: primaryCyan,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -224,7 +245,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
+      backgroundColor: primaryDark,
       appBar: AppBar(
         title: const Text(
           'NIK Check',
@@ -234,8 +255,10 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             color: Colors.white,
           ),
         ),
-        backgroundColor: darkRed,
+        backgroundColor: primaryDark,
         centerTitle: true,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SafeArea(
         child: Padding(
@@ -247,10 +270,10 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 decoration: BoxDecoration(
                   color: cardDark,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
+                  border: Border.all(color: primaryCyan.withOpacity(0.3)),
                   boxShadow: [
                     BoxShadow(
-                      color: darkRed.withOpacity(0.2),
+                      color: primaryCyan.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -261,34 +284,34 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                     TextField(
                       controller: _nikController,
                       keyboardType: TextInputType.number,
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(color: primaryWhite, fontSize: 16),
                       decoration: InputDecoration(
                         labelText: 'Masukkan NIK',
-                        labelStyle: TextStyle(color: Colors.white70),
+                        labelStyle: TextStyle(color: accentCyan),
                         hintText: 'Contoh: 5206085405880001',
-                        hintStyle: TextStyle(color: Colors.grey.shade600),
+                        hintStyle: TextStyle(color: accentGrey),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: darkRed.withOpacity(0.5)),
+                          borderSide: BorderSide(color: primaryCyan.withOpacity(0.5)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: bloodRed, width: 2),
+                          borderSide: BorderSide(color: accentCyan, width: 2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
-                        fillColor: deepBlack,
+                        fillColor: Colors.black.withOpacity(0.3),
                         suffixIcon: _isLoading
                             ? Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: bloodRed,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        )
+                                padding: const EdgeInsets.all(12.0),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: accentCyan,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
                             : null,
                       ),
                       onSubmitted: (_) => _checkNik(),
@@ -299,13 +322,14 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _checkNik,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: bloodRed,
-                          foregroundColor: Colors.white,
+                          backgroundColor: primaryCyan,
+                          foregroundColor: primaryWhite,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
+                          shadowColor: primaryCyan.withOpacity(0.5),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -314,7 +338,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                             const SizedBox(width: 8),
                             Text(
                               _isLoading ? 'MEMPROSES...' : 'CEK DATA NIK',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 fontFamily: 'Orbitron',
@@ -327,33 +351,29 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                   ],
                 ),
               ),
-
               const SizedBox(height: 20),
-
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: cardDark,
+                    color: primaryCyan.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: lightRed.withOpacity(0.5)),
+                    border: Border.all(color: primaryCyan.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: lightRed),
+                      Icon(Icons.error_outline, color: accentCyan),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.white, fontSize: 14),
+                          style: TextStyle(color: accentCyan, fontSize: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
-
               const SizedBox(height: 20),
-
               if (_data != null)
                 Expanded(
                   child: FadeTransition(
@@ -368,12 +388,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               _buildInteractiveInfoRow(
                                 label: "NIK",
                                 value: _data!["nik"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["nik"]?.toString() ?? "","NIK"),
+                                onCopy: () => _copyToClipboard(_data!["nik"]?.toString() ?? "", "NIK"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Nama Lengkap",
                                 value: _data!["data"]["nama"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["nama"]?.toString() ?? "","Nama"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["nama"]?.toString() ?? "", "Nama"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Jenis Kelamin",
@@ -382,7 +402,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               _buildInteractiveInfoRow(
                                 label: "Tempat Lahir",
                                 value: _data!["data"]["tempat_lahir"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["tempat_lahir"]?.toString() ?? "","Tempat Lahir"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["tempat_lahir"]?.toString() ?? "", "Tempat Lahir"),
                               ),
                               _buildInteractiveInfoRow(
                                 label: "Usia",
@@ -394,49 +414,25 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                             title: "DATA DOMISILI",
                             icon: Icons.location_on,
                             children: [
-                              _buildInteractiveInfoRow(
-                                label: "Provinsi",
-                                value: _data!["data"]["provinsi"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kabupaten/Kota",
-                                value: _data!["data"]["kabupaten"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kecamatan",
-                                value: _data!["data"]["kecamatan"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kelurahan/Desa",
-                                value: _data!["data"]["kelurahan"]?.toString(),
-                              ),
+                              _buildInteractiveInfoRow(label: "Provinsi", value: _data!["data"]["provinsi"]?.toString()),
+                              _buildInteractiveInfoRow(label: "Kabupaten/Kota", value: _data!["data"]["kabupaten"]?.toString()),
+                              _buildInteractiveInfoRow(label: "Kecamatan", value: _data!["data"]["kecamatan"]?.toString()),
+                              _buildInteractiveInfoRow(label: "Kelurahan/Desa", value: _data!["data"]["kelurahan"]?.toString()),
                               _buildInteractiveInfoRow(
                                 label: "Alamat Lengkap",
                                 value: _data!["data"]["alamat"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "","Alamat"),
+                                onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "", "Alamat"),
                               ),
-                              _buildInteractiveInfoRow(
-                                label: "TPS",
-                                value: _data!["data"]["tps"]?.toString(),
-                              ),
+                              _buildInteractiveInfoRow(label: "TPS", value: _data!["data"]["tps"]?.toString()),
                             ],
                           ),
                           _buildCategoryCard(
                             title: "INFORMASI TAMBAHAN",
                             icon: Icons.info,
                             children: [
-                              _buildInteractiveInfoRow(
-                                label: "Zodiak",
-                                value: _data!["data"]["zodiak"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Ultah Mendatang",
-                                value: _data!["data"]["ultah_mendatang"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Pasaran",
-                                value: _data!["data"]["pasaran"]?.toString(),
-                              ),
+                              _buildInteractiveInfoRow(label: "Zodiak", value: _data!["data"]["zodiak"]?.toString()),
+                              _buildInteractiveInfoRow(label: "Ultah Mendatang", value: _data!["data"]["ultah_mendatang"]?.toString()),
+                              _buildInteractiveInfoRow(label: "Pasaran", value: _data!["data"]["pasaran"]?.toString()),
                             ],
                           ),
                         ],

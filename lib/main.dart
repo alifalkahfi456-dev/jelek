@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'login_page.dart';
 import 'dashboard_page.dart';
 import 'home_page.dart';
 import 'seller_page.dart';
 import 'admin_page.dart';
+import 'owner_page.dart';
 import 'landing.dart';
-import 'splash.dart';
-import 'app_config.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await initServerConfig(); // auto fetch domain+port dari server
+void main() {
   runApp(const MyApp());
 }
 
@@ -22,71 +18,57 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'AX RRG',
+      title: 'NoMercy Project',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',
-        scaffoldBackgroundColor: const Color(0xFF020818),
-        colorScheme: const ColorScheme.dark().copyWith(
-          primary: const Color(0xFF1565C0),
-          secondary: const Color(0xFF42A5F5),
-          surface: const Color(0xFF040F22),
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: ColorScheme.dark().copyWith(
+          secondary: Colors.purple,
         ),
       ),
       initialRoute: '/',
       onGenerateRoute: (settings) {
         switch (settings.name) {
+          // === ROUTE UTAMA: LANDING PAGE ===
           case '/':
-            return MaterialPageRoute(builder: (_) => LandingPage());
+            return MaterialPageRoute(builder: (_) => const LandingPage());
+          
+          // === ROUTE LOGIN ===
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginPage());
           
-          // --- DASHBOARD ROUTE ---
-          case '/splash':
-            final args = settings.arguments as Map<String, dynamic>;
-            return MaterialPageRoute(
-              builder: (_) => SplashScreen(
-                username: args['username'],
-                password: args['password'],
-                role: ((args['role'] ?? '').toString()),
-                sessionKey: args['key'],
-                expiredDate: args['expiredDate'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
-                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []),
-                news: List<dynamic>.from(args['news'] ?? []),
-              ),
-            );
-
+          // === ROUTE DASHBOARD ===
           case '/dashboard':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => DashboardPage(
                 username: args['username'],
                 password: args['password'],
-                role: (args['role'] ?? '').toString(),
+                role: args['role'],
                 sessionKey: args['key'],
                 expiredDate: args['expiredDate'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), 
-                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), 
-                news: List<Map<String, dynamic>>.from(args['news'] ?? []), 
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
+                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []),
+                news: List<Map<String, dynamic>>.from(args['news'] ?? []),
               ),
             );
 
-          // --- HOME PAGE ROUTE (YANG DIPERBAIKI) ---
+          // === ROUTE HOME ===
           case '/home':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
               builder: (_) => HomePage(
-                isGroup: false, // <--- TAMBAHKAN INI (Default ke Bug Contact)
                 username: args['username'],
                 password: args['password'],
                 listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
-                role: (args['role'] ?? '').toString(),
+                role: args['role'],
                 expiredDate: args['expiredDate'],
                 sessionKey: args['sessionKey'],
               ),
             );
 
+          // === ROUTE SELLER ===
           case '/seller':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
@@ -95,6 +77,7 @@ class MyApp extends StatelessWidget {
               ),
             );
 
+          // === ROUTE ADMIN ===
           case '/admin':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
@@ -103,10 +86,33 @@ class MyApp extends StatelessWidget {
               ),
             );
 
+          // === ROUTE OWNER ===
+          case '/owner':
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => OwnerPage(
+                sessionKey: args['sessionKey'],
+                username: args['username'],
+              ),
+            );
+
+          // === DEFAULT 404 ===
           default:
             return MaterialPageRoute(
-              builder: (_) => const Scaffold(
-                body: Center(child: Text("404 - Not Found")),
+              builder: (_) => Scaffold(
+                body: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.error_outline, size: 80, color: Colors.red),
+                      const SizedBox(height: 20),
+                      Text(
+                        "404 - Page Not Found",
+                        style: TextStyle(color: Colors.white, fontSize: 18),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             );
         }

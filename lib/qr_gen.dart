@@ -4,7 +4,6 @@ import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'dart:ui';
 
 class QrGeneratorPage extends StatefulWidget {
   const QrGeneratorPage({super.key});
@@ -19,11 +18,20 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
   Uint8List? _qrImage;
   String? _errorMessage;
 
-  static const bloodRed = Color(0xFF040F22);
-  static const darkRed = Color(0xFF020818);
-  static const lightRed = Color(0xFFE040FB);
-  static const deepBlack = Color(0xFF020818);
-  static const cardDark = Color(0xFF040F22);
+  // --- TEMA MERAH GELAP ---
+  final Color bgDark = const Color(0xFF1A0A0A);
+  final Color cardDark = const Color(0xFF1A0A0A);
+  final Color primaryRed = const Color(0xFFC62828);
+  final Color accentRed = const Color(0xFFFF5252);
+  final Color primaryWhite = Colors.white;
+  final Color textGrey = Colors.grey.shade400;
+  final Color borderGlass = const Color(0xFF4A1A1A);
+
+  final LinearGradient redGradient = const LinearGradient(
+    colors: [Color(0xFF8B0000), Color(0xFFC62828), Color(0xFFFF5252)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   Future<void> _generateQR() async {
     final text = _textController.text.trim();
@@ -81,338 +89,231 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error sharing: $e'),
-          backgroundColor: darkRed,
+          content: Text('Error sharing: $e', style: TextStyle(color: primaryWhite)),
+          backgroundColor: primaryRed,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: bloodRed.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
     }
   }
 
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: bloodRed.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildGlassInputField() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-      ),
-      child: TextField(
-        controller: _textController,
-        style: TextStyle(color: Colors.white, fontSize: 16),
-        cursorColor: bloodRed,
-        decoration: InputDecoration(
-          labelText: 'Masukkan Text/URL',
-          labelStyle: TextStyle(color: Colors.white70),
-          hintText: 'Contoh: https://google.com',
-          hintStyle: TextStyle(color: Colors.white54),
-          prefixIcon: Icon(Icons.text_fields, color: bloodRed),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-        onSubmitted: (_) => _generateQR(),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-    bool isLoading = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.8),
-            color.withOpacity(0.6),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white,
-          ),
-        )
-            : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    bloodRed.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
+      backgroundColor: bgDark,
+      appBar: AppBar(
+        title: Text(
+          'QR GENERATOR',
+          style: TextStyle(
+            fontFamily: 'Orbitron',
+            fontWeight: FontWeight.bold,
+            color: primaryWhite,
           ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkRed.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
-              child: Padding(
+        ),
+        backgroundColor: bgDark,
+        centerTitle: true,
+        elevation: 0,
+        iconTheme: IconThemeData(color: primaryWhite),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: cardDark,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryRed.withOpacity(0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryRed.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
                 child: Column(
                   children: [
-                    _buildGlassCard(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.qr_code, color: bloodRed, size: 32),
-                          const SizedBox(width: 12),
-                          const Text(
-                            "QR GENERATOR",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
+                    TextField(
+                      controller: _textController,
+                      style: TextStyle(color: primaryWhite, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Masukkan Text/URL',
+                        labelStyle: TextStyle(color: accentRed),
+                        hintText: 'Contoh: https://google.com',
+                        hintStyle: TextStyle(color: textGrey),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: primaryRed.withOpacity(0.5)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: accentRed, width: 2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.black.withOpacity(0.3),
+                        suffixIcon: _isLoading
+                            ? Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    color: accentRed,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              )
+                            : null,
                       ),
+                      onSubmitted: (_) => _generateQR(),
                     ),
-
-                    const SizedBox(height: 24),
-
-                    _buildGlassCard(
-                      child: Column(
-                        children: [
-                          _buildGlassInputField(),
-                          const SizedBox(height: 16),
-                          _buildActionButton(
-                            text: "GENERATE QR",
-                            icon: Icons.qr_code,
-                            onPressed: _generateQR,
-                            color: bloodRed,
-                            isLoading: _isLoading,
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _generateQR,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryRed,
+                          foregroundColor: primaryWhite,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    if (_errorMessage != null)
-                      _buildGlassCard(
+                          elevation: 4,
+                          shadowColor: primaryRed.withOpacity(0.5),
+                        ),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.error_outline, color: lightRed),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: TextStyle(color: Colors.white70, fontSize: 14),
+                            Icon(_isLoading ? Icons.hourglass_top : Icons.qr_code, size: 20, color: primaryWhite),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isLoading ? 'GENERATING...' : 'GENERATE QR',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Orbitron',
+                                  color: primaryWhite
                               ),
                             ),
                           ],
                         ),
                       ),
-
-                    const SizedBox(height: 20),
-
-                    if (_qrImage != null)
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              if (_errorMessage != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.error_outline, color: Colors.redAccent),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: SingleChildScrollView(
+                        child: Text(
+                          _errorMessage!,
+                          style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 20),
+              if (_qrImage != null)
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: cardDark,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: primaryRed.withOpacity(0.3)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryRed.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
                           child: Column(
                             children: [
-                              _buildGlassCard(
-                                child: Column(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            cardDark,
-                                            cardDark.withOpacity(0.8),
-                                          ],
+                              Container(
+                                padding: EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: primaryWhite,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: primaryRed.withOpacity(0.5), width: 2),
+                                ),
+                                child: Image.memory(_qrImage!),
+                              ),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _shareQR,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: accentRed,
+                                    foregroundColor: primaryWhite,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 4,
+                                    shadowColor: accentRed.withOpacity(0.5),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.share, size: 20, color: primaryWhite),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'SHARE QR CODE',
+                                        style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            fontFamily: 'Orbitron',
+                                            color: primaryWhite
                                         ),
-                                        borderRadius: BorderRadius.circular(16),
-                                        border: Border.all(color: bloodRed.withOpacity(0.3)),
                                       ),
-                                      child: Image.memory(_qrImage!),
-                                    ),
-
-                                    const SizedBox(height: 20),
-
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            cardDark,
-                                            cardDark.withOpacity(0.8),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: bloodRed.withOpacity(0.2)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.text_snippet, color: bloodRed, size: 16),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              _textController.text,
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                                fontSize: 12,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 20),
-
-                                    _buildActionButton(
-                                      text: "SHARE QR CODE",
-                                      icon: Icons.share,
-                                      onPressed: _shareQR,
-                                      color: darkRed,
-                                      isLoading: false,
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-
-                              const SizedBox(height: 16),
-
-                              _buildGlassCard(
-                                padding: const EdgeInsets.all(16),
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: primaryRed.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: primaryRed.withOpacity(0.2)),
+                                ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.info, color: bloodRed, size: 20),
-                                    const SizedBox(width: 12),
+                                    Icon(Icons.info_outline, color: accentRed, size: 16),
+                                    SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "QR Code berhasil digenerate dari teks/URL",
+                                        'QR Code berhasil digenerate!',
                                         style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
+                                          color: accentRed,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ),
@@ -422,13 +323,47 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                             ],
                           ),
                         ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
+              if (_qrImage == null && !_isLoading && _errorMessage == null)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.qr_code_scanner,
+                          size: 80,
+                          color: primaryRed.withOpacity(0.3),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Generate QR Code',
+                          style: TextStyle(
+                            color: primaryWhite,
+                            fontSize: 18,
+                            fontFamily: 'Orbitron',
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Masukkan text atau URL untuk membuat QR Code',
+                          style: TextStyle(
+                            color: textGrey,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

