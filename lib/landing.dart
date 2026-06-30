@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -105,7 +105,7 @@ class _LandingPageState extends State<LandingPage> with SingleTickerProviderStat
               const SizedBox(height: 50),
 
               // Logo / Title
-              const Text('CHAN XITER',
+              const Text('AX RRG',
                 style: TextStyle(color: _txt, fontSize: 42, fontWeight: FontWeight.w900,
                   fontFamily: 'Orbitron', letterSpacing: 3,
                   shadows: [Shadow(color: _redL, blurRadius: 20)])),
@@ -161,7 +161,7 @@ class _LandingPageState extends State<LandingPage> with SingleTickerProviderStat
                         colors: [Colors.transparent, _bg.withOpacity(0.85)]))),
                   const Positioned(bottom: 16, left: 16, child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('CHAN XITER', style: TextStyle(color: _txt, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Orbitron')),
+                      Text('AX RRG', style: TextStyle(color: _txt, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Orbitron')),
                       SizedBox(height: 4),
                       Text('Log in or buy access to continue', style: TextStyle(color: _txtSub, fontSize: 12)),
                     ])),
@@ -213,14 +213,14 @@ class _LandingPageState extends State<LandingPage> with SingleTickerProviderStat
 
               // Telegram & WhatsApp buttons
               Row(children: [
-                Expanded(child: _socialBtn(FontAwesomeIcons.telegram, 'Telegram', _tele, 'https://t.me/Chanuuu123')),
+                Expanded(child: _socialBtn(Icons.telegram, 'Telegram', _tele, 'https://t.me/pemxx08')),
                 const SizedBox(width: 12),
-                Expanded(child: _socialBtn(FontAwesomeIcons.whatsapp, 'WhatsApp', _wa, 'https://wa.me/081361125951')),
+                Expanded(child: _socialBtn(Icons.chat_rounded, 'WhatsApp', _wa, 'https://wa.me/6287735450436')),
               ]),
               const SizedBox(height: 24),
 
               // Footer
-              Text('© 2026 CHAN XITER  •  All rights reserved',
+              Text('© 2025 AX RRG  •  All rights reserved',
                 style: TextStyle(color: _txtSub.withOpacity(0.5), fontSize: 11)),
               const SizedBox(height: 30),
             ]),

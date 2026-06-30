@@ -144,7 +144,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                   child: const Icon(Icons.security_rounded, color: Colors.white, size: 22)),
                 const SizedBox(width: 14),
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('CHAN XITER', style: TextStyle(
+                  const Text('AX RRG', style: TextStyle(
                     color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900,
                     fontFamily: 'Orbitron', letterSpacing: 2,
                     shadows: [Shadow(color: Color(0xAAFF1744), blurRadius: 12)])),

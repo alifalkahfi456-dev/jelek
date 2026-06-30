@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'CHAN XITER',
+      title: 'AX RRG',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',

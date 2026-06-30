@@ -12,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -1067,7 +1067,7 @@ class _DashboardPageState extends State<DashboardPage>
                       _fabItem(Icons.home_rounded,               "Home",            () { _onNavTapped(0); _toggleFab(); }),
                       _fabItem(Icons.animation_rounded,         "Drakin",          () { _onNavTapped(1); _toggleFab(); }),
                                             _fabItem(Icons.movie_filter_rounded,      "Anime",           () { _onNavTapped(3); _toggleFab(); }),
-                      _fabItem(FontAwesomeIcons.whatsapp,       "Bug WA",          () { _onNavTapped(4); _toggleFab(); }),
+                      _fabItem(Icons.bug_report_rounded,        "Bug WA",          () { _onNavTapped(4); _toggleFab(); }),
                       _fabItem(Icons.build_rounded,             "Tools",           () { _onNavTapped(5); _toggleFab(); }),
                       _fabDivider(),
                       _fabItem(Icons.bug_report_rounded,       "Bug Sender",      () { _toggleFab(); Navigator.push(context, MaterialPageRoute(builder: (_) => BugSenderPage(sessionKey: sessionKey, username: username, role: role))); }),

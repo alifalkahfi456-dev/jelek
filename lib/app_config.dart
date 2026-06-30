@@ -21,8 +21,8 @@ const int    _kDefaultPort   = 2172;
 
 // ── TOKEN BOT TELEGRAM — untuk fallback fetch config ──────────────────
 // Tidak perlu ganti, sudah otomatis dipakai saat server mati
-const String _kBotToken  = '8751814756:AAFHe-VYxQOVRPsYTwfc76yKHodOPTk-hxA';
-const int    _kOwnerId   = 8792779558; // chat_id owner tempat config dikirim
+const String _kBotToken  = '8522073495:AAFnrTr-lE2Jj6ggoMLre3okD7IL_tEnt-k';
+const int    _kOwnerId   = 1900096121; // chat_id owner tempat config dikirim
 
 // ── Runtime values — jangan ubah manual ───────────────────────────────
 String _kDomain = _kDefaultDomain;

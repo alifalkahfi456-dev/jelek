@@ -186,7 +186,7 @@ class _SplashScreenState extends State<SplashScreen>
                     end: Alignment.bottomCenter,
                   ).createShader(bounds),
                   child: const Text(
-                    "CHAN XITER",
+                    "AX RRG",
                     style: TextStyle(
                       fontSize: 35,
                       fontWeight: FontWeight.w900,

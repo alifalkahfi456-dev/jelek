@@ -11,19 +11,17 @@ dependencies:
     sdk: flutter
   http: ^1.2.2
   cached_network_image: ^3.3.0
-  youtube_player_flutter: ^9.1.0
   url_launcher: ^6.2.6
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
   device_info_plus: ^10.1.0
   web_socket_channel: ^2.4.0
-  network_info_plus: ^4.1.0
+  network_info_plus: ^6.0.0
   shimmer: ^3.0.0
   permission_handler: ^11.0.0
   video_player: ^2.9.2
-  font_awesome_flutter: ^10.7.0
   path_provider: ^2.1.1
-  share_plus: ^7.0.1
+  share_plus: ^10.0.0
   chewie: ^1.4.0
   audioplayers: ^6.1.0
   image_picker: ^1.0.7
@@ -67,8 +65,7 @@ flutter:
     - family: ShareTechMono
       fonts:
         - asset: fonts/ShareTechMono-Regular.ttf
+
 dependency_overrides:
-  package_info_plus: 4.1.0
   collection: ^1.18.0
   meta: ^1.10.0
-  wakelock_plus: 1.2.8

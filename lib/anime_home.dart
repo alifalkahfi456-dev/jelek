@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // --- CONFIG & THEME (DEEP VIOLET THEME) ---
 const String jikanBaseUrl = "https://api.jikan.moe/v4";
@@ -342,7 +342,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
 }
 
 // ==========================================
-// 2. DETAIL PAGE (Info & Trailer)
+// 2. DETAIL PAGE (Info & Trailer Link)
 // ==========================================
 class AnimeDetailPage extends StatefulWidget {
   final Anime anime;
@@ -353,25 +353,6 @@ class AnimeDetailPage extends StatefulWidget {
 }
 
 class _AnimeDetailPageState extends State<AnimeDetailPage> {
-  YoutubePlayerController? _trailerController;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.anime.trailerUrl != null) {
-      _trailerController = YoutubePlayerController(
-        initialVideoId: widget.anime.trailerUrl!,
-        flags: const YoutubePlayerFlags(autoPlay: false, mute: false, forceHD: true),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _trailerController?.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -452,21 +433,26 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  if (_trailerController != null) ...[
+                  if (widget.anime.trailerUrl != null) ...[
                     const Text("TRAILER", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
                     const SizedBox(height: 15),
-                    Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: mainViolet.withOpacity(0.5)),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(15),
-                        child: YoutubePlayer(
-                          controller: _trailerController!,
-                          showVideoProgressIndicator: true,
-                          progressIndicatorColor: accentViolet,
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.play_circle_filled),
+                        label: const Text("Watch Trailer on YouTube"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: deepViolet,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
+                        onPressed: () async {
+                          final url = "https://youtube.com/watch?v=${widget.anime.trailerUrl}";
+                          if (await canLaunchUrl(Uri.parse(url))) {
+                            await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -525,7 +511,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
 }
 
 // ==========================================
-// 3. STREAMING PAGE (Updated with Better Search)
+// 3. STREAMING PAGE
 // ==========================================
 class AnimeStreamPage extends StatefulWidget {
   final Anime anime;
@@ -536,9 +522,9 @@ class AnimeStreamPage extends StatefulWidget {
 }
 
 class _AnimeStreamPageState extends State<AnimeStreamPage> {
-  YoutubePlayerController? _ytController;
   bool _isSearching = true;
   String? _errorMsg;
+  String? _videoUrl;
   int _currentEpisode = 1;
   int _totalEpisodes = 24;
 
@@ -550,22 +536,15 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
     _searchVideo();
   }
 
-  @override
-  void dispose() {
-    _ytController?.dispose();
-    super.dispose();
-  }
-
   Future<void> _searchVideo() async {
     if (mounted) {
       setState(() {
         _isSearching = true;
         _errorMsg = null;
-        _ytController?.pause();
+        _videoUrl = null;
       });
     }
     
-    // --- QUERY VARIATIONS ---
     final queries = [
       "${widget.anime.title} Episode $_currentEpisode Subtitle Indonesia",
       "${widget.anime.title} Episode $_currentEpisode Sub Indo",
@@ -583,7 +562,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
         debugPrint("Searching: $query");
 
         final response = await http.post(
-          Uri.parse(videoSearchApi),
+          Uri.parse("https://api.siputzx.my.id/api/s/youtube"),
           body: jsonEncode({"query": query}),
           headers: {"Content-Type": "application/json"},
         );
@@ -593,18 +572,18 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
           
           if (data['data'] != null && (data['data'] as List).isNotEmpty) {
             var firstResult = data['data'][0];
+            String? videoUrl;
             
-            String? videoId;
-            if (firstResult['videoId'] != null) {
-              videoId = firstResult['videoId'];
-            } else if (firstResult['id'] != null) {
-              videoId = firstResult['id'];
-            } else if (firstResult['url'] != null) {
-              videoId = YoutubePlayer.convertUrlToId(firstResult['url']);
+            if (firstResult['url'] != null) {
+              videoUrl = firstResult['url'];
             }
 
-            if (videoId != null && videoId.isNotEmpty) {
-              _initPlayer(videoId);
+            if (videoUrl != null && videoUrl.isNotEmpty) {
+              if (mounted) {
+                setState(() {
+                  _videoUrl = videoUrl;
+                });
+              }
               found = true;
             }
           }
@@ -618,7 +597,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
       if (!found) {
         setState(() {
           _isSearching = false;
-          _errorMsg = "Episode $_currentEpisode tidak ditemukan di YouTube.\nMungkin terkena Copyright.";
+          _errorMsg = "Episode $_currentEpisode tidak ditemukan.\nMungkin terkena Copyright.";
         });
       } else {
         setState(() {
@@ -626,23 +605,6 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
           _errorMsg = null;
         });
       }
-    }
-  }
-
-  void _initPlayer(String videoId) {
-    if (_ytController != null) {
-      _ytController!.load(videoId);
-    } else {
-      _ytController = YoutubePlayerController(
-        initialVideoId: videoId,
-        flags: const YoutubePlayerFlags(
-          autoPlay: true,
-          mute: false,
-          forceHD: true,
-          enableCaption: true,
-          hideControls: false, 
-        ),
-      );
     }
   }
 
@@ -682,20 +644,25 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
                         ],
                       ),
                     )
-                  else
-                    YoutubePlayer(
-                      controller: _ytController!,
-                      showVideoProgressIndicator: true,
-                      progressIndicatorColor: accentViolet,
-                      progressColors: ProgressBarColors(
-                        playedColor: accentViolet,
-                        handleColor: accentViolet,
-                        backgroundColor: Colors.white24,
-                        bufferedColor: Colors.white10
+                  else if (_videoUrl != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.open_in_browser),
+                        label: const Text("Open in Browser"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: accentViolet,
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () async {
+                          if (await canLaunchUrl(Uri.parse(_videoUrl!))) {
+                            await launchUrl(Uri.parse(_videoUrl!), mode: LaunchMode.externalApplication);
+                          }
+                        },
                       ),
                     ),
                   
-                  // Tombol Back Custom
+                  // Back Button
                   Positioned(
                     top: 10,
                     left: 10,
@@ -759,7 +726,7 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
                         final isSelected = epNum == _currentEpisode;
                         return ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: isSelected ? mainViolet : cardBlack, // Selected Violet
+                            backgroundColor: isSelected ? mainViolet : cardBlack,
                             foregroundColor: Colors.white,
                             padding: EdgeInsets.zero,
                             shape: RoundedRectangleBorder(
@@ -768,7 +735,6 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
                             ),
                           ),
                           onPressed: () {
-                            // Jangan reload jika menekan episode yang sedang aktif
                             if (!isSelected) {
                               setState(() => _currentEpisode = epNum);
                               _searchVideo();
@@ -799,4 +765,3 @@ class _AnimeStreamPageState extends State<AnimeStreamPage> {
     );
   }
 }
-

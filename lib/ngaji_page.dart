@@ -43,7 +43,6 @@ class _NgajiPageState extends State<NgajiPage> {
   bool _isLoading     = false;
   String _statusMsg   = '';
   bool _loopAll       = false;
-  static const _wakeChannel = MethodChannel('com.nullx.pp/wake');
 
   // Qari (pembaca)
   final List<Map<String,String>> _qariList = [
@@ -80,7 +79,7 @@ class _NgajiPageState extends State<NgajiPage> {
     setState(() { _isLoading = true; _statusMsg = 'Memuat audio...'; });
     try {
       // Cegah HP sleep saat ngaji
-      try { await _wakeChannel.invokeMethod('acquireWakeLock'); } catch (_) {}
+      
 
       await _player.stop();
 
@@ -111,7 +110,7 @@ class _NgajiPageState extends State<NgajiPage> {
           _play();
         } else {
           setState(() { _isPlaying = false; _statusMsg = 'Surat selesai'; });
-          try { await _wakeChannel.invokeMethod('releaseWakeLock'); } catch (_) {}
+          
         }
       });
     } catch (e) {
@@ -121,7 +120,7 @@ class _NgajiPageState extends State<NgajiPage> {
 
   Future<void> _stop() async {
     await _player.stop();
-    try { await _wakeChannel.invokeMethod('releaseWakeLock'); } catch (_) {}
+    
     setState(() { _isPlaying = false; _statusMsg = 'Dihentikan'; });
   }
 
