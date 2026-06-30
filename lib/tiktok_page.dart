@@ -22,17 +22,16 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
 
-  // --- TEMA CYAN/DARK ---
-  final Color bgDark = const Color(0xFF0A0E14);
-  final Color cardDark = const Color(0xFF0D1820);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color accentCyan = const Color(0xFF00E5FF);
+  // --- TEMA WARNA CYAN ---
+  final Color bgDark = const Color(0xFF0B1A1A);
+  final Color cardDark = const Color(0xFF1A2A2A);
+  final Color primaryCyan = const Color(0xFF00ACC1);
+  final Color accentCyan = const Color(0xFF18FFFF);
   final Color primaryWhite = Colors.white;
   final Color textGrey = Colors.grey.shade400;
-  final Color borderGlass = const Color(0xFF1A3A4A);
 
   final LinearGradient cyanGradient = const LinearGradient(
-    colors: [Color(0xFF006064), Color(0xFF00BCD4), Color(0xFF00E5FF)],
+    colors: [Color(0xFF00ACC1), Color(0xFF18FFFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -205,16 +204,16 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                         prefixIcon: Icon(Icons.link, color: accentCyan),
                         suffixIcon: _isLoading
                             ? Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    color: accentCyan,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
+                          padding: const EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: accentCyan,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
                             : null,
                       ),
                     ),
@@ -254,29 +253,33 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.cyan.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: Colors.redAccent),
+                      Icon(Icons.error_outline, color: Colors.cyanAccent),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                          style: TextStyle(color: Colors.cyanAccent, fontSize: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
+
               const SizedBox(height: 20),
+
               if (_videoData != null)
                 Expanded(
                   child: SingleChildScrollView(
@@ -322,6 +325,7 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                                 ),
                               ),
                               const SizedBox(height: 16),
+
                               if (_chewieController != null)
                                 Container(
                                   decoration: BoxDecoration(
@@ -368,7 +372,9 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                                     ),
                                   ),
                                 ),
+
                               const SizedBox(height: 16),
+
                               if (_videoData?['metadata'] != null)
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -407,7 +413,9 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                                     ],
                                   ),
                                 ),
+
                               const SizedBox(height: 16),
+
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
@@ -447,6 +455,7 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
                     ),
                   ),
                 ),
+
               if (_videoData == null && !_isLoading && _errorMessage == null)
                 Expanded(
                   child: Center(

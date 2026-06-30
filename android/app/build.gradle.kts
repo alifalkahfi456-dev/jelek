@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.nomercyix.ibnuxt"
+    namespace = "com.nullx.cyber"
     compileSdk = 36
     ndkVersion = "27.0.12077973"
 
@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nomercyix.ibnuxt"
+        applicationId = "com.nullx.cyber"
         minSdk = flutter.minSdkVersion                         // ✅ ganti di sini
         targetSdk = 36
         versionCode = flutter.versionCode

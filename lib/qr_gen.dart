@@ -18,20 +18,13 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
   Uint8List? _qrImage;
   String? _errorMessage;
 
-  // --- TEMA MERAH GELAP ---
-  final Color bgDark = const Color(0xFF1A0A0A);
-  final Color cardDark = const Color(0xFF1A0A0A);
-  final Color primaryRed = const Color(0xFFC62828);
-  final Color accentRed = const Color(0xFFFF5252);
+  // --- TEMA WARNA CYAN ---
+  final Color bgDark = const Color(0xFF0B1A1A);
+  final Color cardDark = const Color(0xFF1A2A2A);
+  final Color primaryCyan = const Color(0xFF00ACC1);
+  final Color accentCyan = const Color(0xFF18FFFF);
   final Color primaryWhite = Colors.white;
   final Color textGrey = Colors.grey.shade400;
-  final Color borderGlass = const Color(0xFF4A1A1A);
-
-  final LinearGradient redGradient = const LinearGradient(
-    colors: [Color(0xFF8B0000), Color(0xFFC62828), Color(0xFFFF5252)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
 
   Future<void> _generateQR() async {
     final text = _textController.text.trim();
@@ -90,7 +83,7 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error sharing: $e', style: TextStyle(color: primaryWhite)),
-          backgroundColor: primaryRed,
+          backgroundColor: primaryCyan,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -128,10 +121,10 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                 decoration: BoxDecoration(
                   color: cardDark,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: primaryRed.withOpacity(0.3)),
+                  border: Border.all(color: primaryCyan.withOpacity(0.3)),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryRed.withOpacity(0.2),
+                      color: primaryCyan.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -144,31 +137,31 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                       style: TextStyle(color: primaryWhite, fontSize: 16),
                       decoration: InputDecoration(
                         labelText: 'Masukkan Text/URL',
-                        labelStyle: TextStyle(color: accentRed),
+                        labelStyle: TextStyle(color: accentCyan),
                         hintText: 'Contoh: https://google.com',
                         hintStyle: TextStyle(color: textGrey),
                         enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: primaryRed.withOpacity(0.5)),
+                          borderSide: BorderSide(color: primaryCyan.withOpacity(0.5)),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: accentRed, width: 2),
+                          borderSide: BorderSide(color: accentCyan, width: 2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.3),
                         suffixIcon: _isLoading
                             ? Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    color: accentRed,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
+                          padding: const EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: accentCyan,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
                             : null,
                       ),
                       onSubmitted: (_) => _generateQR(),
@@ -179,14 +172,14 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _generateQR,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryRed,
+                          backgroundColor: primaryCyan,
                           foregroundColor: primaryWhite,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 4,
-                          shadowColor: primaryRed.withOpacity(0.5),
+                          shadowColor: primaryCyan.withOpacity(0.5),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -209,29 +202,33 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.cyan.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: Colors.redAccent),
+                      Icon(Icons.error_outline, color: Colors.cyanAccent),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                          style: TextStyle(color: Colors.cyanAccent, fontSize: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
+
               const SizedBox(height: 20),
+
               if (_qrImage != null)
                 Expanded(
                   child: SingleChildScrollView(
@@ -242,10 +239,10 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                           decoration: BoxDecoration(
                             color: cardDark,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: primaryRed.withOpacity(0.3)),
+                            border: Border.all(color: primaryCyan.withOpacity(0.3)),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryRed.withOpacity(0.2),
+                                color: primaryCyan.withOpacity(0.2),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -258,7 +255,7 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                                 decoration: BoxDecoration(
                                   color: primaryWhite,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: primaryRed.withOpacity(0.5), width: 2),
+                                  border: Border.all(color: primaryCyan.withOpacity(0.5), width: 2),
                                 ),
                                 child: Image.memory(_qrImage!),
                               ),
@@ -268,14 +265,14 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                                 child: ElevatedButton(
                                   onPressed: _shareQR,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: accentRed,
+                                    backgroundColor: accentCyan,
                                     foregroundColor: primaryWhite,
                                     padding: const EdgeInsets.symmetric(vertical: 16),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 4,
-                                    shadowColor: accentRed.withOpacity(0.5),
+                                    shadowColor: accentCyan.withOpacity(0.5),
                                   ),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
@@ -299,19 +296,19 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                               Container(
                                 padding: EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: primaryRed.withOpacity(0.1),
+                                  color: primaryCyan.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: primaryRed.withOpacity(0.2)),
+                                  border: Border.all(color: primaryCyan.withOpacity(0.2)),
                                 ),
                                 child: Row(
                                   children: [
-                                    Icon(Icons.info_outline, color: accentRed, size: 16),
+                                    Icon(Icons.info_outline, color: accentCyan, size: 16),
                                     SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'QR Code berhasil digenerate!',
                                         style: TextStyle(
-                                          color: accentRed,
+                                          color: accentCyan,
                                           fontSize: 14,
                                           fontWeight: FontWeight.w500,
                                         ),
@@ -327,6 +324,7 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                     ),
                   ),
                 ),
+
               if (_qrImage == null && !_isLoading && _errorMessage == null)
                 Expanded(
                   child: Center(
@@ -336,7 +334,7 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> {
                         Icon(
                           Icons.qr_code_scanner,
                           size: 80,
-                          color: primaryRed.withOpacity(0.3),
+                          color: primaryCyan.withOpacity(0.3),
                         ),
                         SizedBox(height: 16),
                         Text(

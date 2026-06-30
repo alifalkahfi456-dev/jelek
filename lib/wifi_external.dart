@@ -20,17 +20,17 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
   bool isKilling = false;
   Timer? _loopTimer;
 
-  // --- TEMA CYAN/DARK ---
-  final Color bgDark = const Color(0xFF0A0E14);
-  final Color cardDark = const Color(0xFF0D1820);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color accentCyan = const Color(0xFF00E5FF);
+  // --- TEMA WARNA CYAN ---
+  final Color bgDark = const Color(0xFF0B1A1A);
+  final Color cardDark = const Color(0xFF1A2A2A);
+  final Color primaryCyan = const Color(0xFF00ACC1);
+  final Color accentCyan = const Color(0xFF18FFFF);
   final Color primaryWhite = Colors.white;
   final Color textGrey = Colors.grey.shade400;
-  final Color borderGlass = const Color(0xFF1A3A4A);
 
+  // Gradients
   final LinearGradient cyanGradient = const LinearGradient(
-    colors: [Color(0xFF006064), Color(0xFF00BCD4), Color(0xFF00E5FF)],
+    colors: [Color(0xFF00ACC1), Color(0xFF18FFFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -113,11 +113,20 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
         ),
         title: Text(
           title,
-          style: TextStyle(color: accentCyan, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Orbitron'),
+          style: TextStyle(
+            color: accentCyan,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Orbitron',
+          ),
         ),
         content: Text(
           message,
-          style: TextStyle(color: primaryWhite, fontSize: 16, fontFamily: 'ShareTechMono'),
+          style: TextStyle(
+            color: primaryWhite,
+            fontSize: 16,
+            fontFamily: 'ShareTechMono',
+          ),
         ),
         actions: [
           Center(
@@ -186,6 +195,7 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
               style: TextStyle(color: textGrey, fontSize: 14),
             ),
             const SizedBox(height: 20),
+
             Container(
               decoration: BoxDecoration(
                 color: cardDark,
@@ -210,7 +220,9 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                 ],
               ),
             ),
+
             const SizedBox(height: 40),
+
             Center(
               child: Container(
                 height: 60,
@@ -242,7 +254,9 @@ class _WifiKillerPageState extends State<WifiKillerPage> {
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
+
             if (isKilling)
               Center(
                 child: Column(

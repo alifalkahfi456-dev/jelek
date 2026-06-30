@@ -1,1 +1,1 @@
-const String baseUrl = "http://zyrovex1allfailmyrespanelzyro.rxpedia.biz.id:25578"; 
+const String baseUrl = "http://kurumi.xylotrechuz.my.id:2117"; 

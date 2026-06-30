@@ -16,14 +16,14 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
   Map<String, dynamic>? _data;
   String? _errorMessage;
 
-  // --- TEMA CYAN/DARK ---
-  final Color primaryDark = const Color(0xFF0A0E14);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color accentCyan = const Color(0xFF00E5FF);
+  // --- Warna Tema Hitam Cyan ---
+  final Color primaryDark = const Color(0xFF0B1A1A);
+  final Color primaryCyan = const Color(0xFF00ACC1);
+  final Color accentCyan = const Color(0xFF18FFFF);
+  final Color lightCyan = const Color(0xFF84FFFF);
   final Color primaryWhite = Colors.white;
   final Color accentGrey = Colors.grey.shade400;
-  final Color cardDark = const Color(0xFF0D1820);
-  final Color borderGlass = const Color(0xFF1A3A4A);
+  final Color cardDark = const Color(0xFF1A2A2A);
 
   late final AnimationController _animController;
   late final Animation<double> _fadeAnimation;
@@ -117,7 +117,11 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [primaryCyan, accentCyan]),
+              gradient: LinearGradient(
+                colors: [primaryCyan, accentCyan],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -209,7 +213,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                 border: Border.all(color: primaryCyan.withOpacity(0.3)),
               ),
               child: IconButton(
-                icon: Icon(copyIcon, color: accentCyan, size: 18),
+                icon: Icon(copyIcon, color: lightCyan, size: 18),
                 onPressed: onCopy,
                 padding: const EdgeInsets.all(6),
                 constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -287,7 +291,7 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                       style: TextStyle(color: primaryWhite, fontSize: 16),
                       decoration: InputDecoration(
                         labelText: 'Masukkan NIK',
-                        labelStyle: TextStyle(color: accentCyan),
+                        labelStyle: TextStyle(color: lightCyan),
                         hintText: 'Contoh: 5206085405880001',
                         hintStyle: TextStyle(color: accentGrey),
                         enabledBorder: OutlineInputBorder(
@@ -295,23 +299,23 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                           borderRadius: BorderRadius.circular(12),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: accentCyan, width: 2),
+                          borderSide: BorderSide(color: lightCyan, width: 2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         filled: true,
                         fillColor: Colors.black.withOpacity(0.3),
                         suffixIcon: _isLoading
                             ? Padding(
-                                padding: const EdgeInsets.all(12.0),
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                    color: accentCyan,
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
+                          padding: const EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: lightCyan,
+                              strokeWidth: 2,
+                            ),
+                          ),
+                        )
                             : null,
                       ),
                       onSubmitted: (_) => _checkNik(),
@@ -351,29 +355,33 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               if (_errorMessage != null)
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: primaryCyan.withOpacity(0.1),
+                    color: Colors.cyan.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: primaryCyan.withOpacity(0.3)),
+                    border: Border.all(color: Colors.cyan.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.error_outline, color: accentCyan),
+                      Icon(Icons.error_outline, color: lightCyan),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           _errorMessage!,
-                          style: TextStyle(color: accentCyan, fontSize: 14),
+                          style: TextStyle(color: lightCyan, fontSize: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
+
               const SizedBox(height: 20),
+
               if (_data != null)
                 Expanded(
                   child: FadeTransition(
@@ -410,29 +418,55 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                               ),
                             ],
                           ),
+
                           _buildCategoryCard(
                             title: "DATA DOMISILI",
                             icon: Icons.location_on,
                             children: [
-                              _buildInteractiveInfoRow(label: "Provinsi", value: _data!["data"]["provinsi"]?.toString()),
-                              _buildInteractiveInfoRow(label: "Kabupaten/Kota", value: _data!["data"]["kabupaten"]?.toString()),
-                              _buildInteractiveInfoRow(label: "Kecamatan", value: _data!["data"]["kecamatan"]?.toString()),
-                              _buildInteractiveInfoRow(label: "Kelurahan/Desa", value: _data!["data"]["kelurahan"]?.toString()),
+                              _buildInteractiveInfoRow(
+                                label: "Provinsi",
+                                value: _data!["data"]["provinsi"]?.toString(),
+                              ),
+                              _buildInteractiveInfoRow(
+                                label: "Kabupaten/Kota",
+                                value: _data!["data"]["kabupaten"]?.toString(),
+                              ),
+                              _buildInteractiveInfoRow(
+                                label: "Kecamatan",
+                                value: _data!["data"]["kecamatan"]?.toString(),
+                              ),
+                              _buildInteractiveInfoRow(
+                                label: "Kelurahan/Desa",
+                                value: _data!["data"]["kelurahan"]?.toString(),
+                              ),
                               _buildInteractiveInfoRow(
                                 label: "Alamat Lengkap",
                                 value: _data!["data"]["alamat"]?.toString(),
                                 onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "", "Alamat"),
                               ),
-                              _buildInteractiveInfoRow(label: "TPS", value: _data!["data"]["tps"]?.toString()),
+                              _buildInteractiveInfoRow(
+                                label: "TPS",
+                                value: _data!["data"]["tps"]?.toString(),
+                              ),
                             ],
                           ),
+
                           _buildCategoryCard(
                             title: "INFORMASI TAMBAHAN",
                             icon: Icons.info,
                             children: [
-                              _buildInteractiveInfoRow(label: "Zodiak", value: _data!["data"]["zodiak"]?.toString()),
-                              _buildInteractiveInfoRow(label: "Ultah Mendatang", value: _data!["data"]["ultah_mendatang"]?.toString()),
-                              _buildInteractiveInfoRow(label: "Pasaran", value: _data!["data"]["pasaran"]?.toString()),
+                              _buildInteractiveInfoRow(
+                                label: "Zodiak",
+                                value: _data!["data"]["zodiak"]?.toString(),
+                              ),
+                              _buildInteractiveInfoRow(
+                                label: "Ultah Mendatang",
+                                value: _data!["data"]["ultah_mendatang"]?.toString(),
+                              ),
+                              _buildInteractiveInfoRow(
+                                label: "Pasaran",
+                                value: _data!["data"]["pasaran"]?.toString(),
+                              ),
                             ],
                           ),
                         ],

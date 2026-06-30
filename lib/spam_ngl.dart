@@ -19,17 +19,16 @@ class _NglPageState extends State<NglPage> {
   String statusLog = "";
   Timer? timer;
 
-  // --- TEMA CYAN/DARK ---
-  final Color bgDark = const Color(0xFF0A0E14);
-  final Color bgSecondary = const Color(0xFF0D1820);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color accentCyan = const Color(0xFF00E5FF);
+  // --- TEMA WARNA CYAN ---
+  final Color bgDark = const Color(0xFF0B1A1A);
+  final Color bgSecondary = const Color(0xFF1A2A2A);
+  final Color primaryCyan = const Color(0xFF00ACC1);
+  final Color accentCyan = const Color(0xFF18FFFF);
   final Color primaryWhite = Colors.white;
   final Color textGrey = Colors.grey.shade400;
-  final Color borderGlass = const Color(0xFF1A3A4A);
 
   final LinearGradient cyanGradient = const LinearGradient(
-    colors: [Color(0xFF006064), Color(0xFF00BCD4), Color(0xFF00E5FF)],
+    colors: [Color(0xFF00ACC1), Color(0xFF18FFFF)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -52,7 +51,8 @@ class _NglPageState extends State<NglPage> {
       "Origin": "https://ngl.link"
     };
 
-    final body = "username=$username&question=$message&deviceId=$deviceId&gameSlug=&referrer=";
+    final body =
+        "username=$username&question=$message&deviceId=$deviceId&gameSlug=&referrer=";
 
     try {
       final response = await http.post(url, headers: headers, body: body);
@@ -200,7 +200,9 @@ class _NglPageState extends State<NglPage> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -263,7 +265,9 @@ class _NglPageState extends State<NglPage> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(16),
@@ -299,6 +303,7 @@ class _NglPageState extends State<NglPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
+
                       Expanded(
                         child: Container(
                           padding: const EdgeInsets.all(12),
@@ -325,7 +330,9 @@ class _NglPageState extends State<NglPage> {
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 16),
+
                       if (counter > 0)
                         Container(
                           padding: EdgeInsets.all(12),
@@ -359,6 +366,7 @@ class _NglPageState extends State<NglPage> {
                             ],
                           ),
                         ),
+
                       Container(
                         margin: EdgeInsets.only(top: 12),
                         padding: EdgeInsets.all(12),

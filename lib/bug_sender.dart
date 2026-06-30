@@ -4,30 +4,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'api_config.dart';
 
-// ─── Palette: Red / Dark (Theme) ───────────────────────
+// ─── Palette ──────────────────────────────────────────────────────────────────
 class _C {
-  static const bg         = Color(0xFF1A0A0A);      // Deep dark red background
-  static const surface    = Color(0xFF1A0A0A);      // Dark surface
-  static const card       = Color(0xFF1A0A0A);      // Dark card
-  static const border     = Color(0xFF4A1A1A);      // Subtle red border
-  static const borderLit  = Color(0xFF6B2222);      // Red terang border
+  static const bg         = Color(0xFF060B14);
+  static const surface    = Color(0xFF0C1424);
+  static const card       = Color(0xFF101A2E);
+  static const cardHover  = Color(0xFF152035);
+  static const border     = Color(0xFF1A2D4A);
+  static const borderLit  = Color(0xFF1E3A5F);
 
-  static const redDark    = Color(0xFF8B0000);
-  static const redMid     = Color(0xFFC62828);
-  static const redLight   = Color(0xFFFF5252);
-  static const redAccent  = Color(0xFFFF5252);
+  static const blue       = Color(0xFF1B6FBD);
+  static const blueMid    = Color(0xFF2D8FE8);
+  static const blueLight  = Color(0xFF56AEF5);
+  static const blueFrost  = Color(0xFF90CEF7);
 
   static const green      = Color(0xFF22C55E);
   static const greenDim   = Color(0xFF16A34A);
   static const red        = Color(0xFFEF4444);
 
-  static const text       = Color(0xFFFFE0E0);
-  static const textSub    = Color(0xFFFF8A8A);
-  static const textDim    = Color(0xFFFF6B6B);
+  static const text       = Color(0xFFE2EDF9);
+  static const textSub    = Color(0xFF7A9BBF);
+  static const textDim    = Color(0xFF3A5470);
 
+  // Gradients
   static const LinearGradient btnGrad = LinearGradient(
-    colors: [Color(0xFF8B0000), Color(0xFFC62828), Color(0xFFFF5252)],
+    colors: [blueMid, blueLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -124,7 +127,7 @@ class _BugSenderPageState extends State<BugSenderPage>
     setState(() { isLoading = true; errorMessage = null; });
     try {
       final res = await http.get(
-        Uri.parse("http://senzlinodepriv.senzhosting.my.id:10791/mySender?key=${widget.sessionKey}"),
+        Uri.parse("$baseUrl/mySender?key=${widget.sessionKey}"),
         headers: {'Content-Type': 'application/json'},
       );
       if (res.statusCode == 200) {
@@ -154,7 +157,7 @@ class _BugSenderPageState extends State<BugSenderPage>
     setState(() => isLoading = true);
     try {
       final res = await http.get(Uri.parse(
-          "http://senzlinodepriv.senzhosting.my.id:10791/getPairing?key=${widget.sessionKey}&number=$number"));
+          "$baseUrl/getPairing?key=${widget.sessionKey}&number=$number"));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data["valid"] == true) {
@@ -177,7 +180,7 @@ class _BugSenderPageState extends State<BugSenderPage>
     setState(() => isLoading = true);
     try {
       final res = await http.delete(Uri.parse(
-          "http://senzlinodepriv.senzhosting.my.id:10791/deleteSender?key=${widget.sessionKey}&id=$senderId"));
+          "$baseUrl/deleteSender?key=${widget.sessionKey}&id=$senderId"));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data["valid"] == true) {
@@ -239,7 +242,7 @@ class _BugSenderPageState extends State<BugSenderPage>
             children: [
               // Header
               Row(children: [
-                _DialogIcon(icon: Icons.add_link_rounded, color: _C.redMid),
+                _DialogIcon(icon: Icons.add_link_rounded, color: _C.blueMid),
                 const SizedBox(width: 14),
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -256,7 +259,7 @@ class _BugSenderPageState extends State<BugSenderPage>
               _InputField(
                 controller: phoneCtrl,
                 label: 'Nomor Telepon',
-                hint: 'Contoh: 628xxxxxxxxx',
+                hint: '628xxx',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
               ),
@@ -268,7 +271,7 @@ class _BugSenderPageState extends State<BugSenderPage>
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: _GradBtn(
-                  label: 'Connect',
+                  label: 'Generate Pairing',
                   icon: Icons.link_rounded,
                   onTap: () {
                     final num = phoneCtrl.text.trim();
@@ -444,14 +447,10 @@ class _BugSenderPageState extends State<BugSenderPage>
             children: [
               const Text('Bug Sender',
                   style: TextStyle(
-                    color: _C.redAccent,
+                    color: _C.text,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 1.5,
-                    fontFamily: 'Orbitron',
-                    shadows: [
-                      Shadow(color: Color(0xFFFF5252), blurRadius: 10),
-                    ],
+                    letterSpacing: -0.3,
                   )),
               Text('${senderList.length} sender aktif',
                   style: const TextStyle(color: _C.textSub, fontSize: 11)),
@@ -476,7 +475,7 @@ class _BugSenderPageState extends State<BugSenderPage>
     if (senderList.isEmpty) return _buildEmptyState();
 
     return RefreshIndicator(
-      color: _C.redAccent,
+      color: _C.blueMid,
       backgroundColor: _C.card,
       onRefresh: _refreshSenders,
       child: CustomScrollView(
@@ -519,7 +518,7 @@ class _BugSenderPageState extends State<BugSenderPage>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: _C.redMid.withOpacity(_fabGlow.value),
+                color: _C.blueMid.withOpacity(_fabGlow.value),
                 blurRadius: 28,
                 spreadRadius: 0,
               ),
@@ -588,7 +587,7 @@ class _BgPainter extends CustomPainter {
       final paint = Paint()
         ..shader = RadialGradient(
           colors: [
-            _C.redDark.withOpacity(0.07 - i * 0.015),
+            _C.blue.withOpacity(0.07 - i * 0.015),
             Colors.transparent,
           ],
         ).createShader(Rect.fromCircle(center: Offset(ox, oy), radius: r));
@@ -600,7 +599,7 @@ class _BgPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: [Color(0xFF1A0A0A), Colors.transparent],
+        colors: [Color(0xFF060B14), Colors.transparent],
         stops: [0.0, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.4));
     canvas.drawRect(
@@ -661,7 +660,7 @@ class _SenderCardState extends State<_SenderCard>
         border: Border.all(color: _C.border),
         boxShadow: [
           BoxShadow(
-            color: _C.redDark.withOpacity(0.07),
+            color: _C.blue.withOpacity(0.07),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -676,7 +675,7 @@ class _SenderCardState extends State<_SenderCard>
               height: 2,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, _C.redMid, Colors.transparent],
+                  colors: [Colors.transparent, _C.blueMid, Colors.transparent],
                 ),
               ),
             ),
@@ -692,7 +691,7 @@ class _SenderCardState extends State<_SenderCard>
                         width: 50,
                         height: 50,
                         decoration: BoxDecoration(
-                          color: _C.redDark.withOpacity(0.12),
+                          color: _C.blue.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(color: _C.borderLit),
                         ),
@@ -700,7 +699,7 @@ class _SenderCardState extends State<_SenderCard>
                           children: [
                             const Center(
                               child: Icon(FontAwesomeIcons.whatsapp,
-                                  color: _C.redLight, size: 24),
+                                  color: _C.blueLight, size: 24),
                             ),
                             // Online dot
                             Positioned(
@@ -858,7 +857,7 @@ class _CardBtnState extends State<_CardBtn> {
 
   @override
   Widget build(BuildContext context) {
-    final color = widget.isDestructive ? _C.red : _C.redLight;
+    final color = widget.isDestructive ? _C.red : _C.blueLight;
 
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
@@ -953,19 +952,19 @@ class _PairingDialogState extends State<_PairingDialog>
               height: 64,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _C.redDark.withOpacity(0.12),
+                color: _C.blue.withOpacity(0.12),
                 boxShadow: [
                   BoxShadow(
-                    color: _C.redMid.withOpacity(_glow.value * 0.4),
+                    color: _C.blueMid.withOpacity(_glow.value * 0.4),
                     blurRadius: 30,
                     spreadRadius: 0,
                   ),
                 ],
                 border: Border.all(
-                    color: _C.redMid.withOpacity(_glow.value * 0.5)),
+                    color: _C.blueMid.withOpacity(_glow.value * 0.5)),
               ),
               child: const Icon(Icons.phonelink_lock_rounded,
-                  color: _C.redLight, size: 28),
+                  color: _C.blueLight, size: 28),
             ),
           ),
           const SizedBox(height: 16),
@@ -987,15 +986,15 @@ class _PairingDialogState extends State<_PairingDialog>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 24),
               decoration: BoxDecoration(
-                color: _C.surface,
+                color: const Color(0xFF070E1A),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: _C.redMid.withOpacity(_glow.value * 0.6),
+                  color: _C.blueMid.withOpacity(_glow.value * 0.6),
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _C.redMid.withOpacity(_glow.value * 0.25),
+                    color: _C.blueMid.withOpacity(_glow.value * 0.25),
                     blurRadius: 20,
                     spreadRadius: 0,
                   ),
@@ -1005,7 +1004,7 @@ class _PairingDialogState extends State<_PairingDialog>
                 widget.code,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: _C.redLight.withOpacity(0.9 + _glow.value * 0.1),
+                  color: _C.blueLight.withOpacity(0.9 + _glow.value * 0.1),
                   fontSize: 36,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 10,
@@ -1030,7 +1029,7 @@ class _PairingDialogState extends State<_PairingDialog>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _C.redDark.withOpacity(0.07),
+              color: _C.blue.withOpacity(0.07),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: _C.border),
             ),
@@ -1148,7 +1147,7 @@ class _StatStrip extends StatelessWidget {
       child: Row(
         children: [
           const Icon(Icons.wifi_tethering_rounded,
-              color: _C.redLight, size: 18),
+              color: _C.blueLight, size: 18),
           const SizedBox(width: 10),
           Text('$total sender terdaftar',
               style: const TextStyle(
@@ -1247,11 +1246,11 @@ class _EmptyStateState extends State<_EmptyState>
                   border: Border.all(color: _C.borderLit),
                   boxShadow: [
                     BoxShadow(
-                        color: _C.redDark.withOpacity(0.2), blurRadius: 30),
+                        color: _C.blue.withOpacity(0.2), blurRadius: 30),
                   ],
                 ),
                 child: const Icon(FontAwesomeIcons.whatsapp,
-                    color: _C.redLight, size: 38),
+                    color: _C.blueLight, size: 38),
               ),
             ),
             const SizedBox(height: 28),
@@ -1338,7 +1337,7 @@ class _DialogShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = accentColor ?? _C.redMid;
+    final color = accentColor ?? _C.blueMid;
     return Container(
       constraints: const BoxConstraints(maxWidth: 380),
       decoration: BoxDecoration(
@@ -1425,7 +1424,7 @@ class _GradBtnState extends State<_GradBtn> {
                 ? []
                 : [
                     BoxShadow(
-                      color: _C.redMid.withOpacity(0.3),
+                      color: _C.blueMid.withOpacity(0.3),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -1516,14 +1515,14 @@ class _InputField extends StatelessWidget {
       keyboardType: keyboardType,
       style: const TextStyle(
           color: _C.text, fontSize: 14, fontWeight: FontWeight.w500),
-      cursorColor: _C.redMid,
+      cursorColor: _C.blueMid,
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: const TextStyle(color: _C.textSub, fontSize: 13),
         hintStyle: const TextStyle(color: _C.textDim),
         floatingLabelStyle:
-            const TextStyle(color: _C.redMid, fontSize: 12),
+            const TextStyle(color: _C.blueMid, fontSize: 12),
         prefixIcon: Icon(icon, color: _C.textSub, size: 18),
         filled: true,
         fillColor: _C.surface,
@@ -1537,7 +1536,7 @@ class _InputField extends StatelessWidget {
             borderSide: const BorderSide(color: _C.border)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: _C.redMid, width: 1.5)),
+            borderSide: const BorderSide(color: _C.blueMid, width: 1.5)),
       ),
     );
   }
@@ -1653,7 +1652,7 @@ class _DotsLoaderState extends State<_DotsLoader>
                 width: 9, height: 9,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _C.redMid.withOpacity(0.4 + scale * 0.6),
+                  color: _C.blueMid.withOpacity(0.4 + scale * 0.6),
                 ),
               ),
             ),
@@ -1675,7 +1674,7 @@ class _ThinProgress extends StatelessWidget {
       height: 2,
       child: const LinearProgressIndicator(
         backgroundColor: _C.border,
-        color: _C.redMid,
+        color: _C.blueMid,
         borderRadius: BorderRadius.all(Radius.circular(2)),
       ),
     );
@@ -1702,7 +1701,7 @@ class _PressableInk extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(borderRadius),
-        splashColor: _C.redDark.withOpacity(0.15),
+        splashColor: _C.blue.withOpacity(0.15),
         child: child,
       ),
     );

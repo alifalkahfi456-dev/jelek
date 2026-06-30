@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'api_config.dart';
 
 class WifiInternalPage extends StatefulWidget {
   final String sessionKey;
@@ -18,13 +19,11 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
   bool isLoading = true;
   bool isAttacking = false;
 
-  // --- TEMA CYAN/DARK ---
-  final Color primaryDark = const Color(0xFF0A0E14);
+  // --- Warna Tema Hitam Cyan ---
+  final Color primaryDark = const Color(0xFF0B1A1A);
   final Color primaryWhite = Colors.white;
-  final Color accentCyan = const Color(0xFF00E5FF);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color cardDark = const Color(0xFF0D1820);
-  final Color borderGlass = const Color(0xFF1A3A4A);
+  final Color accentCyan = const Color(0xFF00ACC1);
+  final Color cardDark = const Color(0xFF1A2A2A);
 
   @override
   void initState() {
@@ -33,7 +32,9 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
   }
 
   Future<void> _loadPublicInfo() async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+    });
 
     try {
       final ipRes = await http.get(Uri.parse("https://api.ipify.org?format=json"));
@@ -68,7 +69,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
   Future<void> _attackTarget() async {
     setState(() => isAttacking = true);
     final url = Uri.parse(
-        "http://senzlinodepriv.senzhosting.my.id:10791/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
+        "$baseUrl/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -92,8 +93,10 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: accentCyan.withOpacity(0.3)),
         ),
-        title: Text(title, style: TextStyle(color: accentCyan, fontFamily: 'Orbitron')),
-        content: Text(message, style: TextStyle(color: primaryWhite)),
+        title: Text(title,
+            style: TextStyle(color: accentCyan, fontFamily: 'Orbitron')),
+        content: Text(message,
+            style: TextStyle(color: primaryWhite)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -116,8 +119,12 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
       child: ListTile(
         leading: Icon(icon, color: accentCyan),
         title: Text(title,
-            style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold, fontFamily: "Orbitron")),
-        subtitle: Text(value, style: TextStyle(color: primaryWhite, fontSize: 16)),
+            style: TextStyle(
+                color: primaryWhite,
+                fontWeight: FontWeight.bold,
+                fontFamily: "Orbitron")),
+        subtitle: Text(value,
+            style: TextStyle(color: primaryWhite, fontSize: 16)),
       ),
     );
   }
@@ -127,7 +134,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
     return Scaffold(
       backgroundColor: primaryDark,
       appBar: AppBar(
-        title: Text("📡 WiFi Killer (Internal)",
+        title: Text("📡 WiFi Killer ( Internal )",
             style: TextStyle(fontFamily: 'Orbitron', color: primaryWhite)),
         backgroundColor: primaryDark,
         elevation: 6,
@@ -136,7 +143,7 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0A0E14), Color(0xFF0A0E14)],
+            colors: [Color(0xFF0B1A1A), Color(0xFF0B1A1A)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -145,57 +152,66 @@ class _WifiInternalPageState extends State<WifiInternalPage> {
           padding: const EdgeInsets.all(16),
           child: isLoading
               ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+                  child: CircularProgressIndicator(color: Color(0xFF00ACC1)))
               : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text("🎯 System Information",
-                        style: TextStyle(
-                            fontSize: 20,
-                            color: primaryWhite,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Orbitron')),
-                    const SizedBox(height: 12),
-                    _infoCard("IP Address", publicIp, Icons.language),
-                    _infoCard("Region", region, Icons.map),
-                    _infoCard("ASN", asn, Icons.storage),
-                    const SizedBox(height: 20),
-                    if (isVpn)
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: primaryCyan.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: accentCyan),
-                        ),
-                        child: Text(
-                          "⚠️ Target berasal dari VPN/Hosting.\nSerangan dibatalkan.",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: primaryWhite, fontFamily: 'ShareTechMono'),
-                        ),
-                      ),
-                    if (!isVpn)
-                      Center(
-                        child: ElevatedButton.icon(
-                          onPressed: isAttacking ? null : _attackTarget,
-                          icon: Icon(Icons.wifi_off, color: primaryWhite),
-                          label: Text(
-                            isAttacking ? "ATTACKING..." : "START KILL",
-                            style: const TextStyle(
-                                fontFamily: 'Orbitron', fontWeight: FontWeight.bold),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryCyan,
-                            foregroundColor: primaryWhite,
-                            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                            elevation: 10,
-                            shadowColor: accentCyan.withOpacity(0.5),
-                          ),
-                        ),
-                      ),
-                  ],
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text("🎯 System Information",
+                  style: TextStyle(
+                      fontSize: 20,
+                      color: primaryWhite,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Orbitron')),
+              const SizedBox(height: 12),
+
+              _infoCard("IP Address", publicIp, Icons.language),
+              _infoCard("Region", region, Icons.map),
+              _infoCard("ASN", asn, Icons.storage),
+
+              const SizedBox(height: 20),
+
+              if (isVpn)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.cyan[900]?.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: accentCyan),
+                  ),
+                  child: Text(
+                    "⚠️ Target berasal dari VPN/Hosting.\nSerangan dibatalkan.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: primaryWhite,
+                        fontFamily: 'ShareTechMono'),
+                  ),
                 ),
+
+              if (!isVpn)
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: isAttacking ? null : _attackTarget,
+                    icon: Icon(Icons.wifi_off, color: primaryWhite),
+                    label: Text(
+                      isAttacking ? "ATTACKING..." : "START KILL",
+                      style: const TextStyle(
+                          fontFamily: 'Orbitron',
+                          fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: accentCyan,
+                      foregroundColor: primaryWhite,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
+                      elevation: 10,
+                      shadowColor: accentCyan.withOpacity(0.5),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

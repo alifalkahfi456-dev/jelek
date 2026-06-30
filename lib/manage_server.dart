@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'api_config.dart';
 
 class ManageServerPage extends StatefulWidget {
   final String keyToken;
@@ -18,13 +19,11 @@ class _ManageServerPageState extends State<ManageServerPage> {
   final _userController = TextEditingController();
   final _passController = TextEditingController();
 
-  // --- TEMA CYAN/DARK ---
-  final Color primaryDark = const Color(0xFF0A0E14);
+  // --- Warna Tema Hitam Cyan ---
+  final Color primaryDark = const Color(0xFF0B1A1A);
   final Color primaryWhite = Colors.white;
-  final Color accentCyan = const Color(0xFF00E5FF);
-  final Color primaryCyan = const Color(0xFF00BCD4);
-  final Color cardDark = const Color(0xFF0D1820);
-  final Color borderGlass = const Color(0xFF1A3A4A);
+  final Color accentCyan = const Color(0xFF00ACC1);
+  final Color cardDark = const Color(0xFF1A2A2A);
 
   @override
   void initState() {
@@ -34,7 +33,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
 
   Future<void> _fetchVpsList() async {
     setState(() => isLoading = true);
-    final uri = Uri.parse('https://t.me/RizzXybsRols/myServer?key=${widget.keyToken}');
+    final uri = Uri.parse('$baseUrl/myServer?key=${widget.keyToken}');
     try {
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
@@ -57,7 +56,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
       return;
     }
 
-    final uri = Uri.parse('http://senzlinodepriv.senzhosting.my.id:10791/addServer');
+    final uri = Uri.parse('$baseUrl/addServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -80,7 +79,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
   }
 
   Future<void> _deleteVps(String host) async {
-    final uri = Uri.parse('http://senzlinodepriv.senzhosting.my.id:10791/delServer');
+    final uri = Uri.parse('$baseUrl/delServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -147,7 +146,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
               _addVps();
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: primaryCyan,
+              backgroundColor: accentCyan,
             ),
             child: const Text("TAMBAH", style: TextStyle(color: Colors.white)),
           ),
@@ -199,7 +198,7 @@ class _ManageServerPageState extends State<ManageServerPage> {
                           color: Colors.white,
                           fontFamily: 'Orbitron')),
                   IconButton(
-                    icon: const Icon(Icons.add, color: Colors.white),
+                    icon: const Icon(Icons.add, color: Color(0xFF00ACC1)),
                     onPressed: _showAddDialog,
                   )
                 ],
@@ -207,28 +206,28 @@ class _ManageServerPageState extends State<ManageServerPage> {
               Divider(color: accentCyan),
               Expanded(
                 child: isLoading
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF00E5FF)))
+                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF00ACC1)))
                     : ListView.builder(
-                        itemCount: vpsList.length,
-                        itemBuilder: (context, index) {
-                          final vps = vpsList[index];
-                          return Card(
-                            color: cardDark,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: accentCyan.withOpacity(0.2)),
-                            ),
-                            child: ListTile(
-                              title: Text("${vps['host']}", style: const TextStyle(color: Colors.white)),
-                              subtitle: Text("User: ${vps['username']}", style: const TextStyle(color: Colors.white70)),
-                              trailing: IconButton(
-                                icon: const Icon(Icons.delete, color: Color(0xFF00E5FF)),
-                                onPressed: () => _deleteVps(vps['host']),
-                              ),
-                            ),
-                          );
-                        },
+                  itemCount: vpsList.length,
+                  itemBuilder: (context, index) {
+                    final vps = vpsList[index];
+                    return Card(
+                      color: cardDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: accentCyan.withOpacity(0.2)),
                       ),
+                      child: ListTile(
+                        title: Text("${vps['host']}", style: const TextStyle(color: Colors.white)),
+                        subtitle: Text("User: ${vps['username']}", style: const TextStyle(color: Colors.white70)),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.delete, color: Color(0xFF00ACC1)),
+                          onPressed: () => _deleteVps(vps['host']),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               )
             ],
           ),
