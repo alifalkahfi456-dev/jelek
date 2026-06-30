@@ -6,17 +6,17 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class _C {
-  static const bg      = Color(0xFF120000);
-  static const s1      = Color(0xFF2A0000);
-  static const s2      = Color(0xFF3D0000);
+  static const bg      = Color(0xFF020818);
+  static const s1      = Color(0xFF040F22);
+  static const s2      = Color(0xFF051525);
   static const border  = Color(0xFF5C0000);
-  static const accent  = Color(0xFFE53935);
-  static const accentL = Color(0xFFFF5252);
+  static const accent  = Color(0xFF1565C0);
+  static const accentL = Color(0xFF42A5F5);
   static const green   = Color(0xFF4CAF50);
-  static const red     = Color(0xFFFF1744);
+  static const red     = Color(0xFF2979FF);
   static const textP   = Color(0xFFFFF0F5);
-  static const textS   = Color(0xFFFFCDD2);
-  static const textM   = Color(0xFF8B0000);
+  static const textS   = Color(0xFFBBDEFB);
+  static const textM   = Color(0xFF0A2472);
   static const white   = Color(0xFFFFFFFF);
 }
 
@@ -137,7 +137,7 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
   void _snack(String msg) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(color: _C.white)),
+      content: Text(msg, style: TextStyle(color: _C.white)),
       backgroundColor: _C.accent, behavior: SnackBarBehavior.floating,
     ));
   }
@@ -153,14 +153,14 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
           color: _C.s1,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(children: [
-            const Icon(Icons.music_note_rounded, color: _C.accentL, size: 20),
+            Icon(Icons.music_note_rounded, color: _C.accentL, size: 20),
             const SizedBox(width: 10),
-            const Text('Smoty Play', style: TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1)),
+            Text('Smoty Play', style: TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 16, letterSpacing: 1)),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(color: _C.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(8), border: Border.all(color: _C.accentL.withOpacity(0.3))),
-              child: const Text('30s Preview', style: TextStyle(color: _C.accentL, fontSize: 10)),
+              child: Text('30s Preview', style: TextStyle(color: _C.accentL, fontSize: 10)),
             ),
           ]),
         ),
@@ -175,8 +175,8 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() => _q = v),
                 onSubmitted: (v) => _search(v),
-                style: const TextStyle(color: _C.textP, fontSize: 13),
-                decoration: const InputDecoration(
+                style: TextStyle(color: _C.textP, fontSize: 13),
+                decoration: InputDecoration(
                   hintText: 'Cari lagu, artis, album...',
                   hintStyle: TextStyle(color: _C.textM),
                   prefixIcon: Icon(Icons.search_rounded, color: _C.textS, size: 18),
@@ -191,7 +191,7 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: _C.accent, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.search_rounded, color: _C.white, size: 18),
+                child: Icon(Icons.search_rounded, color: _C.white, size: 18),
               ),
             ),
           ]),
@@ -213,7 +213,7 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
                   color: _C.s1, borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: _C.border),
                 ),
-                child: Text(g, style: const TextStyle(color: _C.textS, fontSize: 11)),
+                child: Text(g, style: TextStyle(color: _C.textS, fontSize: 11)),
               ),
             )).toList(),
           )),
@@ -224,11 +224,11 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
 
         // Results
         Expanded(child: _searching
-          ? const Center(child: CircularProgressIndicator(color: _C.accentL))
+          ? Center(child: CircularProgressIndicator(color: _C.accentL))
           : _errMsg.isNotEmpty
-            ? Center(child: Text(_errMsg, style: const TextStyle(color: _C.textS)))
+            ? Center(child: Text(_errMsg, style: TextStyle(color: _C.textS)))
             : _results.isEmpty
-              ? const Center(child: Text('Cari lagu favoritmu', style: TextStyle(color: _C.textS)))
+              ? Center(child: Text('Cari lagu favoritmu', style: TextStyle(color: _C.textS)))
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(14, 8, 14, 100),
                   itemCount: _results.length,
@@ -250,19 +250,19 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
                             borderRadius: BorderRadius.circular(8),
                             child: t['img'] != ''
                               ? Image.network(t['img'] as String, width: 46, height: 46, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(width: 46, height: 46, color: _C.s2, child: const Icon(Icons.music_note_rounded, color: _C.textM, size: 20)))
-                              : Container(width: 46, height: 46, color: _C.s2, child: const Icon(Icons.music_note_rounded, color: _C.textM, size: 20)),
+                                  errorBuilder: (_, __, ___) => Container(width: 46, height: 46, color: _C.s2, child: Icon(Icons.music_note_rounded, color: _C.textM, size: 20)))
+                              : Container(width: 46, height: 46, color: _C.s2, child: Icon(Icons.music_note_rounded, color: _C.textM, size: 20)),
                           ),
                           const SizedBox(width: 12),
                           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Text(t['title'] as String, style: TextStyle(color: isPlaying ? _C.textP : _C.textS, fontSize: 13, fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal), maxLines: 1, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 2),
-                            Text(t['artist'] as String, style: const TextStyle(color: _C.textM, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(t['artist'] as String, style: TextStyle(color: _C.textM, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
                           ])),
                           if (isPlaying)
-                            const Icon(Icons.graphic_eq_rounded, color: _C.accentL, size: 20)
+                            Icon(Icons.graphic_eq_rounded, color: _C.accentL, size: 20)
                           else
-                            const Icon(Icons.play_circle_outline_rounded, color: _C.textM, size: 20),
+                            Icon(Icons.play_circle_outline_rounded, color: _C.textM, size: 20),
                         ]),
                       ),
                     );
@@ -289,27 +289,27 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
             borderRadius: BorderRadius.circular(10),
             child: t['img'] != ''
               ? Image.network(t['img'] as String, width: 52, height: 52, fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 52, height: 52, color: _C.s2, child: const Icon(Icons.music_note_rounded, color: _C.textM)))
-              : Container(width: 52, height: 52, color: _C.s2, child: const Icon(Icons.music_note_rounded, color: _C.textM)),
+                  errorBuilder: (_, __, ___) => Container(width: 52, height: 52, color: _C.s2, child: Icon(Icons.music_note_rounded, color: _C.textM)))
+              : Container(width: 52, height: 52, color: _C.s2, child: Icon(Icons.music_note_rounded, color: _C.textM)),
           ),
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(t['title'] as String, style: const TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(t['artist'] as String, style: const TextStyle(color: _C.textS, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(t['title'] as String, style: TextStyle(color: _C.textP, fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(t['artist'] as String, style: TextStyle(color: _C.textS, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
           ])),
           // Controls
           Row(children: [
             GestureDetector(onTap: () => setState(() => _shuffle = !_shuffle),
               child: Icon(Icons.shuffle_rounded, color: _shuffle ? _C.green : _C.textM, size: 18)),
             const SizedBox(width: 8),
-            GestureDetector(onTap: _prevTrack, child: const Icon(Icons.skip_previous_rounded, color: _C.textP, size: 22)),
+            GestureDetector(onTap: _prevTrack, child: Icon(Icons.skip_previous_rounded, color: _C.textP, size: 22)),
             const SizedBox(width: 6),
             GestureDetector(onTap: _togglePlay,
               child: Container(width: 36, height: 36,
-                decoration: const BoxDecoration(color: _C.green, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: _C.green, shape: BoxShape.circle),
                 child: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: _C.white, size: 20))),
             const SizedBox(width: 6),
-            GestureDetector(onTap: _nextTrack, child: const Icon(Icons.skip_next_rounded, color: _C.textP, size: 22)),
+            GestureDetector(onTap: _nextTrack, child: Icon(Icons.skip_next_rounded, color: _C.textP, size: 22)),
             const SizedBox(width: 8),
             GestureDetector(onTap: () => setState(() => _repeat = !_repeat),
               child: Icon(Icons.repeat_rounded, color: _repeat ? _C.green : _C.textM, size: 18)),
@@ -328,8 +328,8 @@ class _MusikPageState extends State<MusikPage> with SingleTickerProviderStateMix
           ),
         ),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(_fmt(_pos), style: const TextStyle(color: _C.textM, fontSize: 10)),
-          Text(_fmt(_dur), style: const TextStyle(color: _C.textM, fontSize: 10)),
+          Text(_fmt(_pos), style: TextStyle(color: _C.textM, fontSize: 10)),
+          Text(_fmt(_dur), style: TextStyle(color: _C.textM, fontSize: 10)),
         ]),
       ]),
     );

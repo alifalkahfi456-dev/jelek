@@ -1,8 +1,9 @@
+import 'app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-const String baseUrl = "http://respanelomdhangicir.omdhanasu.my.id:2139";
+
 
 class ChangePasswordPage extends StatefulWidget {
   final String username;
@@ -25,13 +26,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   bool isLoading = false;
 
-  // Palet warna TEMA DEEP VIOLET
-  final Color mainViolet = const Color(0xFF7B1FA2);   // Ungu Utama (Header, Tombol)
-  final Color deepViolet = const Color(0xFF311B92);  // Ungu Gelap (Shadow, Border)
-  final Color accentViolet = const Color(0xFFEA80FC); // Ungu Neon (Highlight, Focus)
-  final Color deepBlack = const Color(0xFF0A0A0A);
-  final Color cardDark = const Color(0xFF1A1A1A);
-
+  static const deepPurple = Color(0xFF020818);
+  static const mainPurple = Color(0xFF040F22);
+  static const lightPurple = Color(0xFF040F22);
+  static const accentPurple = Color(0xFFCCCCCC);
+  static const bgDark = Color(0xFF020818);
+  static const cardPurple = Color(0xFF020A18);
+  
   Future<void> _changePassword() async {
     final oldPass = oldPassCtrl.text.trim();
     final newPass = newPassCtrl.text.trim();
@@ -51,7 +52,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     try {
       final res = await http.post(
-        Uri.parse("$baseUrl/changepass"),
+        Uri.parse("$kBaseUrl/changepass"),
         body: {
           "username": widget.username,
           "oldPass": oldPass,
@@ -78,29 +79,29 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: cardDark,
+        backgroundColor: cardPurple,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: mainViolet.withOpacity(0.5)), // Border Ungu
+          side: BorderSide(color: accentPurple.withOpacity(0.5)),
         ),
         title: Text(
-          isSuccess ? "✅ Success" : "⚠️ Info",
+          isSuccess ? "Success" : "Info",
           style: TextStyle(
-            color: isSuccess ? Colors.white : mainViolet, // Warna Judul Ungu
+            color: isSuccess ? Colors.white : accentPurple,
             fontWeight: FontWeight.bold,
             fontFamily: 'Orbitron',
           ),
         ),
         content: Text(
           msg,
-          style: const TextStyle(color: Colors.white70),
+          style: TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
                 "CLOSE",
-                style: TextStyle(color: accentViolet) // Warna Tombol Ungu Neon
+                style: TextStyle(color: accentPurple)
             ),
           )
         ],
@@ -111,7 +112,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
+      backgroundColor: const Color(0xFF020818),
       appBar: AppBar(
         title: const Text(
           "Change Password",
@@ -121,7 +122,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
             fontFamily: 'Orbitron',
           ),
         ),
-        backgroundColor: mainViolet, // Background AppBar Ungu
+        backgroundColor: mainPurple,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -135,7 +136,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                 children: [
                   Icon(
                     Icons.lock_reset,
-                    color: accentViolet, // Ikon Ungu Neon
+                    color: accentPurple,
                     size: 50,
                   ),
                   const SizedBox(height: 8),
@@ -175,14 +176,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
               child: ElevatedButton(
                 onPressed: isLoading ? null : _changePassword,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: mainViolet, // Tombol Ungu
+                  backgroundColor: mainPurple,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  elevation: 4,
-                  shadowColor: mainViolet.withOpacity(0.5), // Bayangan Ungu
+                  elevation: 2,
                 ),
                 child: isLoading
                     ? const SizedBox(
@@ -220,23 +220,23 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return TextField(
       controller: controller,
       obscureText: obscure,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
+        hintStyle: TextStyle(color: Colors.white54),
         filled: true,
-        fillColor: cardDark,
+        fillColor: cardPurple,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: mainViolet.withOpacity(0.3)), // Border Ungu
+          borderSide: BorderSide(color: accentPurple.withOpacity(0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: accentViolet), // Border Fokus Ungu Neon
+          borderSide: BorderSide(color: accentPurple),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: mainViolet.withOpacity(0.2)), // Border Non-fokus
+          borderSide: BorderSide(color: accentPurple.withOpacity(0.2)),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),

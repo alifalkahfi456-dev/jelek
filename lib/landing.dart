@@ -1,571 +1,257 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:video_player/video_player.dart';
 
-// ─── Palette: Biru Modern (sama dengan LoginPage) ─────────────────────────────
-class _C {
-  static const bg         = Color(0xFF0A1929);      // Biru gelap background
-  static const surface    = Color(0xFF0F2B40);      // Biru tua surface
-  static const card       = Color(0xFF143D5C);      // Biru card
-  static const border     = Color(0xFF1A5A8A);      // Biru border
-  static const borderLit  = Color(0xFF2B7ABF);      // Biru terang border
-  
-  static const blueDark   = Color(0xFF0A4D8C);
-  static const blueMid    = Color(0xFF1A6FB0);
-  static const blueLight  = Color(0xFF2D8FD9);
-  static const blueAccent = Color(0xFF4AA5F0);
-  
-  static const text       = Color(0xFFF0F8FF);      // Putih kebiruan
-  static const textSub    = Color(0xFFB0D4F0);      // Biru muda
-  static const textDim    = Color(0xFF5A9BC0);      // Biru redup
-  
-  static const LinearGradient blueGrad = LinearGradient(
-    colors: [Color(0xFF1A6FB0), Color(0xFF0A4D8C), Color(0xFF063A6B)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-}
-
+// ─── Landing Page — Red theme ────────────────────────────────────────────────
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
-
-  @override
-  State<LandingPage> createState() => _LandingPageState();
+  @override State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage>
-    with TickerProviderStateMixin {
-  late AnimationController _bgCtrl;
-  late AnimationController _entranceCtrl;
-  late AnimationController _logoCtrl;
-  late AnimationController _btnCtrl;
-  late AnimationController _orbCtrl;
+class _LandingPageState extends State<LandingPage> with SingleTickerProviderStateMixin {
 
-  late Animation<double> _fade;
-  late Animation<Offset> _slide;
-  late Animation<double> _logoPulse;
-  late Animation<double> _logoGlow;
-  late Animation<double> _btnGlow;
+  // ── Warna tema merah ──────────────────────────────────────────────────────
+  static const _bg      = Color(0xFF000000);
+  static const _bg2     = Color(0xFF020A18);
+  static const _red     = Color(0xFF0D47A1);
+  static const _red2    = Color(0xFF990000);
+  static const _redL    = Color(0xFF42A5F5);
+  static const _pink    = Color(0xFF2979FF);
+  static const _card    = Color(0xFF040F22);
+  static const _cardBrd = Color(0xFF1E1E1E);
+  static const _txt     = Color(0xFFFFFFFF);
+  static const _txtSub  = Color(0xFFFF8A80);
+  static const _tele    = Color(0xFF2AABEE);
+  static const _wa      = Color(0xFF25D366);
+
+  late VideoPlayerController _vidCtrl;
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
 
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..forward();
+    _fadeAnim  = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
 
-    _bgCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 20))
-      ..repeat();
-
-    _entranceCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1100));
-    _fade = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
-        .animate(CurvedAnimation(
-            parent: _entranceCtrl, curve: Curves.easeOutCubic));
-
-    _logoCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2400))
-      ..repeat(reverse: true);
-    _logoPulse = Tween<double>(begin: 0.94, end: 1.0)
-        .animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInOut));
-    _logoGlow = Tween<double>(begin: 0.3, end: 0.8)
-        .animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInOut));
-
-    _btnCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1800))
-      ..repeat(reverse: true);
-    _btnGlow = Tween<double>(begin: 0.2, end: 0.55)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeInOut));
-
-    _orbCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 12))
-      ..repeat();
-
-    _entranceCtrl.forward();
+    _vidCtrl = VideoPlayerController.asset('assets/videos/landing.mp4')
+      ..initialize().then((_) {
+        setState(() {});
+        _vidCtrl.setLooping(true);
+        _vidCtrl.play();
+        _vidCtrl.setVolume(0);
+      });
   }
 
   @override
   void dispose() {
-    _bgCtrl.dispose();
-    _entranceCtrl.dispose();
-    _logoCtrl.dispose();
-    _btnCtrl.dispose();
-    _orbCtrl.dispose();
+    _animCtrl.dispose();
+    _vidCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _openUrl(String url) async {
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.bg,
-      body: Stack(
-        children: [
-          Positioned.fill(
-              child: _AnimatedBg(bgCtrl: _bgCtrl, orbCtrl: _orbCtrl)),
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fade,
-              child: SlideTransition(
-                position: _slide,
-                child: SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 50),
-                      _buildHeroSection(),
-                      const SizedBox(height: 44),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Column(
-                          children: [
-                            _buildSignInButton(),
-                            const SizedBox(height: 14),
-                            _buildBuyButton(),
-                            const SizedBox(height: 32),
-                            _buildDivider(),
-                            const SizedBox(height: 24),
-                            Row(children: [
-                              Expanded(child: _ContactBtn(
-                                icon: FontAwesomeIcons.telegram,
-                                label: 'Telegram',
-                                color: const Color(0xFF39A7E0),
-                                colorDim: const Color(0xFF1A4D6E),
-                                onTap: () => _openUrl('https://t.me/RamzMd'),
-                              )),
-                              const SizedBox(width: 12),
-                              Expanded(child: _ContactBtn(
-                                icon: FontAwesomeIcons.whatsapp,
-                                label: 'WhatsApp',
-                                color: const Color(0xFF25D366),
-                                colorDim: const Color(0xFF0D4A27),
-                                onTap: () => _openUrl('https://wa.me/6285794530375'),
-                              )),
-                            ]),
-                            const SizedBox(height: 40),
-                            _buildFooter(),
-                            const SizedBox(height: 32),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+      backgroundColor: _bg,
+      body: Stack(children: [
+        // ── Background gradient ───────────────────────────────────────────
+        Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(0, -0.4),
+              radius: 1.2,
+              colors: [Color(0xFF051525), _bg],
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
 
-  Widget _buildHeroSection() {
-    return Column(children: [
-      // Logo
-      AnimatedBuilder(
-        animation: _logoCtrl,
-        builder: (_, __) => Transform.scale(
-          scale: _logoPulse.value,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 140, height: 140,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _C.blueLight.withOpacity(_logoGlow.value * 0.2),
-                    width: 1,
-                  ),
-                ),
-              ),
-              Container(
-                width: 118, height: 118,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _C.blueMid.withOpacity(_logoGlow.value * 0.35),
-                    width: 1.5,
-                  ),
-                ),
-              ),
-              Transform.rotate(
-                angle: _orbCtrl.value * math.pi * 2,
-                child: Container(
-                  width: 100, height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: SweepGradient(
-                      colors: [
-                        _C.blueAccent.withOpacity(_logoGlow.value * 0.6),
-                        Colors.transparent,
-                        _C.blueDark.withOpacity(_logoGlow.value * 0.3),
-                        Colors.transparent,
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              Container(
-                width: 88, height: 88,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF143D5C), Color(0xFF1A5A8A)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  border: Border.all(
-                    color: _C.blueAccent.withOpacity(_logoGlow.value * 0.5),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _C.blueMid.withOpacity(_logoGlow.value * 0.5),
-                      blurRadius: 30,
-                      spreadRadius: 0,
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(22),
-                  child: Image.asset(
-                    'assets/images/reze.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.apps_rounded,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 28),
-      ShaderMask(
-        shaderCallback: (b) => const LinearGradient(
-          colors: [_C.blueAccent, _C.blueLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(b),
-        child: const Text(
-          'DemonOverLord',
-          style: TextStyle(
-            fontSize: 36,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            letterSpacing: -0.5,
-            height: 1,
-          ),
-        ),
-      ),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-        decoration: BoxDecoration(
-          color: _C.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _C.border),
-        ),
-        child: const Text(
-          'Please Log-in or buy access to continue',
-          style: TextStyle(
-            color: _C.textSub,
-            fontSize: 12,
-            letterSpacing: 0.3,
-          ),
-        ),
-      ),
-    ]);
-  }
-
-  // Tombol Login - gradien biru
-  Widget _buildSignInButton() {
-    return AnimatedBuilder(
-      animation: _btnCtrl,
-      builder: (_, __) => _PressableBtn(
-        onTap: () => Navigator.pushNamed(context, '/login'),
-        child: Container(
-          width: double.infinity,
-          height: 56,
-          decoration: BoxDecoration(
-            gradient: _C.blueGrad,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: _C.blueMid.withOpacity(_btnGlow.value * 0.55),
-                blurRadius: 24,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.login_rounded, color: Colors.white, size: 22),
-              SizedBox(width: 12),
-              Text(
-                'Log-in',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Tombol Buy Access
-  Widget _buildBuyButton() {
-    return _PressableBtn(
-      onTap: () => _openUrl('https://t.me/RamzMd'),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          color: _C.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _C.border),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.shopping_bag_outlined, color: _C.textSub, size: 22),
-            SizedBox(width: 12),
-            Text(
-              'Buy access',
-              style: TextStyle(
-                color: _C.textSub,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
+        // ── Glow lingkaran di atas ────────────────────────────────────────
+        Positioned(
+          top: -60, left: MediaQuery.of(context).size.width / 2 - 100,
+          child: Container(
+            width: 200, height: 200,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [_red.withOpacity(0.35), Colors.transparent]),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(children: [
-      Expanded(child: Container(height: 1, color: _C.border)),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: _C.surface,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: _C.border),
           ),
-          child: const Text('Hubungi Kami',
-              style: TextStyle(color: _C.textDim, fontSize: 10,
-                  fontWeight: FontWeight.w600, letterSpacing: 0.5)),
         ),
-      ),
-      Expanded(child: Container(height: 1, color: _C.border)),
-    ]);
-  }
+        Positioned(
+          top: 40, right: -40,
+          child: Container(
+            width: 180, height: 180,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [_pink.withOpacity(0.2), Colors.transparent]),
+            ),
+          ),
+        ),
 
-  Widget _buildFooter() {
-    return Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Container(width: 30, height: 2,
-            decoration: BoxDecoration(
-              gradient: _C.blueGrad,
-              borderRadius: BorderRadius.circular(1),
-            )),
-        const SizedBox(width: 10),
-        const Text('© 2026 DemonOverLord',
-            style: TextStyle(color: _C.textDim, fontSize: 11,
-                letterSpacing: 0.5)),
-        const SizedBox(width: 10),
-        Container(width: 30, height: 2,
-            decoration: BoxDecoration(
-              gradient: _C.blueGrad,
-              borderRadius: BorderRadius.circular(1),
-            )),
+        // ── Main content ──────────────────────────────────────────────────
+        SafeArea(child: FadeTransition(opacity: _fadeAnim, child: SlideTransition(position: _slideAnim,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+              const SizedBox(height: 50),
+
+              // Logo / Title
+              const Text('CHAN XITER',
+                style: TextStyle(color: _txt, fontSize: 42, fontWeight: FontWeight.w900,
+                  fontFamily: 'Orbitron', letterSpacing: 3,
+                  shadows: [Shadow(color: _redL, blurRadius: 20)])),
+              const SizedBox(height: 8),
+
+              // Powered by badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _cardBrd)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(width: 7, height: 7, decoration: BoxDecoration(color: _red, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Text('Powered by @andipmx', style: TextStyle(color: _txtSub, fontSize: 12)),
+                ]),
+              ),
+              const SizedBox(height: 32),
+
+              // Feature cards row
+              Row(children: [
+                _featureCard(Icons.shield_rounded, 'Secure', _red),
+                const SizedBox(width: 10),
+                _featureCard(Icons.bolt_rounded, 'Fast', _pink),
+                const SizedBox(width: 10),
+                _featureCard(Icons.local_fire_department_rounded, 'Power', const Color(0xFFFF6D00)),
+              ]),
+              const SizedBox(height: 24),
+
+              // Banner video/image card
+              Container(
+                height: 190,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _cardBrd),
+                  color: _card,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Stack(fit: StackFit.expand, children: [
+                  if (_vidCtrl.value.isInitialized)
+                    FittedBox(fit: BoxFit.cover, child: SizedBox(
+                      width: _vidCtrl.value.size.width,
+                      height: _vidCtrl.value.size.height,
+                      child: VideoPlayer(_vidCtrl)))
+                  else
+                    Image.asset('assets/images/wel.png', fit: BoxFit.cover),
+                  // Overlay gradient
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter, end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, _bg.withOpacity(0.85)]))),
+                  const Positioned(bottom: 16, left: 16, child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('CHAN XITER', style: TextStyle(color: _txt, fontSize: 18, fontWeight: FontWeight.w900, fontFamily: 'Orbitron')),
+                      SizedBox(height: 4),
+                      Text('Log in or buy access to continue', style: TextStyle(color: _txtSub, fontSize: 12)),
+                    ])),
+                ]),
+              ),
+              const SizedBox(height: 28),
+
+              // MASUK button
+              SizedBox(width: double.infinity, height: 56,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent, shadowColor: Colors.transparent, padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                  onPressed: () => Navigator.pushNamed(context, '/login'),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [_red, _pink], begin: Alignment.centerLeft, end: Alignment.centerRight),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [BoxShadow(color: _red.withOpacity(0.5), blurRadius: 20, offset: Offset(0, 8))]),
+                    child: const Center(child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 10),
+                      Text('MASUK', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 2)),
+                    ])),
+                  ),
+                )),
+              const SizedBox(height: 14),
+
+              // Beli Akses button
+              SizedBox(width: double.infinity, height: 56,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: _cardBrd, width: 1.5),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    backgroundColor: _card.withOpacity(0.6)),
+                  onPressed: () => _openUrl('https://t.me/pemxx08'),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    const Icon(Icons.shopping_bag_outlined, color: _txtSub, size: 18),
+                    const SizedBox(width: 10),
+                    const Text('Beli Akses', style: TextStyle(color: _txt, fontSize: 15, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(color: _red, borderRadius: BorderRadius.all(Radius.circular(10))),
+                      child: const Text('CLICK HERE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1))),
+                  ]),
+                )),
+              const SizedBox(height: 28),
+
+              // Telegram & WhatsApp buttons
+              Row(children: [
+                Expanded(child: _socialBtn(FontAwesomeIcons.telegram, 'Telegram', _tele, 'https://t.me/Chanuuu123')),
+                const SizedBox(width: 12),
+                Expanded(child: _socialBtn(FontAwesomeIcons.whatsapp, 'WhatsApp', _wa, 'https://wa.me/081361125951')),
+              ]),
+              const SizedBox(height: 24),
+
+              // Footer
+              Text('© 2026 CHAN XITER  •  All rights reserved',
+                style: TextStyle(color: _txtSub.withOpacity(0.5), fontSize: 11)),
+              const SizedBox(height: 30),
+            ]),
+          ),
+        ))),
       ]),
-    ]);
-  }
-}
-
-// Contact Button
-class _ContactBtn extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final Color colorDim;
-  final VoidCallback onTap;
-
-  const _ContactBtn({
-    required this.icon, required this.label,
-    required this.color, required this.colorDim,
-    required this.onTap,
-  });
-
-  @override
-  State<_ContactBtn> createState() => _ContactBtnState();
-}
-
-class _ContactBtnState extends State<_ContactBtn> {
-  bool _pressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) { setState(() => _pressed = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedScale(
-        scale: _pressed ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 130),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          height: 52,
-          decoration: BoxDecoration(
-            color: _pressed
-                ? widget.color.withOpacity(0.1)
-                : _C.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: _pressed
-                  ? widget.color.withOpacity(0.4)
-                  : _C.border,
-            ),
-            boxShadow: _pressed
-                ? [BoxShadow(color: widget.color.withOpacity(0.12),
-                    blurRadius: 12, offset: const Offset(0, 4))]
-                : [],
-          ),
-          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            FaIcon(widget.icon, color: widget.color, size: 18),
-            const SizedBox(width: 8),
-            Text(widget.label,
-                style: const TextStyle(color: _C.text, fontSize: 13,
-                    fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ),
     );
   }
-}
 
-// Pressable Button
-class _PressableBtn extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onTap;
-  const _PressableBtn({required this.child, required this.onTap});
+  Widget _featureCard(IconData icon, String label, Color color) => Expanded(
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: _cardBrd)),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(label, style: TextStyle(color: _txt, fontSize: 12, fontWeight: FontWeight.w600)),
+      ]),
+    ));
 
-  @override
-  State<_PressableBtn> createState() => _PressableBtnState();
-}
-
-class _PressableBtnState extends State<_PressableBtn> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _down = false),
-      child: AnimatedScale(
-        scale: _down ? 0.97 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: AnimatedOpacity(
-          opacity: _down ? 0.88 : 1.0,
-          duration: const Duration(milliseconds: 120),
-          child: widget.child,
-        ),
-      ),
-    );
-  }
-}
-
-// Animated Background
-class _AnimatedBg extends StatelessWidget {
-  final AnimationController bgCtrl;
-  final AnimationController orbCtrl;
-  const _AnimatedBg({required this.bgCtrl, required this.orbCtrl});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: Listenable.merge([bgCtrl, orbCtrl]),
-      builder: (_, __) => CustomPaint(
-        painter: _BgPainter(bgCtrl.value, orbCtrl.value),
-      ),
-    );
-  }
-}
-
-class _BgPainter extends CustomPainter {
-  final double t;
-  final double o;
-  _BgPainter(this.t, this.o);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Grid
-    final grid = Paint()
-      ..color = _C.border.withOpacity(0.15)
-      ..strokeWidth = 0.5;
-    const step = 40.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    // Central glow
-    final glow1 = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.blueMid.withOpacity(0.08 + math.sin(t * math.pi * 2) * 0.04),
-        Colors.transparent,
-      ], radius: 0.7).createShader(Rect.fromCircle(
-          center: Offset(size.width / 2, size.height * 0.3),
-          radius: size.width * 0.7));
-    canvas.drawCircle(
-        Offset(size.width / 2, size.height * 0.3), size.width * 0.7, glow1);
-
-    // Orbiting accent
-    final angle = o * math.pi * 2;
-    final orbX = size.width / 2 + math.cos(angle) * size.width * 0.35;
-    final orbY = size.height * 0.28 + math.sin(angle) * 60;
-    final glow2 = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.blueLight.withOpacity(0.06),
-        Colors.transparent,
-      ], radius: 0.5).createShader(
-          Rect.fromCircle(center: Offset(orbX, orbY), radius: 80));
-    canvas.drawCircle(Offset(orbX, orbY), 80, glow2);
-
-    // Bottom gradient fade
-    final fade = Paint()
-      ..shader = const LinearGradient(
-        colors: [Colors.transparent, _C.bg],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ).createShader(Rect.fromLTWH(
-          0, size.height * 0.55, size.width, size.height * 0.45));
-    canvas.drawRect(
-        Rect.fromLTWH(0, size.height * 0.55, size.width, size.height * 0.45),
-        fade);
-  }
-
-  @override
-  bool shouldRepaint(_BgPainter old) => old.t != t || old.o != o;
+  Widget _socialBtn(IconData icon, String label, Color color, String url) =>
+    OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: color.withOpacity(0.5), width: 1.5),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: color.withOpacity(0.12),
+        padding: const EdgeInsets.symmetric(vertical: 14)),
+      icon: Icon(icon, color: color, size: 18),
+      label: Text(label, style: TextStyle(color: _txt, fontSize: 13, fontWeight: FontWeight.bold)),
+      onPressed: () => _openUrl(url));
 }

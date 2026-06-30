@@ -1,35 +1,8 @@
+import 'app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-
-// ─── Palette: Biru Modern (sama dengan halaman lain) ─────────────────────────
-class _C {
-  static const bg         = Color(0xFF0A1929);      // Biru gelap background
-  static const surface    = Color(0xFF0F2B40);      // Biru tua surface
-  static const card       = Color(0xFF143D5C);      // Biru card
-  static const border     = Color(0xFF1A5A8A);      // Biru border
-  static const borderLit  = Color(0xFF2B7ABF);      // Biru terang border
-  
-  static const blueDark   = Color(0xFF0A4D8C);
-  static const blueMid    = Color(0xFF1A6FB0);
-  static const blueLight  = Color(0xFF2D8FD9);
-  static const blueAccent = Color(0xFF4AA5F0);
-  
-  static const green      = Color(0xFF22C55E);
-  static const amber      = Color(0xFFF59E0B);
-  static const red        = Color(0xFFEF4444);
-  
-  static const text       = Color(0xFFF0F8FF);      // Putih kebiruan
-  static const textSub    = Color(0xFFB0D4F0);      // Biru muda
-  static const textDim    = Color(0xFF5A9BC0);      // Biru redup
-  
-  static const LinearGradient btnGrad = LinearGradient(
-    colors: [Color(0xFF1A6FB0), Color(0xFF2D8FD9), Color(0xFF4AA5F0)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-}
+import 'dart:ui';
 
 class SellerPage extends StatefulWidget {
   final String keyToken;
@@ -41,293 +14,167 @@ class SellerPage extends StatefulWidget {
 }
 
 class _SellerPageState extends State<SellerPage> {
-  List<dynamic> fullUserList = [];
-  List<dynamic> filteredList = [];
+  final _newUser = TextEditingController();
+  final _newPass = TextEditingController();
+  final _days = TextEditingController();
+  final _editUser = TextEditingController();
+  final _editDays = TextEditingController();
+  bool loading = false;
 
-  final List<String> roleOptions = ['member'];
-  String selectedRole = 'member';
+  static const deepPurple = Color(0xFF020818);
+  static const mainPurple = Color(0xFF040F22);
+  static const accentPurple = Color(0xFFCCCCCC);
+  static const deepBlack = Color(0xFF020818);
+  static const cardDark = Color(0xFF040F22);
 
-  int currentPage = 1;
-  int itemsPerPage = 25;
-
-  final createUsernameController = TextEditingController();
-  final createPasswordController = TextEditingController();
-  final createDayController = TextEditingController();
-
-  final editUsernameController = TextEditingController();
-  final editDayController = TextEditingController();
-
-  bool isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchUsers();
-  }
-
-  Future<void> _fetchUsers() async {
-    setState(() => isLoading = true);
-    try {
-      final res = await http.get(
-        Uri.parse('http://tirzzmalesddos.sano.biz.id:11478/listUsers?key=${widget.keyToken}'),
-      );
-      final data = jsonDecode(res.body);
-      if (data['valid'] == true && data['authorized'] == true) {
-        fullUserList = data['users'] ?? [];
-        _filterAndPaginate();
-      } else {
-        _alert("Info", data['message'] ?? 'Gagal memuat user.');
-      }
-    } catch (_) {
-      _alert("Error", "Gagal terhubung ke server.");
+  Future<void> _create() async {
+    final u = _newUser.text.trim(), p = _newPass.text.trim(), d = _days.text.trim();
+    if (u.isEmpty || p.isEmpty || d.isEmpty) return _alert("Semua field wajib diisi");
+    setState(() => loading = true);
+    final res = await http.get(Uri.parse(
+        "$kBaseUrl/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
+    final data = jsonDecode(res.body);
+    if (data['created'] == true) {
+      _alert("Akun berhasil dibuat!");
+      _newUser.clear(); _newPass.clear(); _days.clear();
+    } else {
+      _alert("${data["message"] ?? "Gagal membuat akun."}");
     }
-    setState(() => isLoading = false);
+    setState(() => loading = false);
   }
 
-  void _filterAndPaginate() {
-    setState(() {
-      currentPage = 1;
-      filteredList = fullUserList
-          .where((u) => u['role'] == selectedRole)
-          .toList();
-    });
-  }
-
-  List<dynamic> _getCurrentPageData() {
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage);
-    return filteredList.sublist(
-      start,
-      end > filteredList.length ? filteredList.length : end,
-    );
-  }
-
-  int get totalPages => (filteredList.length / itemsPerPage).ceil();
-
-  Future<void> _createAccount() async {
-    final u = createUsernameController.text.trim();
-    final p = createPasswordController.text.trim();
-    final d = createDayController.text.trim();
-
-    if (u.isEmpty || p.isEmpty || d.isEmpty) {
-      _alert("Peringatan", "Semua field wajib diisi.");
-      return;
+  Future<void> _edit() async {
+    final u = _editUser.text.trim(), d = _editDays.text.trim();
+    if (u.isEmpty || d.isEmpty) return _alert("Username dan durasi wajib diisi");
+    setState(() => loading = true);
+    final res = await http.get(Uri.parse(
+        "$kBaseUrl/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
+    final data = jsonDecode(res.body);
+    if (data['edited'] == true) {
+      _alert("Durasi berhasil diperbarui.");
+      _editUser.clear(); _editDays.clear();
+    } else {
+      _alert("${data["message"] ?? "Gagal mengubah durasi."}");
     }
-
-    setState(() => isLoading = true);
-    try {
-      final res = await http.get(Uri.parse(
-          "http://tirzzmalesddos.sano.biz.id:11478/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
-      final data = jsonDecode(res.body);
-
-      if (data['created'] == true) {
-        _alert("Sukses", "✅ Akun berhasil dibuat!");
-        createUsernameController.clear();
-        createPasswordController.clear();
-        createDayController.clear();
-        _fetchUsers();
-      } else {
-        String msg = data['message'] ?? 'Gagal membuat akun.';
-        if (data['invalidDay'] == true) {
-          msg += " (Max 30 hari untuk Reseller)";
-        }
-        _alert("Gagal", "❌ $msg");
-      }
-    } catch (e) {
-      _alert("Error", "❌ Koneksi error: $e");
-    }
-    setState(() => isLoading = false);
+    setState(() => loading = false);
   }
 
-  Future<void> _editUser() async {
-    final u = editUsernameController.text.trim();
-    final d = editDayController.text.trim();
-
-    if (u.isEmpty || d.isEmpty) {
-      _alert("Peringatan", "Semua field wajib diisi.");
-      return;
-    }
-
-    setState(() => isLoading = true);
-    try {
-      final res = await http.get(Uri.parse(
-          "http://tirzzmalesddos.sano.biz.id:11478/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
-      final data = jsonDecode(res.body);
-
-      if (data['edited'] == true) {
-        _alert("Sukses", "✅ Durasi berhasil diperbarui.");
-        editUsernameController.clear();
-        editDayController.clear();
-        _fetchUsers();
-      } else {
-        _alert("Gagal", "❌ ${data['message'] ?? 'Gagal mengubah durasi.'}");
-      }
-    } catch (e) {
-      _alert("Error", "❌ Koneksi error: $e");
-    }
-    setState(() => isLoading = false);
-  }
-
-  void _alert(String title, String message) {
+  void _alert(String msg) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: _C.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: _C.blueLight.withOpacity(0.3)),
-        ),
-        title: Row(
-          children: [
-            Icon(Icons.info_outline, color: _C.blueLight),
-            const SizedBox(width: 10),
-            Text(title, style: const TextStyle(color: _C.text)),
+      builder: (_) => BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: AlertDialog(
+          backgroundColor: cardDark,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(color: accentPurple.withOpacity(0.3), width: 1.5),
+          ),
+          content: Text(
+            msg,
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("OK", style: TextStyle(color: accentPurple)),
+            )
           ],
         ),
-        content: Text(message, style: const TextStyle(color: _C.textSub)),
-        actions: [
-          Center(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: _C.btnGrad,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("OK", style: TextStyle(color: _C.text, fontWeight: FontWeight.bold)),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildInput({
-    required String label,
+  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: padding ?? const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            cardDark,
+            cardDark.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: accentPurple.withOpacity(0.3),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: mainPurple.withOpacity(0.15),
+            blurRadius: 25,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _buildGlassInputField({
     required TextEditingController controller,
+    required String label,
     required IconData icon,
-    TextInputType type = TextInputType.text,
-    String hint = "",
+    TextInputType keyboardType = TextInputType.text,
+    bool obscureText = false,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            cardDark,
+            cardDark.withOpacity(0.8),
+          ],
+        ),
+      ),
       child: TextField(
         controller: controller,
-        keyboardType: type,
-        style: const TextStyle(color: _C.text),
+        keyboardType: keyboardType,
+        obscureText: obscureText,
+        style: TextStyle(color: Colors.white),
+        cursorColor: accentPurple,
         decoration: InputDecoration(
           labelText: label,
-          hintText: hint,
-          hintStyle: const TextStyle(color: _C.textDim),
-          labelStyle: const TextStyle(color: _C.blueLight),
-          prefixIcon: Icon(icon, color: _C.blueLight),
-          filled: true,
-          fillColor: _C.surface,
+          labelStyle: TextStyle(color: Colors.white70),
+          prefixIcon: Icon(icon, color: accentPurple),
+          filled: false,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _C.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _C.border),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: accentPurple.withOpacity(0.3)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: _C.blueLight, width: 2),
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: accentPurple, width: 2),
           ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: accentPurple.withOpacity(0.3)),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
       ),
     );
   }
 
-  Widget _buildGlassCard({
-    required String title,
-    required IconData icon,
-    required List<Widget> children,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 25),
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: _C.card.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _C.border),
-        boxShadow: [
-          BoxShadow(
-            color: _C.blueDark.withOpacity(0.15),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _C.blueMid.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: _C.blueLight),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: _C.text,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Orbitron',
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserItem(Map user) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: _C.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _C.border),
-      ),
+  Widget _buildSectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: _C.blueMid.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.person, color: _C.blueLight),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  user['username'],
-                  style: const TextStyle(color: _C.text, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  "ROLE: ${user['role'].toString().toUpperCase()} | EXP: ${user['expiredDate']}",
-                  style: const TextStyle(color: _C.textSub, fontSize: 13),
-                ),
-              ],
+          Icon(icon, color: accentPurple, size: 24),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
         ],
@@ -335,196 +182,237 @@ class _SellerPageState extends State<SellerPage> {
     );
   }
 
-  Widget _buildPagination() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: List.generate(totalPages, (index) {
-        final page = index + 1;
-        return ElevatedButton(
-          onPressed: () => setState(() => currentPage = page),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: currentPage == page ? _C.blueLight : Colors.transparent,
-            foregroundColor: currentPage == page ? _C.text : _C.textDim,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-              side: BorderSide(color: _C.border),
-            ),
+  Widget _buildActionButton({
+    required String text,
+    required IconData icon,
+    required VoidCallback onPressed,
+    required Color color,
+    bool isLoading = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            color.withOpacity(0.8),
+            color.withOpacity(0.6),
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 15,
+            spreadRadius: 2,
           ),
-          child: Text("$page", style: const TextStyle(fontSize: 12)),
-        );
-      }),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          shadowColor: Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: isLoading
+            ? const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            color: Colors.white,
+          ),
+        )
+            : Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              text,
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.bg,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_C.bg, _C.blueDark.withOpacity(0.3), _C.bg],
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(Icons.storefront, color: _C.blueLight, size: 50),
-                const SizedBox(height: 10),
-                Text(
-                  "SELLER DASHBOARD",
-                  style: TextStyle(
-                    color: _C.text,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Orbitron',
-                    letterSpacing: 2,
-                    shadows: [Shadow(color: _C.blueMid.withOpacity(0.8), blurRadius: 10)],
-                  ),
-                ),
-                const SizedBox(height: 40),
-
-                _buildGlassCard(
-                  title: "CREATE MEMBER",
-                  icon: FontAwesomeIcons.userPlus,
-                  children: [
-                    _buildInput(
-                      label: "Username Baru",
-                      controller: createUsernameController,
-                      icon: FontAwesomeIcons.user,
-                    ),
-                    _buildInput(
-                      label: "Password",
-                      controller: createPasswordController,
-                      icon: FontAwesomeIcons.lock,
-                    ),
-                    _buildInput(
-                      label: "Durasi (Hari)",
-                      controller: createDayController,
-                      icon: FontAwesomeIcons.calendarDay,
-                      type: TextInputType.number,
-                      hint: "Maksimal 30 hari",
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        gradient: _C.btnGrad,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(color: _C.blueMid.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _createAccount,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: isLoading
-                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _C.text))
-                            : const Text("CREATE ACCOUNT", style: TextStyle(color: _C.text, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
+      backgroundColor: deepBlack,
+      body: Stack(
+        children: [
+          Positioned(
+            top: -100,
+            right: -100,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    deepPurple.withOpacity(0.1),
+                    Colors.transparent,
                   ],
                 ),
-
-                _buildGlassCard(
-                  title: "EXTEND DURATION",
-                  icon: FontAwesomeIcons.clock,
-                  children: [
-                    _buildInput(
-                      label: "Username Target",
-                      controller: editUsernameController,
-                      icon: FontAwesomeIcons.userEdit,
-                      hint: "Username member yang ingin diperpanjang",
-                    ),
-                    _buildInput(
-                      label: "Tambah Hari",
-                      controller: editDayController,
-                      icon: FontAwesomeIcons.calendarPlus,
-                      type: TextInputType.number,
-                      hint: "Maksimal 30 hari",
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      height: 50,
-                      decoration: BoxDecoration(
-                        gradient: _C.btnGrad,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(color: _C.blueMid.withOpacity(0.4), blurRadius: 10, offset: const Offset(0, 4))
-                        ],
-                      ),
-                      child: ElevatedButton(
-                        onPressed: isLoading ? null : _editUser,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: isLoading
-                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: _C.text))
-                            : const Text("ADD DAYS", style: TextStyle(color: _C.text, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-
-                _buildGlassCard(
-                  title: "MEMBER LIST",
-                  icon: FontAwesomeIcons.users,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: _C.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _C.border),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedRole,
-                          dropdownColor: _C.card,
-                          style: const TextStyle(color: _C.text),
-                          items: roleOptions.map((role) {
-                            return DropdownMenuItem(value: role, child: Text(role.toUpperCase()));
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              selectedRole = val;
-                              _filterAndPaginate();
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    isLoading
-                        ? Center(child: CircularProgressIndicator(color: _C.blueLight))
-                        : Column(
-                      children: [
-                        ..._getCurrentPageData().map((u) => _buildUserItem(u)).toList(),
-                        const SizedBox(height: 20),
-                        _buildPagination(),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 30),
-              ],
+              ),
             ),
           ),
-        ),
+          Positioned(
+            bottom: -150,
+            left: -100,
+            child: Container(
+              width: 400,
+              height: 400,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    mainPurple.withOpacity(0.08),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _buildGlassCard(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.store, color: accentPurple, size: 32),
+                          const SizedBox(width: 12),
+                          const Text(
+                            "RESELLER PANEL",
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    _buildGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle("Buat Akun Baru", Icons.person_add),
+
+                          _buildGlassInputField(
+                            controller: _newUser,
+                            label: "Username",
+                            icon: Icons.person_outline,
+                          ),
+
+                          _buildGlassInputField(
+                            controller: _newPass,
+                            label: "Password",
+                            icon: Icons.lock_outline,
+                            obscureText: true,
+                          ),
+
+                          _buildGlassInputField(
+                            controller: _days,
+                            label: "Durasi (hari)",
+                            icon: Icons.calendar_today,
+                            keyboardType: TextInputType.number,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          _buildActionButton(
+                            text: "BUAT AKUN",
+                            icon: Icons.person_add,
+                            onPressed: _create,
+                            color: mainPurple,
+                            isLoading: loading,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    _buildGlassCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle("Ubah Durasi", Icons.edit_calendar),
+
+                          _buildGlassInputField(
+                            controller: _editUser,
+                            label: "Username",
+                            icon: Icons.person_outline,
+                          ),
+
+                          _buildGlassInputField(
+                            controller: _editDays,
+                            label: "Tambah Durasi (hari)",
+                            icon: Icons.calendar_today,
+                            keyboardType: TextInputType.number,
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          _buildActionButton(
+                            text: "UBAH DURASI",
+                            icon: Icons.edit,
+                            onPressed: _edit,
+                            color: deepPurple,
+                            isLoading: loading,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    _buildGlassCard(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: accentPurple, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              "Gunakan panel ini untuk mengelola akun reseller Anda",
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
