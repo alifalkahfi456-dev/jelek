@@ -10,73 +10,29 @@ class ManageServerPage extends StatefulWidget {
   State<ManageServerPage> createState() => _ManageServerPageState();
 }
 
-class _ManageServerPageState extends State<ManageServerPage> with TickerProviderStateMixin {
+class _ManageServerPageState extends State<ManageServerPage> {
   List<Map<String, dynamic>> vpsList = [];
   bool isLoading = false;
-  bool isAdding = false;
 
   final _hostController = TextEditingController();
   final _userController = TextEditingController();
   final _passController = TextEditingController();
 
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  // Tema warna hitam biru
-  final Color primaryDark = const Color(0xFF0A0E27);
-  final Color primaryBlue = const Color(0xFF1E3A8A);
-  final Color accentBlue = const Color(0xFF3B82F6);
-  final Color lightBlue = const Color(0xFF60A5FA);
-  final Color cardDark = const Color(0xFF151932);
-  final Color cardDarker = const Color(0xFF0F1330);
-  final Color successGreen = const Color(0xFF10B981);
-  final Color warningOrange = const Color(0xFFF59E0B);
-  final Color dangerRed = const Color(0xFFEF4444);
+  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
+  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
+  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
+  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
+  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
 
   @override
   void initState() {
     super.initState();
-
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
-
-    _fadeController.forward();
-    _slideController.forward();
-
     _fetchVpsList();
-  }
-
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _hostController.dispose();
-    _userController.dispose();
-    _passController.dispose();
-    super.dispose();
   }
 
   Future<void> _fetchVpsList() async {
     setState(() => isLoading = true);
-    final uri = Uri.parse('https://panel-private-yanz.fansjkt48.web.id:10918/myServer?key=${widget.keyToken}');
+    final uri = Uri.parse('http://saitama.omdhancivok.my.id:2001/myServer?key=${widget.keyToken}');
     try {
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
@@ -84,7 +40,7 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
         vpsList = List<Map<String, dynamic>>.from(data);
       });
     } catch (_) {
-      _showNotification("Error", "Gagal mengambil data VPS.", dangerRed);
+      _showError("Gagal mengambil data VPS.");
     }
     setState(() => isLoading = false);
   }
@@ -95,14 +51,11 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
     final pass = _passController.text.trim();
 
     if (host.isEmpty || user.isEmpty || pass.isEmpty) {
-      _showNotification("Error", "Isi semua field terlebih dahulu.", dangerRed);
+      _showError("Isi semua field terlebih dahulu.");
       return;
     }
 
-    setState(() => isAdding = true);
-    Navigator.pop(context);
-
-    final uri = Uri.parse('https://panel-private-yanz.fansjkt48.web.id:10918/addServer');
+    final uri = Uri.parse('http://saitama.omdhancivok.my.id:2001/addServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -115,26 +68,17 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
         _hostController.clear();
         _userController.clear();
         _passController.clear();
-        _showNotification("Success", "VPS berhasil ditambahkan.", successGreen);
         _fetchVpsList();
       } else {
-        _showNotification("Error", data['error'] ?? 'Gagal menambah VPS', dangerRed);
+        _showError(data['error'] ?? 'Gagal menambah VPS');
       }
     } catch (_) {
-      _showNotification("Error", "Gagal terhubung ke server.", dangerRed);
+      _showError("Gagal terhubung ke server.");
     }
-    setState(() => isAdding = false);
   }
 
   Future<void> _deleteVps(String host) async {
-    final confirmed = await _showConfirmationDialog(
-      "Hapus VPS",
-      "Apakah Anda yakin ingin menghapus VPS dengan host $host?",
-    );
-
-    if (!confirmed) return;
-
-    final uri = Uri.parse('https://panel-private-yanz.fansjkt48.web.id:10918/delServer');
+    final uri = Uri.parse('http://saitama.omdhancivok.my.id:2001/delServer');
     try {
       final res = await http.post(uri, body: {
         'key': widget.keyToken,
@@ -142,126 +86,32 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
       });
       final data = jsonDecode(res.body);
       if (data['success'] == true) {
-        _showNotification("Success", "VPS berhasil dihapus.", successGreen);
         _fetchVpsList();
       } else {
-        _showNotification("Error", "Gagal menghapus VPS.", dangerRed);
+        _showError("Gagal menghapus VPS.");
       }
     } catch (_) {
-      _showNotification("Error", "Gagal menghubungi server.", dangerRed);
+      _showError("Gagal menghubungi server.");
     }
   }
 
-  Future<bool> _showConfirmationDialog(String title, String message) async {
-    final result = await showDialog<bool>(
+  void _showError(String msg) {
+    showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: cardDarker,
+        backgroundColor: cardDark,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: dangerRed.withOpacity(0.3)),
+          side: BorderSide(color: bloodRed.withOpacity(0.5)),
         ),
-        title: Row(
-          children: [
-            Icon(Icons.warning, color: dangerRed),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Text(
-          message,
-          style: TextStyle(color: Colors.white.withOpacity(0.8)),
-        ),
+        title: Text("Error", style: TextStyle(color: bloodRed)),
+        content: Text(msg, style: const TextStyle(color: Colors.white70)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              "BATAL",
-              style: TextStyle(color: Colors.white.withOpacity(0.7)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: dangerRed,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text("HAPUS"),
+            onPressed: () => Navigator.pop(context),
+            child: Text("OK", style: TextStyle(color: bloodRed)),
           ),
         ],
-      ),
-    );
-    return result ?? false;
-  }
-
-  void _showNotification(String title, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: cardDarker,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.5)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.3),
-                blurRadius: 8,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  color == successGreen ? Icons.check_circle :
-                  color == dangerRed ? Icons.error : Icons.info,
-                  color: color,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      message,
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -269,234 +119,55 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
   void _showAddDialog() {
     showDialog(
       context: context,
-      builder: (_) => Dialog(
-        backgroundColor: cardDarker,
+      builder: (_) => AlertDialog(
+        backgroundColor: cardDark,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: accentBlue.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: bloodRed.withOpacity(0.5)),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: accentBlue.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.add,
-                      color: accentBlue,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    "Tambah VPS Baru",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              _buildModernInput("IP VPS", _hostController, Icons.dns),
-              const SizedBox(height: 16),
-              _buildModernInput("Username", _userController, Icons.person),
-              const SizedBox(height: 16),
-              _buildModernInput("Password", _passController, Icons.lock, obscureText: true),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      "BATAL",
-                      style: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _addVps,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accentBlue,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text("TAMBAH"),
-                  ),
-                ],
-              ),
-            ],
-          ),
+        title: Text("Tambah VPS", style: TextStyle(color: bloodRed)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildInput("IP VPS", _hostController),
+            _buildInput("Username", _userController),
+            _buildInput("Password", _passController),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildModernInput(String label, TextEditingController controller, IconData icon, {bool obscureText = false}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("BATAL", style: TextStyle(color: Colors.white54)),
           ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: cardDark,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: accentBlue.withOpacity(0.3)),
-          ),
-          child: TextField(
-            controller: controller,
-            obscureText: obscureText,
-            style: const TextStyle(color: Colors.white),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: accentBlue),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVpsCard(Map<String, dynamic> vps, int index) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accentBlue.withOpacity(0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _addVps();
+            },
+            child: Text("TAMBAH", style: TextStyle(color: bloodRed)),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: accentBlue.withOpacity(0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.dns,
-                    color: accentBlue,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "VPS Server",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      Text(
-                        vps['host'],
-                        style: TextStyle(
-                          color: lightBlue,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: successGreen.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: successGreen.withOpacity(0.5)),
-                  ),
-                  child: Text(
-                    "ACTIVE",
-                    style: TextStyle(
-                      color: successGreen,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: cardDarker,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.person,
-                    color: Colors.white.withOpacity(0.7),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "Username: ${vps['username']}",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _deleteVps(vps['host']),
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text("HAPUS"),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: dangerRed,
-                    side: BorderSide(color: dangerRed.withOpacity(0.5)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
+    );
+  }
+
+  Widget _buildInput(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: const TextStyle(color: Colors.white70),
+          enabledBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: bloodRed.withOpacity(0.5)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: bloodRed, width: 2),
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -504,218 +175,55 @@ class _ManageServerPageState extends State<ManageServerPage> with TickerProvider
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: primaryDark,
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: accentBlue.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                Icons.dns,
-                color: accentBlue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              "Server Management",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: primaryDark,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: RefreshIndicator(
-            color: accentBlue,
-            onRefresh: _fetchVpsList,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              child: Column(
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: deepBlack,
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Header Section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        colors: [primaryBlue, accentBlue],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accentBlue.withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "My VPS Servers",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                "${vpsList.length} Servers",
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          "Manage your virtual private servers",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Add VPS Button
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: LinearGradient(
-                        colors: [accentBlue, lightBlue],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accentBlue.withOpacity(0.4),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _showAddDialog,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            "ADD NEW SERVER",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // VPS List
-                  if (isLoading)
-                    Container(
-                      height: 200,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          color: accentBlue,
-                        ),
-                      ),
-                    )
-                  else if (vpsList.isEmpty)
-                    Container(
-                      height: 200,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: cardDark,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: accentBlue.withOpacity(0.2)),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.dns_outlined,
-                            size: 64,
-                            color: accentBlue.withOpacity(0.5),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            "No VPS Servers",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Add your first VPS server to get started",
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    Column(
-                      children: List.generate(
-                        vpsList.length,
-                            (index) => _buildVpsCard(vpsList[index], index),
-                      ),
-                    ),
+                  Text("My VPS List",
+                      style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontFamily: 'Orbitron')),
+                  IconButton(
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    onPressed: _showAddDialog,
+                  )
                 ],
               ),
-            ),
+              Divider(color: bloodRed.withOpacity(0.5)),
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.white))
+                    : ListView.builder(
+                  itemCount: vpsList.length,
+                  itemBuilder: (context, index) {
+                    final vps = vpsList[index];
+                    return Card(
+                      color: cardDark,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: darkRed.withOpacity(0.3)),
+                      ),
+                      child: ListTile(
+                        title: Text("${vps['host']}", style: const TextStyle(color: Colors.white)),
+                        subtitle: Text("User: ${vps['username']}", style: const TextStyle(color: Colors.white70)),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: lightRed),
+                          onPressed: () => _deleteVps(vps['host']),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
+            ],
           ),
         ),
       ),

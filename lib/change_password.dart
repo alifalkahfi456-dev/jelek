@@ -1,9 +1,8 @@
-import 'app_config.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-
+const String baseUrl = "http://saitama.omdhancivok.my.id:2001";
 
 class ChangePasswordPage extends StatefulWidget {
   final String username;
@@ -26,12 +25,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   bool isLoading = false;
 
-  static const deepPurple = Color(0xFF020818);
-  static const mainPurple = Color(0xFF040F22);
-  static const lightPurple = Color(0xFF040F22);
-  static const accentPurple = Color(0xFFCCCCCC);
-  static const bgDark = Color(0xFF020818);
-  static const cardPurple = Color(0xFF020A18);
+  final Color deepPurple = const Color(0xFF4A148C);
+  final Color mainPurple = const Color(0xFF6A1B9A);
+  final Color lightPurple = const Color(0xFF9d4edd);
+  final Color accentPurple = const Color(0xFFAB47BC);
+  final Color bgDark = const Color(0xFF0d0221);
+  final Color cardPurple = const Color(0xFF1A1A1A);
   
   Future<void> _changePassword() async {
     final oldPass = oldPassCtrl.text.trim();
@@ -52,7 +51,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     try {
       final res = await http.post(
-        Uri.parse("$kBaseUrl/changepass"),
+        Uri.parse("$baseUrl/changepass"),
         body: {
           "username": widget.username,
           "oldPass": oldPass,
@@ -85,7 +84,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
           side: BorderSide(color: accentPurple.withOpacity(0.5)),
         ),
         title: Text(
-          isSuccess ? "Success" : "Info",
+          isSuccess ? "✅ Success" : "⚠️ Info",
           style: TextStyle(
             color: isSuccess ? Colors.white : accentPurple,
             fontWeight: FontWeight.bold,
@@ -94,7 +93,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
         content: Text(
           msg,
-          style: TextStyle(color: Colors.white70),
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -112,7 +111,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF020818),
+      backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
         title: const Text(
           "Change Password",
@@ -220,10 +219,10 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
     return TextField(
       controller: controller,
       obscureText: obscure,
-      style: TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: Colors.white54),
+        hintStyle: const TextStyle(color: Colors.white54),
         filled: true,
         fillColor: cardPurple,
         border: OutlineInputBorder(

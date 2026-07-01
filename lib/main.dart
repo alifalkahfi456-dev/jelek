@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-
 import 'login_page.dart';
 import 'dashboard_page.dart';
+import 'home_page.dart';
 import 'seller_page.dart';
 import 'admin_page.dart';
 import 'landing.dart';
@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'RavenGetSuzo',
+      title: 'CHAN XITER',
       theme: ThemeData(
         brightness: Brightness.dark,
         fontFamily: 'ShareTechMono',
@@ -31,10 +31,10 @@ class MyApp extends StatelessWidget {
         switch (settings.name) {
           case '/':
             return MaterialPageRoute(builder: (_) => LandingPage());
-
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginPage());
-
+          
+          // --- DASHBOARD ROUTE ---
           case '/dashboard':
             final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
@@ -42,12 +42,26 @@ class MyApp extends StatelessWidget {
                 username: args['username'],
                 password: args['password'],
                 role: args['role'],
-                sessionKey: args['sessionKey'], // ✅ FIX
+                sessionKey: args['key'],
                 expiredDate: args['expiredDate'],
-                listBug:
-                    List<Map<String, dynamic>>.from(args['listBug'] ?? []),
-                listDoos:
-                    List<Map<String, dynamic>>.from(args['listDoos'] ?? []),
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), 
+                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), 
+                news: List<Map<String, dynamic>>.from(args['news'] ?? []), 
+              ),
+            );
+
+          // --- HOME PAGE ROUTE (YANG DIPERBAIKI) ---
+          case '/home':
+            final args = settings.arguments as Map<String, dynamic>;
+            return MaterialPageRoute(
+              builder: (_) => HomePage(
+                isGroup: false, // <--- TAMBAHKAN INI (Default ke Bug Contact)
+                username: args['username'],
+                password: args['password'],
+                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []),
+                role: args['role'],
+                expiredDate: args['expiredDate'],
+                sessionKey: args['sessionKey'],
               ),
             );
 
@@ -64,6 +78,7 @@ class MyApp extends StatelessWidget {
             return MaterialPageRoute(
               builder: (_) => AdminPage(
                 sessionKey: args['sessionKey'],
+                currentUserRole: args['currentUserRole'] ?? '',
               ),
             );
 

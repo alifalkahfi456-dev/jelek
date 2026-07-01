@@ -1,104 +1,205 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:ui';
 
+/// AdminPage — Tampilan biru modern, support penuh, tanpa error build
 class AdminPage extends StatefulWidget {
   final String sessionKey;
+  final String currentUserRole;
 
-  const AdminPage({super.key, required this.sessionKey});
+  const AdminPage({
+    super.key,
+    required this.sessionKey,
+    required this.currentUserRole,
+  });
 
   @override
   State<AdminPage> createState() => _AdminPageState();
 }
 
-class _AdminPageState extends State<AdminPage> {
-  late String sessionKey;
+class _AdminPageState extends State<AdminPage>
+    with SingleTickerProviderStateMixin {
+  // Data
   List<dynamic> fullUserList = [];
   List<dynamic> filteredList = [];
-  final List<String> roleOptions = ['vip', 'reseller', 'reseller1', 'owner', 'member'];
-  String selectedRole = 'member';
   int currentPage = 1;
-  int itemsPerPage = 25;
+  final int itemsPerPage = 10;
+  bool isLoading = false;
 
+  // Controllers
   final deleteController = TextEditingController();
   final createUsernameController = TextEditingController();
   final createPasswordController = TextEditingController();
   final createDayController = TextEditingController();
-  String newUserRole = 'member';
-  bool isLoading = false;
 
-// --- Warna Tema Hitam–Abu (tanpa ubah nama const) ---
-final Color bloodRed   = const Color(0xFF2E2E2E);              // abu gelap (eks-bloodRed)
-final Color darkRed    = const Color(0xFF1A1A1A);              // abu sangat gelap
-final Color lightRed   = const Color(0xFF6F6F6F);              // abu lembut / highlight
-final Color deepBlack  = const Color(0xFF050505);              // hitam pekat (tetap)
-final Color glassBlack = const Color(0xFF0F0F0F).withOpacity(0.75); // glass abu gelap
+  // Role state
+  late String newUserRole;
+  late String selectedFilterRole;
 
+  // Animation
+  late AnimationController _animController;
+  late Animation<double> _fadeAnimation;
+
+  // Warna biru (semua non-konstan, aman)
+  final Color navyBlue = const Color(0xFF0A192F);
+  final Color darkBlue = const Color(0xFF112240);
+  final Color cardBlue = const Color(0xFF1E3A5F);
+  final Color accentBlue = const Color(0xFF4B9CD3);
+  final Color lightBlue = const Color(0xFF64B5F6);
+  final Color cyanAccent = const Color(0xFF00D2FF);
+  final Color whiteText = const Color(0xFFE6F1FF);
+  final Color greyText = const Color(0xFF8892B0);
+
+  // Role constants
+  static const String kAllAkses  = 'all_akses';
+  static const String kOwner     = 'owner';
+  static const String kModerator = 'moderator';
+  static const String kTK        = 'TK';
+  static const String kPT        = 'PT';
+  static const String kReseller  = 'reseller';
+  static const String kFullUp    = 'fullup';
+  static const String kMember    = 'member';
+
+  List<String> get creatableRoles {
+    switch (widget.currentUserRole) {
+      case kAllAkses:
+      case kOwner:
+        return [kModerator, kTK, kPT, kReseller, kFullUp, kMember];
+      case kModerator:
+        return [kTK, kPT, kReseller, kFullUp, kMember];
+      case kTK:
+        return [kPT, kReseller, kFullUp, kMember];
+      case kPT:
+        return [kReseller, kFullUp, kMember];
+      default:
+        return [];
+    }
+  }
+
+  List<String> get filterRoles {
+    if (widget.currentUserRole == kAllAkses || widget.currentUserRole == kOwner) {
+      return [kAllAkses, kOwner, kModerator, kTK, kPT, kReseller, kFullUp, kMember];
+    } else if (widget.currentUserRole == kModerator) {
+      return [kModerator, kTK, kPT, kReseller, kFullUp, kMember];
+    } else if (widget.currentUserRole == kTK) {
+      return [kTK, kPT, kReseller, kFullUp, kMember];
+    } else if (widget.currentUserRole == kPT) {
+      return [kPT, kReseller, kFullUp, kMember];
+    }
+    return [];
+  }
+
+  bool get hasAdminAccess =>
+      [kOwner, kAllAkses, kModerator, kTK, kPT].contains(widget.currentUserRole);
 
   @override
   void initState() {
     super.initState();
-    sessionKey = widget.sessionKey;
-    _fetchUsers();
+    selectedFilterRole = filterRoles.first;
+    newUserRole = creatableRoles.isNotEmpty ? creatableRoles.first : kMember;
+
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..forward();
+    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
+
+    if (!hasAdminAccess) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showAccessDenied());
+    } else {
+      _fetchUsers();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    deleteController.dispose();
+    createUsernameController.dispose();
+    createPasswordController.dispose();
+    createDayController.dispose();
+    super.dispose();
+  }
+
+  void _showAccessDenied() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: darkBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          Icon(Icons.block, color: Colors.red[400]),
+          const SizedBox(width: 10),
+          const Text('Akses Ditolak', style: TextStyle(color: Colors.white, fontSize: 18)),
+        ]),
+        content: const Text(
+          'Anda tidak memiliki izin mengakses Admin Panel.\n\n'
+          'Role yang diizinkan: PT, TK, Moderator, Owner.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).pop();
+            },
+            child: Text('Kembali', style: TextStyle(color: accentBlue)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _fetchUsers() async {
     setState(() => isLoading = true);
     try {
-      final res = await http.get(
-        Uri.parse('https://panel-private-yanz.fansjkt48.web.id:10918/listUsers?key=$sessionKey'),
-      );
-      final data = jsonDecode(res.body);
-      if (data['valid'] == true && data['authorized'] == true) {
-        fullUserList = data['users'] ?? [];
-        _filterAndPaginate();
+      final res = await http.get(Uri.parse(
+          'http://saitama.omdhancivok.my.id:2001/listUsers?key=${widget.sessionKey}'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['valid'] == true && data['authorized'] == true) {
+          setState(() {
+            fullUserList = data['users'] ?? [];
+            _applyFilter();
+          });
+        } else {
+          _snack("⚠️ ${data['message'] ?? 'Akses ditolak.'}");
+        }
       } else {
-        _showDialog("⚠️ Error", data['message'] ?? 'Tidak diizinkan melihat daftar user.');
+        _snack("🌐 Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showDialog("🌐 Error", "Gagal memuat user list.");
+    } catch (e) {
+      _snack("🌐 Gagal memuat data: $e");
     }
     setState(() => isLoading = false);
   }
 
-  void _filterAndPaginate() {
-    setState(() {
-      currentPage = 1;
-      filteredList = fullUserList.where((u) => u['role'] == selectedRole).toList();
-    });
-  }
-
-  List<dynamic> _getCurrentPageData() {
-    final start = (currentPage - 1) * itemsPerPage;
-    final end = (start + itemsPerPage);
-    return filteredList.sublist(start, end > filteredList.length ? filteredList.length : end);
-  }
-
-  int get totalPages => (filteredList.length / itemsPerPage).ceil();
-
   Future<void> _deleteUser() async {
     final username = deleteController.text.trim();
     if (username.isEmpty) {
-      _showDialog("⚠️ Error", "Masukkan username yang ingin dihapus.");
+      _snack("⚠️ Masukkan username!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
-      final res = await http.get(
-        Uri.parse('https://panel-private-yanz.fansjkt48.web.id:10918/deleteUser?key=$sessionKey&username=$username'),
-      );
-      final data = jsonDecode(res.body);
-      if (data['deleted'] == true) {
-        _showDialog("✅ Berhasil", "User '${data['user']['username']}' telah dihapus.");
-        deleteController.clear();
-        _fetchUsers();
+      final res = await http.get(Uri.parse(
+          'http://saitama.omdhancivok.my.id:2001/deleteUser?key=${widget.sessionKey}&username=$username'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['deleted'] == true) {
+          _snack("✅ User '${data['user']?['username'] ?? username}' dihapus!", ok: true);
+          deleteController.clear();
+          _fetchUsers();
+        } else {
+          _snack("❌ ${data['message'] ?? 'Gagal menghapus.'}");
+        }
       } else {
-        _showDialog("❌ Gagal", data['message'] ?? 'Gagal menghapus user.');
+        _snack("🌐 Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showDialog("🌐 Error", "Tidak dapat menghubungi server.");
+    } catch (e) {
+      _snack("🌐 Error: $e");
     }
     setState(() => isLoading = false);
   }
@@ -109,538 +210,359 @@ final Color glassBlack = const Color(0xFF0F0F0F).withOpacity(0.75); // glass abu
     final day = createDayController.text.trim();
 
     if (username.isEmpty || password.isEmpty || day.isEmpty) {
-      _showDialog("⚠️ Error", "Semua field wajib diisi.");
+      _snack("⚠️ Semua field wajib diisi!");
+      return;
+    }
+    if (int.tryParse(day) == null) {
+      _snack("⚠️ Days harus berupa angka!");
+      return;
+    }
+    if (!creatableRoles.contains(newUserRole)) {
+      _snack("⛔ Anda tidak berhak membuat akun role '$newUserRole'!");
       return;
     }
 
     setState(() => isLoading = true);
     try {
-      final url = Uri.parse(
-        'https://panel-private-yanz.fansjkt48.web.id:10918/userAdd?key=$sessionKey&username=$username&password=$password&day=$day&role=$newUserRole',
-      );
-      final res = await http.get(url);
-      final data = jsonDecode(res.body);
-
-      if (data['created'] == true) {
-        _showDialog("✅ Sukses", "Akun '${data['user']['username']}' berhasil dibuat.");
-        createUsernameController.clear();
-        createPasswordController.clear();
-        createDayController.clear();
-        newUserRole = 'member';
-        _fetchUsers();
+      final res = await http.get(Uri.parse(
+          'http://saitama.omdhancivok.my.id:2001/userAdd'
+          '?key=${widget.sessionKey}'
+          '&username=$username'
+          '&password=$password'
+          '&day=$day'
+          '&role=$newUserRole'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['created'] == true) {
+          _snack("✅ Akun '${data['user']?['username'] ?? username}' berhasil dibuat!", ok: true);
+          createUsernameController.clear();
+          createPasswordController.clear();
+          createDayController.clear();
+          setState(() =>
+              newUserRole = creatableRoles.isNotEmpty ? creatableRoles.first : kMember);
+          _fetchUsers();
+        } else {
+          _snack("❌ ${data['message'] ?? 'Gagal membuat akun.'}");
+        }
       } else {
-        _showDialog("❌ Gagal", data['message'] ?? 'Gagal membuat akun.');
+        _snack("🌐 Server error: ${res.statusCode}");
       }
-    } catch (_) {
-      _showDialog("🌐 Error", "Gagal menghubungi server.");
+    } catch (e) {
+      _snack("🌐 Error: $e");
     }
     setState(() => isLoading = false);
   }
 
-  void _showDialog(String title, String message) {
-    showDialog(
-      context: context,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: AlertDialog(
-          backgroundColor: glassBlack,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: bloodRed.withOpacity(0.3), width: 1.5),
-          ),
-          title: Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: bloodRed,
-            ),
-          ),
-          content: Text(message, style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: bloodRed)),
-            )
-          ],
-        ),
-      ),
-    );
+  void _applyFilter() {
+    setState(() {
+      currentPage = 1;
+      filteredList = fullUserList.where((u) => u['role'] == selectedFilterRole).toList();
+    });
   }
 
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            glassBlack,
-            Colors.black.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: bloodRed.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
+  List<dynamic> get _pageData {
+    final start = (currentPage - 1) * itemsPerPage;
+    final end = start + itemsPerPage;
+    if (start >= filteredList.length) return [];
+    return filteredList.sublist(start, end > filteredList.length ? filteredList.length : end);
   }
 
-  Widget _buildUserItem(Map user) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.black.withOpacity(0.4),
-            Colors.black.withOpacity(0.2),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.2),
-          width: 1.5,
-        ),
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [bloodRed.withOpacity(0.3), darkRed.withOpacity(0.1)],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: bloodRed.withOpacity(0.4)),
-          ),
-          child: Icon(Icons.person, color: bloodRed, size: 20),
-        ),
-        title: Text(
-          user['username'],
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 4),
-            Text(
-              "Role: ${user['role']} | Exp: ${user['expiredDate']}",
-              style: const TextStyle(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              "Parent: ${user['parent'] ?? 'SYSTEM'}",
-              style: const TextStyle(color: Colors.white, fontSize: 12),
-            ),
-          ],
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.red.withOpacity(0.3), Colors.redAccent.withOpacity(0.1)],
-            ),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: Colors.red.withOpacity(0.4)),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.delete, color: Colors.redAccent, size: 20),
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (_) => BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                  child: AlertDialog(
-                    backgroundColor: glassBlack,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                      side: BorderSide(color: Colors.red.withOpacity(0.3), width: 1.5),
-                    ),
-                    title: const Text(
-                      "Konfirmasi",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                    content: Text(
-                      "Yakin ingin menghapus user '${user['username']}'?",
-                      style: const TextStyle(color: Colors.white70),
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: Text("Batal", style: TextStyle(color: bloodRed)),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        child: const Text("Hapus", style: TextStyle(color: Colors.redAccent)),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+  int get totalPages => filteredList.isEmpty ? 1 : (filteredList.length / itemsPerPage).ceil();
 
-              if (confirm == true) {
-                deleteController.text = user['username'];
-                _deleteUser();
-              }
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPagination() {
-    return Wrap(
-      spacing: 8,
-      children: List.generate(totalPages, (index) {
-        final page = index + 1;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: currentPage == page
-                  ? [bloodRed.withOpacity(0.8), darkRed.withOpacity(0.8)]
-                  : [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: currentPage == page ? bloodRed.withOpacity(0.5) : Colors.white.withOpacity(0.3),
-            ),
-          ),
-          child: ElevatedButton(
-            onPressed: () => setState(() => currentPage = page),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.transparent,
-              shadowColor: Colors.transparent,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: Text(
-              "$page",
-              style: TextStyle(
-                color: currentPage == page ? Colors.white : Colors.white70,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
-      }),
-    );
+  void _snack(String msg, {bool ok = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg, style: const TextStyle(color: Colors.white)),
+      backgroundColor: ok ? Colors.green[800] : navyBlue,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!hasAdminAccess) {
+      return Scaffold(
+        backgroundColor: navyBlue,
+        body: Center(child: Icon(Icons.lock, color: Colors.red[400], size: 60)),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: deepBlack,
+      backgroundColor: navyBlue,
       body: Stack(
         children: [
-          // Background Effects
+          // Background decorative
           Positioned(
-            top: -100,
-            right: -100,
+            top: -80,
+            right: -80,
             child: Container(
-              width: 300,
-              height: 300,
+              width: 250,
+              height: 250,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    bloodRed.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
+                gradient: RadialGradient(colors: [
+                  accentBlue.withOpacity(0.15),
+                  Colors.transparent,
+                ]),
               ),
             ),
           ),
           Positioned(
-            bottom: -150,
-            left: -100,
+            bottom: -50,
+            left: -50,
             child: Container(
-              width: 400,
-              height: 400,
+              width: 200,
+              height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkRed.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
+                gradient: RadialGradient(colors: [
+                  cyanAccent.withOpacity(0.1),
+                  Colors.transparent,
+                ]),
               ),
             ),
           ),
-
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
+          SafeArea(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    // Header
-                    _buildGlassCard(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.admin_panel_settings, color: bloodRed, size: 32),
-                          const SizedBox(width: 12),
-                          Text(
-                            "ADMIN PANEL",
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                              color: bloodRed,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
+                    _header(),
+                    const SizedBox(height: 25),
+                    if (creatableRoles.isNotEmpty) ...[
+                      _sectionTitle("Buat User Baru", Icons.person_add),
+                      const SizedBox(height: 10),
+                      _createCard(),
+                      const SizedBox(height: 30),
+                      _dangerZone(),
+                      const SizedBox(height: 30),
+                    ],
+                    _sectionTitle("Database Users", Icons.storage),
+                    const SizedBox(height: 10),
+                    _userListSection(),
                     const SizedBox(height: 20),
-
-                    // Delete User Section
-                    _buildGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.delete, color: bloodRed),
-                              const SizedBox(width: 8),
-                              Text(
-                                "DELETE USER",
-                                style: TextStyle(
-                                  color: bloodRed,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          _buildGlassInputField(
-                            controller: deleteController,
-                            label: "Username untuk dihapus",
-                            icon: Icons.person,
-                          ),
-                          const SizedBox(height: 16),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                colors: [Colors.red.withOpacity(0.8), Colors.redAccent.withOpacity(0.8)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.3),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: isLoading ? null : _deleteUser,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.delete, color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "DELETE USER",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Create Account Section
-                    _buildGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.person_add, color: bloodRed),
-                              const SizedBox(width: 8),
-                              Text(
-                                "CREATE ACCOUNT",
-                                style: TextStyle(
-                                  color: bloodRed,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildGlassInputField(
-                            controller: createUsernameController,
-                            label: "Username",
-                            icon: Icons.person_outline,
-                          ),
-                          const SizedBox(height: 12),
-
-                          _buildGlassInputField(
-                            controller: createPasswordController,
-                            label: "Password",
-                            icon: Icons.lock_outline,
-                          ),
-                          const SizedBox(height: 12),
-
-                          _buildGlassInputField(
-                            controller: createDayController,
-                            label: "Durasi (hari)",
-                            icon: Icons.calendar_today,
-                            keyboardType: TextInputType.number,
-                          ),
-                          const SizedBox(height: 12),
-
-                          _buildGlassDropdown(
-                            value: newUserRole,
-                            onChanged: (val) => setState(() => newUserRole = val ?? 'member'),
-                            label: "Role",
-                          ),
-                          const SizedBox(height: 16),
-
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              gradient: LinearGradient(
-                                colors: [bloodRed.withOpacity(0.8), darkRed.withOpacity(0.8)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: bloodRed.withOpacity(0.3),
-                                  blurRadius: 15,
-                                  spreadRadius: 2,
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: isLoading ? null : _createAccount,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.transparent,
-                                shadowColor: Colors.transparent,
-                                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(Icons.person_add, color: Colors.white, size: 20),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "CREATE ACCOUNT",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // User List Section
-                    _buildGlassCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.people, color: bloodRed),
-                              const SizedBox(width: 8),
-                              Text(
-                                "USER MANAGEMENT",
-                                style: TextStyle(
-                                  color: bloodRed,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          _buildGlassDropdown(
-                            value: selectedRole,
-                            onChanged: (val) {
-                              if (val != null) {
-                                selectedRole = val;
-                                _filterAndPaginate();
-                              }
-                            },
-                            label: "Filter Role",
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          isLoading
-                              ? Center(
-                            child: CircularProgressIndicator(color: bloodRed),
-                          )
-                              : Column(
-                            children: [
-                              ..._getCurrentPageData().map((u) => _buildUserItem(u)).toList(),
-                              const SizedBox(height: 20),
-                              _buildPagination(),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),
+            ),
+          ),
+          if (isLoading)
+            Container(
+              color: Colors.black54,
+              child: Center(child: CircularProgressIndicator(color: accentBlue)),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _header() {
+    final isAllAkses = widget.currentUserRole == kAllAkses;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isAllAkses
+              ? [const Color(0xFF0A2F44), navyBlue]
+              : [cardBlue, navyBlue],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: (isAllAkses ? cyanAccent : lightBlue).withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          )
+        ],
+        border: Border.all(color: (isAllAkses ? cyanAccent : lightBlue).withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.black26,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: isAllAkses ? cyanAccent : lightBlue),
+            ),
+            child: Icon(
+              isAllAkses ? Icons.verified_user : Icons.admin_panel_settings,
+              color: isAllAkses ? cyanAccent : lightBlue,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "ADMIN PANEL",
+                style: TextStyle(
+                  color: isAllAkses ? cyanAccent : whiteText,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              _roleBadge(widget.currentUserRole),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _roleBadge(String role) {
+    Color c;
+    IconData ic;
+    String label;
+    switch (role) {
+      case kAllAkses:
+        c = cyanAccent;
+        ic = Icons.star;
+        label = 'ALL AKSES';
+        break;
+      case kOwner:
+        c = lightBlue;
+        ic = Icons.manage_accounts;
+        label = 'OWNER';
+        break;
+      case kModerator:
+        c = const Color(0xFFa855f7);
+        ic = Icons.shield;
+        label = 'MODERATOR';
+        break;
+      case kTK:
+        c = const Color(0xFFf97316);
+        ic = Icons.supervised_user_circle;
+        label = 'TK';
+        break;
+      case kPT:
+        c = const Color(0xFF22c55e);
+        ic = Icons.badge;
+        label = 'PT';
+        break;
+      case kReseller:
+        c = const Color(0xFFf59e0b);
+        ic = Icons.store;
+        label = 'RESELLER';
+        break;
+      case kFullUp:
+        c = const Color(0xFF38bdf8);
+        ic = Icons.flash_on;
+        label = 'FULL UP';
+        break;
+      default:
+        c = greyText;
+        ic = Icons.person;
+        label = role.toUpperCase();
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: c.withOpacity(0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(ic, color: c, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(color: c, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: lightBlue, size: 18),
+        const SizedBox(width: 8),
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            color: lightBlue,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            letterSpacing: 1,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Container(height: 1, color: cardBlue.withOpacity(0.5))),
+      ],
+    );
+  }
+
+  Widget _createCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: darkBlue,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: cardBlue),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        children: [
+          _input(createUsernameController, "Username", Icons.person_outline),
+          const SizedBox(height: 15),
+          _input(createPasswordController, "Password", Icons.lock_outline),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                flex: 1,
+                child: _input(createDayController, "Days", Icons.calendar_today, isNumber: true),
+              ),
+              const SizedBox(width: 15),
+              Expanded(
+                flex: 2,
+                child: _dropdown(newUserRole, creatableRoles, (val) => setState(() => newUserRole = val!)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _permissionInfo(),
+          const SizedBox(height: 14),
+          _gradientButton("BUAT AKUN", Icons.add_circle, _createAccount),
+        ],
+      ),
+    );
+  }
+
+  Widget _permissionInfo() {
+    final isAllAkses = widget.currentUserRole == kAllAkses;
+    final c = isAllAkses ? cyanAccent : lightBlue;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: c.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(isAllAkses ? Icons.star : Icons.info_outline, color: c, size: 14),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isAllAkses
+                  ? 'All Akses: bisa buat Owner, Reseller1, Reseller, Member'
+                  : 'Owner: bisa buat Reseller1, Reseller, Member',
+              style: TextStyle(color: c.withOpacity(0.9), fontSize: 11),
             ),
           ),
         ],
@@ -648,98 +570,328 @@ final Color glassBlack = const Color(0xFF0F0F0F).withOpacity(0.75); // glass abu
     );
   }
 
-  Widget _buildGlassInputField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
+  Widget _dangerZone() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withOpacity(0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 20),
+              const SizedBox(width: 10),
+              Text("Danger Zone",
+                  style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Row(
+            children: [
+              Expanded(
+                  child: _input(deleteController, "Username to Delete", Icons.delete_outline)),
+              const SizedBox(width: 10),
+              Container(
+                decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [Colors.red.shade800, Colors.red.shade900]),
+                    borderRadius: BorderRadius.circular(15)),
+                child: IconButton(
+                  onPressed: _deleteUser,
+                  icon: const Icon(Icons.delete_forever, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _userListSection() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: darkBlue,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cardBlue),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              dropdownColor: darkBlue,
+              value: selectedFilterRole,
+              isExpanded: true,
+              icon: Icon(Icons.filter_list, color: lightBlue),
+              items: filterRoles.map((role) {
+                return DropdownMenuItem(
+                  value: role,
+                  child: Row(
+                    children: [
+                      if (role == kAllAkses)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: Icon(Icons.star, color: cyanAccent, size: 14),
+                        ),
+                      Text(
+                        "Filter: ${role.toUpperCase()}",
+                        style: TextStyle(
+                          color: role == kAllAkses ? cyanAccent : whiteText,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                setState(() {
+                  selectedFilterRole = val!;
+                  _applyFilter();
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 15),
+        if (filteredList.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(30),
+            child: Column(
+              children: [
+                Icon(Icons.person_off, color: greyText, size: 40),
+                const SizedBox(height: 10),
+                Text("Tidak ada user dengan role '$selectedFilterRole'",
+                    style: TextStyle(color: greyText)),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _pageData.length,
+            itemBuilder: (_, i) => _userItem(_pageData[i]),
+          ),
+        const SizedBox(height: 20),
+        if (totalPages > 1) _pagination(),
+      ],
+    );
+  }
+
+  Widget _userItem(Map user) {
+    final role = user['role']?.toString() ?? 'member';
+    final isAllAksesU = role == kAllAkses;
+    final isOwnerU = role == kOwner;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: darkBlue,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isAllAksesU
+              ? cyanAccent.withOpacity(0.4)
+              : isOwnerU
+                  ? lightBlue.withOpacity(0.3)
+                  : cardBlue,
+        ),
+        boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: (isAllAksesU ? cyanAccent : lightBlue).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: (isAllAksesU ? cyanAccent : lightBlue).withOpacity(0.3)),
+            ),
+            child: Icon(
+              isAllAksesU ? Icons.verified_user : isOwnerU ? Icons.manage_accounts : Icons.person,
+              color: isAllAksesU ? cyanAccent : lightBlue,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user['username']?.toString() ?? 'Unknown',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    _miniBadge(
+                      role,
+                      isAllAksesU ? cyanAccent : isOwnerU ? lightBlue : Colors.grey,
+                    ),
+                    const SizedBox(width: 8),
+                    _miniBadge("Exp: ${user['expiredDate'] ?? 'N/A'}", greyText),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: greyText),
+            onPressed: () {
+              deleteController.text = user['username']?.toString() ?? '';
+              _snack("Tekan tombol hapus di Danger Zone untuk konfirmasi.");
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pagination() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(totalPages, (i) {
+          final page = i + 1;
+          final active = currentPage == page;
+          return GestureDetector(
+            onTap: () => setState(() => currentPage = page),
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                gradient: active
+                    ? LinearGradient(colors: [accentBlue, lightBlue])
+                    : null,
+                color: active ? null : darkBlue,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: active ? accentBlue : cardBlue),
+                boxShadow: active
+                    ? [BoxShadow(color: accentBlue.withOpacity(0.4), blurRadius: 8)]
+                    : [],
+              ),
+              child: Center(
+                child: Text(
+                  "$page",
+                  style: TextStyle(
+                    color: active ? Colors.white : greyText,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _input(TextEditingController ctrl, String hint, IconData icon,
+      {bool isNumber = false}) {
     return Container(
       decoration: BoxDecoration(
+        color: navyBlue,
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.1),
-            Colors.white.withOpacity(0.05),
-          ],
-        ),
+        border: Border.all(color: cardBlue),
       ),
       child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
+        controller: ctrl,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         style: const TextStyle(color: Colors.white),
-        cursorColor: bloodRed,
+        cursorColor: accentBlue,
         decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(icon, color: bloodRed),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          hintText: hint,
+          hintStyle: TextStyle(color: greyText),
+          prefixIcon: Icon(icon, color: lightBlue, size: 20),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         ),
       ),
     );
   }
 
-  Widget _buildGlassDropdown({
-    required String value,
-    required Function(String?) onChanged,
-    required String label,
-  }) {
+  Widget _dropdown(String val, List<String> options, Function(String?) onChanged) {
+    final safe = options.contains(val) ? val : (options.isNotEmpty ? options.first : val);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
+        color: navyBlue,
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withOpacity(0.1),
-            Colors.white.withOpacity(0.05),
-          ],
+        border: Border.all(color: cardBlue),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          dropdownColor: darkBlue,
+          value: safe,
+          isExpanded: true,
+          icon: Icon(Icons.arrow_drop_down, color: lightBlue),
+          items: options
+              .map((role) => DropdownMenuItem(
+                    value: role,
+                    child: Text(role.toUpperCase(),
+                        style: const TextStyle(color: Colors.white, fontSize: 13)),
+                  ))
+              .toList(),
+          onChanged: onChanged,
         ),
       ),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        dropdownColor: Colors.black,
-        icon: Icon(Icons.arrow_drop_down, color: bloodRed),
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(color: Colors.white70),
-          prefixIcon: Icon(Icons.people_alt, color: bloodRed),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
+    );
+  }
+
+  Widget _gradientButton(String text, IconData icon, VoidCallback onTap) {
+    return Container(
+      width: double.infinity,
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [accentBlue, lightBlue]),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: accentBlue.withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 4))
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: onTap,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Text(
+                text,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 1),
+              ),
+            ],
           ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         ),
-        items: roleOptions.map((role) {
-          return DropdownMenuItem(
-            value: role,
-            child: Text(
-              role.toUpperCase(),
-              style: const TextStyle(color: Colors.white),
-            ),
-          );
-        }).toList(),
-        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _miniBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.4), width: 0.5),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
