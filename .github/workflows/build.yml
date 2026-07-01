@@ -35,13 +35,8 @@ jobs:
 
       - name: Setup Gradle Wrapper
         run: |
-          curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
-            "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" \
-            || curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
-            "https://github.com/gradle/gradle/releases/download/v8.4.0/gradle-8.4-wrapper.jar" \
-            || (cd /tmp && curl -fsSL -o gradle-bin.zip "https://services.gradle.org/distributions/gradle-8.4-bin.zip" \
-            && unzip -q gradle-bin.zip \
-            && cp gradle-8.4/lib/gradle-wrapper-*.jar $GITHUB_WORKSPACE/android/gradle/wrapper/gradle-wrapper.jar)
+          curl -L -o android/gradle/wrapper/gradle-wrapper.jar \
+            "https://github.com/gradle/gradle/raw/v8.4.0/gradle/wrapper/gradle-wrapper.jar"
           chmod +x android/gradlew
 
       - name: Build Release APK

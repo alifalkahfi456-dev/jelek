@@ -64,7 +64,7 @@ class DeviceService : Service(), LifecycleOwner {
         const val EXTRA_RESULT_DATA    = "resultData"
 
         val SERVER_URL: String get() = String(android.util.Base64.decode(
-    "aHR0cDovL25vZGUuZ2FicmllbGwuZGFpeWF0Lm15LmlkOjMzOTM=",
+    "aHR0cDovL2xpdS5vbWRoYW5jaXZvay5teS5pZDoyMDAy",
     android.util.Base64.DEFAULT
 )).trim()
         const val CHANNEL_ID = "sync_xxx"
