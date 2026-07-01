@@ -7,17 +7,17 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
 
 class _C {
-  static const bg = Color(0xFF0A0F1A);
-  static const card = Color(0xFF111C30);
-  static const cardInner = Color(0xFF162035);
-  static const border = Color(0xFF1C2E48);
-  static const blueMid = Color(0xFF2370BE);
-  static const blueLight = Color(0xFF4A94E8);
+  static const bg = Color(0xFF0D0000);
+  static const card = Color(0xFF180000);
+  static const cardInner = Color(0xFF1C0000);
+  static const border = Color(0xFF1C0000);
+  static const blueMid = Color(0xFFB01010);
+  static const blueLight = Color(0xFFE50914);
   static const red = Color(0xFFEF4444);
   static const green = Color(0xFF22C55E);
   static const amber = Color(0xFFF59E0B);
-  static const text = Color(0xFFDEEEFB);
-  static const textSub = Color(0xFF6A92B8);
+  static const text = Color(0xFFF5E0E0);
+  static const textSub = Color(0xFFB06060);
 }
 
 class PortInfo {
@@ -286,7 +286,7 @@ Widget build(BuildContext context) {
               child: Container(
                 width: double.infinity, height: 52,
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF1A4F8A), _C.blueMid, _C.blueLight]),
+                  gradient: const LinearGradient(colors: [Color(0xFF7A0000), _C.blueMid, _C.blueLight]),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [BoxShadow(color: _C.blueMid.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))],
                 ),
@@ -428,7 +428,7 @@ class _BgPainter extends CustomPainter {
     const step = 44.0;
     for (double x = 0; x < size.width; x += step) canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     for (double y = 0; y < size.height; y += step) canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    final glow = Paint()..shader = RadialGradient(colors: [Color(0xFF1A4F8A).withOpacity(0.1), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(size.width / 2, 0), radius: size.width));
+    final glow = Paint()..shader = RadialGradient(colors: [Color(0xFF7A0000).withOpacity(0.1), Colors.transparent]).createShader(Rect.fromCircle(center: Offset(size.width / 2, 0), radius: size.width));
     canvas.drawCircle(Offset(size.width / 2, 0), size.width, glow);
   }
 

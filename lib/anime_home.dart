@@ -79,41 +79,56 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
     }
   }
 
-  Future<void> searchAnime(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        isSearching = false;
-        searchResults.clear();
-      });
-      return;
-    }
-
+Future<void> searchAnime(String query) async {
+  if (query.isEmpty) {
     setState(() {
-      isSearching = true;
+      isSearching = false;
+      searchResults.clear();
     });
+    return;
+  }
 
-    try {
-      final response = await http.get(
-        Uri.parse('https://www.sankavollerei.com/anime/search/$query'),
-      );
+  setState(() {
+    isSearching = true;
+    isLoading = false;
+  });
 
-      if (response.statusCode == 200) {
-        final jsonData = json.decode(response.body);
+  try {
+    debugPrint('🔍 Searching for: $query');
+    
+    final response = await http.get(
+      Uri.parse('https://www.sankavollerei.com/anime/search/$query'),
+    );
+
+    debugPrint('📡 Search status code: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      debugPrint('📦 Search response keys: ${jsonData.keys}');
+      
+      // ✅ PERBAIKAN: Gunakan 'animeList' bukan 'search_results'
+      if (jsonData['data'] != null && jsonData['data']['animeList'] != null) {
         setState(() {
-          searchResults = jsonData['search_results'] ?? [];
+          searchResults = jsonData['data']['animeList'] ?? [];
         });
+        debugPrint('✅ Found ${searchResults.length} results');
       } else {
         setState(() {
           searchResults = [];
         });
       }
-    } catch (e) {
-      debugPrint('Search Error: $e');
+    } else {
       setState(() {
         searchResults = [];
       });
     }
+  } catch (e) {
+    debugPrint('❌ Search Error: $e');
+    setState(() {
+      searchResults = [];
+    });
   }
+}
 
   void _clearSearch() {
     _searchController.clear();
@@ -134,77 +149,67 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF0A0000),
       body: Column(
         children: [
           // Search Bar
-// --- GANTI BAGIAN INI ---
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
               style: const TextStyle(color: Colors.white),
-              textInputAction: TextInputAction.search, // Menambahkan ikon 'Search' di keyboard
+              textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 hintText: "Search anime...",
                 hintStyle: const TextStyle(color: Colors.grey),
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                // PERUBAHAN UTAMA ADA DI BAGIAN suffixIcon
                 suffixIcon: _searchController.text.isNotEmpty
                     ? Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Tombol Search
-                    IconButton(
-                      icon: const Icon(Icons.search, color: Colors.white),
-                      onPressed: () {
-                        // Ambil teks, lalu jalankan pencarian
-                        final query = _searchController.text.trim();
-                        if (query.isNotEmpty) {
-                          // Fokus akan hilang otomatis setelah search
-                          _searchFocusNode.unfocus();
-                          searchAnime(query);
-                        }
-                      },
-                    ),
-                    // Tombol Clear
-                    IconButton(
-                      icon: const Icon(Icons.clear, color: Colors.grey),
-                      onPressed: _clearSearch,
-                    ),
-                  ],
-                )
-                    : null, // Tidak ada ikon jika field kosong
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.search, color: Colors.white),
+                            onPressed: () {
+                              final query = _searchController.text.trim();
+                              if (query.isNotEmpty) {
+                                _searchFocusNode.unfocus();
+                                searchAnime(query);
+                              }
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.grey),
+                            onPressed: _clearSearch,
+                          ),
+                        ],
+                      )
+                    : null,
                 filled: true,
-                fillColor: Colors.transparent,
+                fillColor: const Color(0xFF150000),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                   borderSide: BorderSide.none,
                 ),
               ),
-              // HAPUS onChanged, agar tidak search saat mengetik
-              // onChanged: (value) { ... },
-              // PERBAIKI onSubmitted
               onSubmitted: (value) {
                 final query = value.trim();
                 if (query.isNotEmpty) {
-                  _searchFocusNode.unfocus(); // Sembunyikan keyboard
+                  _searchFocusNode.unfocus();
                   searchAnime(query);
                 }
               },
             ),
           ),
-// --- SAMPAI SINI ---
           // Content
           Expanded(
             child: isLoading
                 ? _buildLoadingShimmer()
                 : isSearching
-                ? _buildSearchResults()
-                : animeData == null
-                ? _buildErrorWidget()
-                : _buildHomeContent(),
+                    ? _buildSearchResults()
+                    : animeData == null
+                        ? _buildErrorWidget()
+                        : _buildHomeContent(),
           ),
         ],
       ),
@@ -214,13 +219,12 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
   Widget _buildHomeContent() {
     return RefreshIndicator(
       onRefresh: () async {
-        // Force refresh both anime data and watch history
         await Future.wait([
           fetchAnimeData(),
           _loadWatchHistory(),
         ]);
       },
-      color: Colors.blue,
+      color: const Color(0xFFE50914),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -242,12 +246,12 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                       width: 120,
                       margin: const EdgeInsets.only(right: 12),
                       child: Shimmer.fromColors(
-                        baseColor: Colors.transparent,
-                        highlightColor: const Color(0xFF2A2A2A),
+                        baseColor: const Color(0xFF150000),
+                        highlightColor: const Color(0xFF1C0000),
                         child: Container(
                           height: 160,
                           decoration: BoxDecoration(
-                            color: Colors.transparent,
+                            color: const Color(0xFF150000),
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),
@@ -282,50 +286,117 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                 ),
               ),
 
-            // Quick Access Section
-            _buildSectionHeader(Icons.dashboard, "Quick Access"),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildQuickAccessCard(
-                    "Genre",
-                    Icons.category,
-                        () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AnimeGenreListPage()),
-                      ).then((_) => refreshHistory());
-                    },
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildQuickAccessCard(
-                    "Schedule",
-                    Icons.schedule,
-                        () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AnimeSchedulePage()),
-                      ).then((_) => refreshHistory());
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
+// Quick Access Section
+_buildSectionHeader(Icons.dashboard, "Quick Access"),
+const SizedBox(height: 12),
+
+// Row 1: Genre & Schedule
+Row(
+  children: [
+    Expanded(
+      child: _buildQuickAccessCard(
+        "Genre",
+        Icons.category,
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AnimeGenreListPage()),
+          ).then((_) => refreshHistory());
+        },
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: _buildQuickAccessCard(
+        "Schedule",
+        Icons.schedule,
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AnimeSchedulePage()),
+          ).then((_) => refreshHistory());
+        },
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
+
+// Row 2: All Anime & Ongoing
+Row(
+  children: [
+    Expanded(
+      child: _buildQuickAccessCard(
+        "All Anime",
+        Icons.video_library,
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AllAnimePage()),
+          ).then((_) => refreshHistory());
+        },
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: _buildQuickAccessCard(
+        "Ongoing",
+        Icons.live_tv,
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const OngoingAnimePage()),
+          ).then((_) => refreshHistory());
+        },
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 12),
+
+// Row 3: Complete
+Row(
+  children: [
+    Expanded(
+      child: _buildQuickAccessCard(
+        "Complete",
+        Icons.check_circle,
+        () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CompleteAnimePage()),
+          ).then((_) => refreshHistory());
+        },
+      ),
+    ),
+    const SizedBox(width: 12),
+    Expanded(
+      child: _buildQuickAccessCard(
+        "Search",
+        Icons.search,
+        () {
+          // Fokus ke search bar
+          _searchFocusNode.requestFocus();
+        },
+      ),
+    ),
+  ],
+),
+
+const SizedBox(height: 24),
 
             // Ongoing Anime Section
             _buildSectionHeader(Icons.live_tv, "Currently Airing"),
             const SizedBox(height: 12),
-            _buildAnimeGrid(animeData!['ongoing_anime']),
+            _buildAnimeGrid(animeData!['ongoing']?['animeList'] ?? []),
             const SizedBox(height: 24),
 
             // Complete Anime Section
             _buildSectionHeader(Icons.check_circle, "Completed Series"),
             const SizedBox(height: 12),
-            _buildAnimeGrid(animeData!['complete_anime']),
+            _buildAnimeGrid(animeData!['completed']?['animeList'] ?? []),
           ],
         ),
       ),
@@ -335,7 +406,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
   Widget _buildSectionHeader(IconData icon, String title) {
     return Row(
       children: [
-        Icon(icon, color: Colors.blue, size: 24),
+        Icon(icon, color: const Color(0xFFE50914), size: 24),
         const SizedBox(width: 8),
         Text(
           title,
@@ -355,7 +426,6 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
       margin: const EdgeInsets.only(right: 12),
       child: GestureDetector(
         onTap: () {
-          // Navigate directly to the last watched episode if available
           if (anime['last_watched_episode_slug'] != null) {
             Navigator.push(
               context,
@@ -365,18 +435,17 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                   animeSlug: anime['slug'],
                   animeTitle: anime['title'],
                   animePoster: anime['poster'],
-                  onHistoryUpdate: refreshHistory, // Pass callback to update history
+                  onHistoryUpdate: refreshHistory,
                 ),
               ),
             ).then((_) => refreshHistory());
           } else {
-            // Fallback to anime detail page if no episode slug is available
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => AnimeDetailPage(
                   slug: anime['slug'],
-                  onHistoryUpdate: refreshHistory, // Pass callback to update history
+                  onHistoryUpdate: refreshHistory,
                 ),
               ),
             ).then((_) => refreshHistory());
@@ -397,7 +466,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                     errorBuilder: (_, __, ___) => Container(
                       height: 160,
                       width: 120,
-                      color: Colors.transparent,
+                      color: const Color(0xFF150000),
                       alignment: Alignment.center,
                       child: const Icon(
                         Icons.image_not_supported,
@@ -509,189 +578,163 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
     );
   }
 
-  Widget _buildSearchResultCard(Map<String, dynamic> anime) {
-    final String title = anime['title'];
-    final String poster = anime['poster'];
-    final String? rating = anime['rating'];
-    final String? type = anime['type'];
-    final String? status = anime['status'];
-    final String? episodeCount = anime['episode_count'];
-    final List<dynamic> genres = anime['genres'] ?? [];
-    final String slug = _extractSlugFromUrl(anime['slug']);
+Widget _buildSearchResultCard(Map<String, dynamic> anime) {
+  final String title = anime['title'] ?? 'Unknown';
+  final String poster = anime['poster'] ?? '';
+  final String? rating = anime['score'] ?? anime['rating']; // SCORE dari response
+  final String? status = anime['status'];
+  final List<dynamic> genres = anime['genreList'] ?? []; // genreList, BUKAN genres
+  
+  // ✅ PERBAIKAN: Pakai 'animeId' untuk slug
+  String slug = anime['animeId'] ?? '';
+  
+  // Fallback ke href jika animeId tidak ada
+  if (slug.isEmpty && anime['href'] != null) {
+    slug = _extractSlugFromUrl(anime['href']);
+  }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: InkWell(
-        onTap: () {
+  return Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: const Color(0xFF150000),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: InkWell(
+      onTap: () {
+        if (slug.isNotEmpty) {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => AnimeDetailPage(
                 slug: slug,
-                onHistoryUpdate: refreshHistory, // Pass callback to update history
+                onHistoryUpdate: refreshHistory,
               ),
             ),
           ).then((_) => refreshHistory());
-        },
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Poster
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: Image.network(
-                  poster,
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cannot open this anime')),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Poster
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.network(
+                poster,
+                width: 80,
+                height: 120,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
                   width: 80,
                   height: 120,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 80,
-                    height: 120,
-                    color: const Color(0xFF2A2A2A),
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      color: Colors.grey,
-                    ),
+                  color: const Color(0xFF1C0000),
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    color: Colors.grey,
+                    size: 32,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+            ),
+            const SizedBox(width: 12),
 
-              // Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    const SizedBox(height: 8),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
 
-                    // Rating and Type
-                    Row(
-                      children: [
-                        if (rating != null && rating.isNotEmpty) ...[
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.star,
-                                color: Colors.amber,
-                                size: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                rating,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        if (type != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
+                  // Rating and Status
+                  Row(
+                    children: [
+                      if (rating != null && rating.isNotEmpty) ...[
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 16,
                             ),
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              type,
+                            const SizedBox(width: 4),
+                            Text(
+                              rating,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        const SizedBox(width: 12),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Status and Episode
-                    Row(
-                      children: [
-                        if (status != null) ...[
-                          Text(
-                            status,
-                            style: TextStyle(
-                              color: _getStatusColor(status),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                            ),
+                      if (status != null && status.isNotEmpty)
+                        Text(
+                          status,
+                          style: TextStyle(
+                            color: _getStatusColor(status),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (episodeCount != null) ...[
-                          Text(
-                            "$episodeCount Episodes",
-                            style: const TextStyle(
-                              color: Colors.grey,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Genres
-                    if (genres.isNotEmpty) ...[
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: genres.take(3).map<Widget>((genre) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2A2A2A),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              genre['name'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                        ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Genres
+                  if (genres.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: genres.take(3).map<Widget>((genre) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C0000),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            genre['title'] ?? 'Unknown', // Pakai 'title' dari genreList
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
@@ -706,29 +749,18 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
 
   String _extractSlugFromUrl(String url) {
     try {
-      // Pattern untuk URL seperti:
-      // "https://otakudesu.best/anime/boruto-sub-indo"
-      // "https://otakudesu.best/anime/naruto-shippuden-sub-indo"
-
-      // Cari bagian setelah "/anime/"
       final animeIndex = url.indexOf('/anime/');
       if (animeIndex != -1) {
-        // Ambil bagian setelah "/anime/"
-        String slugPart = url.substring(animeIndex + 7); // 7 adalah panjang "/anime/"
-
-        // Hapus trailing slash jika ada
+        String slugPart = url.substring(animeIndex + 7);
         if (slugPart.endsWith('/')) {
           slugPart = slugPart.substring(0, slugPart.length - 1);
         }
-
         return slugPart;
       }
-
-      // Jika tidak ditemukan pattern di atas, return URL asli
       return url;
     } catch (e) {
       debugPrint('Error extracting slug: $e');
-      return url; // fallback ke URL asli
+      return url;
     }
   }
 
@@ -745,11 +777,11 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
       ),
       itemBuilder: (context, index) {
         final anime = list[index];
-        final String title = anime['title'];
-        final String poster = anime['poster'];
-        final String? episode = anime['current_episode'] ?? anime['episode_count'];
-        final String? date = anime['newest_release_date'] ?? anime['last_release_date'];
-        final String slug = anime['slug'];
+        final String title = anime['title'] ?? 'Unknown';
+        final String poster = anime['poster'] ?? '';
+        final String? episode = anime['episodes']?.toString() ?? '-';
+        final String? date = anime['latestReleaseDate'] ?? anime['lastReleaseDate'] ?? '-';
+        final String slug = anime['animeId'] ?? '';
 
         return GestureDetector(
           onTap: () {
@@ -758,7 +790,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
               MaterialPageRoute(
                 builder: (context) => AnimeDetailPage(
                   slug: slug,
-                  onHistoryUpdate: refreshHistory, // Pass callback to update history
+                  onHistoryUpdate: refreshHistory,
                 ),
               ),
             ).then((_) => refreshHistory());
@@ -775,7 +807,7 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
                     height: 170,
-                    color: Colors.transparent,
+                    color: const Color(0xFF150000),
                     alignment: Alignment.center,
                     child: const Icon(
                       Icons.image_not_supported,
@@ -836,11 +868,11 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
         mainAxisSpacing: 12,
       ),
       itemBuilder: (_, __) => Shimmer.fromColors(
-        baseColor: Colors.transparent,
-        highlightColor: const Color(0xFF2A2A2A),
+        baseColor: const Color(0xFF150000),
+        highlightColor: const Color(0xFF1C0000),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: const Color(0xFF150000),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
@@ -869,7 +901,6 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () async {
-              // Force refresh both anime data and watch history
               await Future.wait([
                 fetchAnimeData(),
                 _loadWatchHistory(),
@@ -883,9 +914,40 @@ class _HomeAnimePageState extends State<HomeAnimePage> {
   }
 }
 
+Widget _buildQuickAccessCard(String title, IconData icon, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF150000),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Icon(icon, color: const Color(0xFFE50914), size: 32),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
 class AnimeDetailPage extends StatefulWidget {
   final String slug;
-  final Function()? onHistoryUpdate; // Callback to update history
+  final Function()? onHistoryUpdate;
 
   const AnimeDetailPage({super.key, required this.slug, this.onHistoryUpdate});
 
@@ -913,7 +975,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         setState(() {
-          animeDetail = jsonData['data'];
+          animeDetail = jsonData;
           isLoading = false;
         });
       } else {
@@ -945,7 +1007,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF0A0000),
       appBar: AppBar(
         title: const Text(
           "Anime Details",
@@ -958,31 +1020,31 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
       body: isLoading
           ? _buildLoadingShimmer()
           : isError || animeDetail == null
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.grey,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Failed to load anime details",
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: fetchAnimeDetail,
-              child: const Text("Try Again"),
-            ),
-          ],
-        ),
-      )
-          : _buildAnimeDetail(),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load anime details",
+                        style: TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchAnimeDetail,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : _buildAnimeDetail(),
     );
   }
 
@@ -993,39 +1055,39 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Shimmer.fromColors(
-            baseColor: Colors.transparent,
-            highlightColor: const Color(0xFF2A2A2A),
+            baseColor: const Color(0xFF150000),
+            highlightColor: const Color(0xFF1C0000),
             child: Container(
               height: 200,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: const Color(0xFF150000),
                 borderRadius: BorderRadius.circular(8),
               ),
             ),
           ),
           const SizedBox(height: 16),
           Shimmer.fromColors(
-            baseColor: Colors.transparent,
-            highlightColor: const Color(0xFF2A2A2A),
+            baseColor: const Color(0xFF150000),
+            highlightColor: const Color(0xFF1C0000),
             child: Container(
               height: 24,
               width: 200,
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: const Color(0xFF150000),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
           ),
           const SizedBox(height: 8),
           Shimmer.fromColors(
-            baseColor: Colors.transparent,
-            highlightColor: const Color(0xFF2A2A2A),
+            baseColor: const Color(0xFF150000),
+            highlightColor: const Color(0xFF1C0000),
             child: Container(
               height: 16,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: const Color(0xFF150000),
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -1036,10 +1098,19 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
   }
 
   Widget _buildAnimeDetail() {
-    final anime = animeDetail!;
-    final List<dynamic> episodes = anime['episode_lists'] ?? [];
-    final List<dynamic> recommendations = anime['recommendations'] ?? [];
-    final List<dynamic> genres = anime['genres'] ?? [];
+    final anime = animeDetail!['data'];
+
+    final List<dynamic> episodes = anime['episodeList'] ?? [];
+    final List<dynamic> recommendations = anime['recommendedAnimeList'] ?? [];
+    final List<dynamic> genres = anime['genreList'] ?? [];
+
+    // Gabungin synopsis paragraphs jadi 1 string
+    String synopsisText = '';
+    if (anime['synopsis'] != null && anime['synopsis']['paragraphs'] != null) {
+      synopsisText = (anime['synopsis']['paragraphs'] as List)
+          .where((e) => e.toString().trim().isNotEmpty)
+          .join('\n\n');
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
@@ -1060,7 +1131,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                   errorBuilder: (_, __, ___) => Container(
                     height: 200,
                     width: 140,
-                    color: Colors.transparent,
+                    color: const Color(0xFF150000),
                     alignment: Alignment.center,
                     child: const Icon(
                       Icons.image_not_supported,
@@ -1075,7 +1146,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      anime['title'],
+                      anime['title'] ?? '-',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -1086,7 +1157,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      anime['japanese_title'] ?? '-',
+                      anime['japanese'] ?? '-',
                       style: const TextStyle(
                         fontSize: 14,
                         color: Colors.grey,
@@ -1098,7 +1169,9 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                         const Icon(Icons.star, color: Colors.amber, size: 16),
                         const SizedBox(width: 4),
                         Text(
-                          anime['rating'] ?? '-',
+                          anime['score']?.toString().isNotEmpty == true
+                              ? anime['score']
+                              : '-',
                           style: const TextStyle(color: Colors.white),
                         ),
                       ],
@@ -1106,8 +1179,38 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                     const SizedBox(height: 8),
                     _buildInfoItem('Type', anime['type']),
                     _buildInfoItem('Status', anime['status']),
-                    _buildInfoItem('Episodes', anime['episode_count']),
+                    _buildInfoItem(
+                        'Episodes',
+                        anime['episodes'] != null
+                            ? anime['episodes'].toString()
+                            : '-'),
                     _buildInfoItem('Duration', anime['duration']),
+                    _buildInfoItem('Aired', anime['aired']),
+                    _buildInfoItem('Studio', anime['studios']),
+                    // Setelah studio info, sebelum genres
+// ✅ TAMBAHKAN INI - Tombol Batch jika ada
+if (anime['batch'] != null) ...[
+  const SizedBox(height: 12),
+  ElevatedButton.icon(
+    onPressed: () {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => AnimeBatchPage(
+            batchSlug: anime['batch']['slug'] ?? widget.slug,
+            animeTitle: anime['title'] ?? 'Anime',
+          ),
+        ),
+      );
+    },
+    icon: const Icon(Icons.download),
+    label: const Text("Download Batch"),
+    style: ElevatedButton.styleFrom(
+      backgroundColor: const Color(0xFFE50914),
+      minimumSize: const Size(double.infinity, 45),
+    ),
+  ),
+],
                   ],
                 ),
               ),
@@ -1137,8 +1240,8 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => AnimeGenrePage(
-                          genreSlug: genre['slug'],
-                          genreName: genre['name'],
+                          genreSlug: genre['genreId'],
+                          genreName: genre['title'],
                         ),
                       ),
                     );
@@ -1146,11 +1249,11 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: const Color(0xFFE50914),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      genre['name'],
+                      genre['title'],
                       style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
@@ -1161,7 +1264,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
           ],
 
           // Sinopsis
-          if (anime['synopsis'] != null) ...[
+          if (synopsisText.isNotEmpty) ...[
             const Text(
               "Synopsis",
               style: TextStyle(
@@ -1174,11 +1277,11 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: const Color(0xFF150000),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                anime['synopsis'],
+                synopsisText,
                 style: const TextStyle(
                   color: Colors.white,
                   height: 1.5,
@@ -1189,7 +1292,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
             const SizedBox(height: 20),
           ],
 
-          // Daftar Episode
+          // Episodes
           if (episodes.isNotEmpty) ...[
             const Text(
               "Episodes",
@@ -1209,7 +1312,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: Colors.transparent,
+                    color: const Color(0xFF150000),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: ListTile(
@@ -1217,18 +1320,18 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: const Color(0xFFE50914),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Center(
                         child: Text(
-                          episode['episode_number'].toString(),
+                          episode['eps'].toString(),
                           style: const TextStyle(color: Colors.white, fontSize: 12),
                         ),
                       ),
                     ),
                     title: Text(
-                      episode['episode'],
+                      episode['title'],
                       style: const TextStyle(color: Colors.white, fontSize: 14),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1238,21 +1341,16 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AnimeEpisodePage(
-                            episodeSlug: episode['slug'],
+                            episodeSlug: episode['episodeId'],
                             animeSlug: widget.slug,
                             animeTitle: anime['title'],
                             animePoster: anime['poster'],
                             episodes: episodes,
                             recommendations: recommendations,
-                            onHistoryUpdate: widget.onHistoryUpdate, // Pass callback to update history
+                            onHistoryUpdate: widget.onHistoryUpdate,
                           ),
                         ),
-                      ).then((_) {
-                        // Update history when returning from episode page
-                        if (widget.onHistoryUpdate != null) {
-                          widget.onHistoryUpdate!();
-                        }
-                      });
+                      );
                     },
                     trailing: const Icon(Icons.play_arrow, color: Colors.white),
                   ),
@@ -1262,39 +1360,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
             const SizedBox(height: 20),
           ],
 
-          // Batch Download (jika ada)
-          if (anime['batch'] != null) ...[
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: ListTile(
-                leading: const Icon(
-                  Icons.download,
-                  color: Colors.white,
-                ),
-                title: const Text(
-                  "Download Batch",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                subtitle: Text(
-                  "Upload: ${anime['batch']['uploaded_at']}",
-                  style: const TextStyle(
-                    color: Colors.grey,
-                  ),
-                ),
-                onTap: () => _launchURL(anime['batch']['otakudesu_url']),
-                trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
-
-          // Rekomendasi
+          // Recommendations
           if (recommendations.isNotEmpty) ...[
             const Text(
               "Recommendations",
@@ -1318,16 +1384,11 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => AnimeDetailPage(
-                            slug: recommendation['slug'],
-                            onHistoryUpdate: widget.onHistoryUpdate, // Pass callback to update history
+                            slug: recommendation['animeId'],
+                            onHistoryUpdate: widget.onHistoryUpdate,
                           ),
                         ),
-                      ).then((_) {
-                        // Update history when returning from detail page
-                        if (widget.onHistoryUpdate != null) {
-                          widget.onHistoryUpdate!();
-                        }
-                      });
+                      );
                     },
                     child: Container(
                       width: 120,
@@ -1344,7 +1405,7 @@ class _AnimeDetailPageState extends State<AnimeDetailPage> {
                               errorBuilder: (_, __, ___) => Container(
                                 height: 160,
                                 width: 120,
-                                color: Colors.transparent,
+                                color: const Color(0xFF150000),
                                 alignment: Alignment.center,
                                 child: const Icon(
                                   Icons.image_not_supported,
@@ -1427,19 +1488,38 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
   int currentPage = 1;
 
   Future<void> fetchGenreAnime({int page = 1}) async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+    });
+
     try {
+      debugPrint('🔍 Fetching genre: ${widget.genreSlug} page $page');
+      
       final response = await http.get(
         Uri.parse('https://www.sankavollerei.com/anime/genre/${widget.genreSlug}?page=$page'),
       );
 
+      debugPrint('📡 Status code: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() {
-          animeList = jsonData['data']['anime'];
-          pagination = jsonData['data']['pagination'];
-          isLoading = false;
-          currentPage = page;
-        });
+        
+        // 🔥 FIX 1: Ambil data anime dari animeList
+        if (jsonData['data'] != null && jsonData['data']['animeList'] != null) {
+          setState(() {
+            animeList = jsonData['data']['animeList'];
+            
+            // 🔥 FIX 2: Ambil pagination dari root JSON
+            pagination = jsonData['pagination'];
+            
+            isLoading = false;
+            currentPage = page;
+          });
+          debugPrint('✅ Loaded ${animeList.length} anime');
+        } else {
+          throw Exception('Invalid response structure');
+        }
       } else {
         setState(() {
           isLoading = false;
@@ -1447,7 +1527,7 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
         });
       }
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('❌ Error fetching genre anime: $e');
       setState(() {
         isLoading = false;
         isError = true;
@@ -1464,7 +1544,7 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF0A0000),
       appBar: AppBar(
         title: Text(
           "Genre: ${widget.genreName}",
@@ -1477,47 +1557,55 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
       body: isLoading
           ? _buildLoadingShimmer()
           : isError
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.grey,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Failed to load genre data",
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => fetchGenreAnime(),
-              child: const Text("Try Again"),
-            ),
-          ],
-        ),
-      )
-          : _buildGenreContent(),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load genre data",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => fetchGenreAnime(page: currentPage),
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : animeList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No anime found in this genre",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildGenreContent(),
     );
   }
 
   Widget _buildLoadingShimmer() {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: 10,
+      itemCount: 6,
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
-          baseColor: Colors.transparent,
-          highlightColor: const Color(0xFF2A2A2A),
+          baseColor: const Color(0xFF150000),
+          highlightColor: const Color(0xFF1C0000),
           child: Container(
             height: 150,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.transparent,
+              color: const Color(0xFF150000),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
@@ -1545,7 +1633,8 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
         ),
 
         // Pagination Controls
-        if (pagination != null) _buildPaginationControls(),
+        if (pagination != null && (pagination!['hasNextPage'] == true || pagination!['hasPrevPage'] == true))
+          _buildPaginationControls(),
       ],
     );
   }
@@ -1556,14 +1645,15 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
       padding: const EdgeInsets.all(12),
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: const Color(0xFF150000),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            "Page $currentPage of ${pagination!['last_visible_page']}",
+            // 🔥 FIX 3: Ganti nama key pagination sesuai JSON
+            "Page $currentPage of ${pagination!['totalPages']}",
             style: const TextStyle(
               color: Colors.grey,
               fontSize: 12,
@@ -1582,18 +1672,21 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
   }
 
   Widget _buildPaginationControls() {
-    final hasNext = pagination!['has_next_page'] ?? false;
-    final hasPrev = pagination!['has_previous_page'] ?? false;
+    // 🔥 FIX 4: Ganti nama key untuk prev dan next
+    final hasNext = pagination!['hasNextPage'] ?? false;
+    final hasPrev = pagination!['hasPrevPage'] ?? false;
 
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Previous Button
           if (hasPrev)
             ElevatedButton(
               onPressed: () => fetchGenreAnime(page: currentPage - 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1606,10 +1699,12 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
 
           const SizedBox(width: 16),
 
-          // Next Button
           if (hasNext)
             ElevatedButton(
               onPressed: () => fetchGenreAnime(page: currentPage + 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1625,30 +1720,46 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
   }
 
   Widget _buildAnimeCard(Map<String, dynamic> anime) {
-    final String title = anime['title'];
-    final String poster = anime['poster'];
-    final String rating = anime['rating'] ?? '-';
-    final String episodeCount = anime['episode_count']?.toString() ?? '?';
-    final String season = anime['season'] ?? '-';
-    final String studio = anime['studio'] ?? '-';
-    final String synopsis = anime['synopsis'] ?? '';
-    final String slug = anime['slug'];
-    final List<dynamic> genres = anime['genres'] ?? [];
+    final String title = anime['title']?.toString() ?? 'Unknown';
+    final String poster = anime['poster']?.toString() ?? '';
+    
+    // Urus Score/Rating
+    final String rating = (anime['score']?.toString().isNotEmpty == true) 
+        ? anime['score'].toString() 
+        : '-';
+        
+    final String episodeCount = anime['episodes']?.toString() ?? '?';
+    final String slug = anime['animeId']?.toString() ?? '';
+    final List<dynamic> genres = anime['genreList'] ?? [];
+
+    // 🔥 FIX 5: Ekstrak sinopsis dari array "paragraphs"
+    String synopsisText = '';
+    if (anime['synopsis'] != null && anime['synopsis']['paragraphs'] != null) {
+      synopsisText = (anime['synopsis']['paragraphs'] as List)
+          .where((e) => e.toString().trim().isNotEmpty)
+          .join('\n\n');
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.transparent,
+        color: const Color(0xFF150000),
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AnimeDetailPage(slug: slug),
-            ),
-          );
+          if (slug.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AnimeDetailPage(slug: slug),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Cannot open this anime')),
+            );
+          }
         },
         borderRadius: BorderRadius.circular(8),
         child: Padding(
@@ -1667,11 +1778,12 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
                   errorBuilder: (_, __, ___) => Container(
                     width: 100,
                     height: 140,
-                    color: const Color(0xFF2A2A2A),
+                    color: const Color(0xFF1C0000),
                     alignment: Alignment.center,
                     child: const Icon(
                       Icons.image_not_supported,
                       color: Colors.grey,
+                      size: 32,
                     ),
                   ),
                 ),
@@ -1716,26 +1828,13 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
                         ),
                         const SizedBox(width: 16),
                         Text(
-                          "$episodeCount Episodes",
+                          episodeCount == "null" ? "? Episodes" : "$episodeCount Episodes",
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
                           ),
                         ),
                       ],
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    // Season and Studio
-                    Text(
-                      "$season • $studio",
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 11,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
 
                     const SizedBox(height: 8),
@@ -1752,11 +1851,11 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.blue,
+                              color: const Color(0xFFE50914),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              genre['name'],
+                              genre['title'] ?? 'Unknown',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -1769,9 +1868,9 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
                     ],
 
                     // Synopsis (short)
-                    if (synopsis.isNotEmpty) ...[
+                    if (synopsisText.isNotEmpty) ...[
                       Text(
-                        synopsis,
+                        synopsisText,
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 11,
@@ -1791,6 +1890,1335 @@ class _AnimeGenrePageState extends State<AnimeGenrePage> {
   }
 }
 
+class AllAnimePage extends StatefulWidget {
+  const AllAnimePage({super.key});
+
+  @override
+  State<AllAnimePage> createState() => _AllAnimePageState();
+}
+
+class _AllAnimePageState extends State<AllAnimePage> {
+  List<dynamic> animeList = [];
+  bool isLoading = true;
+  bool isError = false;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchAllAnime();
+  }
+
+Future<void> fetchAllAnime() async {
+  setState(() {
+    isLoading = true;
+    isError = false;
+    errorMessage = '';
+  });
+
+  try {
+    debugPrint('🔍 Fetching all anime from /unlimited...');
+    
+    final response = await http.get(
+      Uri.parse('https://www.sankavollerei.com/anime/unlimited'),
+    );
+
+    debugPrint('📡 Status code: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final jsonData = json.decode(response.body);
+      debugPrint('📦 Response keys: ${jsonData.keys}');
+      
+      // ✅ STRUKTUR YANG BENAR: jsonData['data']['list']
+      if (jsonData['data'] != null && jsonData['data']['list'] != null) {
+        
+        List<dynamic> allAnime = [];
+        final listByAbjad = jsonData['data']['list'] as List;
+        
+        // Loop setiap kelompok abjad (#, A, B, C, ...)
+        for (var abjadGroup in listByAbjad) {
+          if (abjadGroup['animeList'] != null) {
+            final animeInGroup = abjadGroup['animeList'] as List;
+            allAnime.addAll(animeInGroup);
+          }
+        }
+        
+        setState(() {
+          animeList = allAnime;
+          isLoading = false;
+        });
+        
+        debugPrint('✅ Loaded ${animeList.length} anime from all abjad!');
+        
+      } 
+      // Fallback untuk struktur lain (kalau berubah)
+      else if (jsonData['data'] != null && jsonData['data']['anime'] != null) {
+        setState(() {
+          animeList = jsonData['data']['anime'];
+          isLoading = false;
+        });
+        debugPrint('✅ Loaded ${animeList.length} anime (from data.anime)');
+      }
+      else if (jsonData['data'] is List) {
+        setState(() {
+          animeList = jsonData['data'];
+          isLoading = false;
+        });
+        debugPrint('✅ Loaded ${animeList.length} anime (direct list)');
+      }
+      else {
+        setState(() {
+          isLoading = false;
+          isError = true;
+          errorMessage = 'Unexpected response format';
+        });
+      }
+      
+    } else {
+      setState(() {
+        isLoading = false;
+        isError = true;
+        errorMessage = 'Server error: ${response.statusCode}';
+      });
+    }
+  } catch (e) {
+    debugPrint('❌ Error fetching all anime: $e');
+    setState(() {
+      isLoading = false;
+      isError = true;
+      errorMessage = e.toString();
+    });
+  }
+}
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0000),
+      appBar: AppBar(
+        title: const Text(
+          "All Anime",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: isLoading
+          ? _buildLoadingShimmer()
+          : isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load all anime",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchAllAnime,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : animeList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No anime available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildAnimeList(),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: 8,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 260,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: const Color(0xFF150000),
+        highlightColor: const Color(0xFF1C0000),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF150000),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ),
+    );
+  }
+
+// 🔥 PENGGANTI GRID JADI LIST BIASA KARENA API UNLIMITED GAK ADA POSTERNYA
+  Widget _buildAnimeList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: animeList.length,
+      itemBuilder: (context, index) {
+        final anime = animeList[index];
+        
+        final String title = anime['title'] ?? anime['anime_name'] ?? 'Unknown';
+        final String slug = anime['animeId'] ?? anime['slug'] ?? '';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF150000),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF1C0000)),
+          ),
+          child: ListTile(
+            title: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: Colors.grey,
+              size: 20,
+            ),
+            onTap: () {
+              if (slug.isNotEmpty) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AnimeDetailPage(slug: slug),
+                  ),
+                );
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
+class OngoingAnimePage extends StatefulWidget {
+  const OngoingAnimePage({super.key});
+
+  @override
+  State<OngoingAnimePage> createState() => _OngoingAnimePageState();
+}
+
+class _OngoingAnimePageState extends State<OngoingAnimePage> {
+  List<dynamic> animeList = [];
+  Map<String, dynamic>? pagination;
+  bool isLoading = true;
+  bool isError = false;
+  int currentPage = 1;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchOngoingAnime();
+  }
+
+  Future<void> fetchOngoingAnime({int page = 1}) async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+      errorMessage = '';
+    });
+
+    try {
+      debugPrint('🔍 Fetching ongoing anime page $page...');
+      
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/ongoing-anime?page=$page'),
+      );
+
+      debugPrint('📡 Status code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        debugPrint('📦 Response keys: ${jsonData.keys}');
+        
+        if (jsonData['data'] != null) {
+          // Handle berbagai kemungkinan struktur
+          if (jsonData['data'] is List) {
+            setState(() {
+              animeList = jsonData['data'];
+              pagination = null;
+              isLoading = false;
+              currentPage = page;
+            });
+          } 
+          else if (jsonData['data']['animeList'] != null) {
+            setState(() {
+              animeList = jsonData['data']['animeList'];
+              pagination = jsonData['data']['pagination'];
+              isLoading = false;
+              currentPage = page;
+            });
+          }
+          else if (jsonData['data']['anime'] != null) {
+            setState(() {
+              animeList = jsonData['data']['anime'];
+              pagination = jsonData['data']['pagination'];
+              isLoading = false;
+              currentPage = page;
+            });
+          }
+          else {
+            setState(() {
+              animeList = [];
+              isLoading = false;
+            });
+          }
+          
+          debugPrint('✅ Loaded ${animeList.length} ongoing anime');
+        } else {
+          throw Exception('Invalid response structure');
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+          isError = true;
+          errorMessage = 'Server error: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching ongoing anime: $e');
+      setState(() {
+        isLoading = false;
+        isError = true;
+        errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0000),
+      appBar: AppBar(
+        title: const Text(
+          "Ongoing Anime",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: isLoading
+          ? _buildLoadingShimmer()
+          : isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load ongoing anime",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => fetchOngoingAnime(page: currentPage),
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : animeList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No ongoing anime available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildContent(),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: 8,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 260,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: const Color(0xFF150000),
+        highlightColor: const Color(0xFF1C0000),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF150000),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Column(
+      children: [
+        // Pagination Info
+        if (pagination != null) _buildPaginationInfo(),
+        
+        // Anime Grid
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: animeList.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 260,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemBuilder: (context, index) {
+              final anime = animeList[index];
+              
+              final String title = anime['title'] ?? 'Unknown';
+              final String poster = anime['poster'] ?? '';
+              final String episode = anime['episodes']?.toString() ?? 
+                                     anime['episode_count']?.toString() ?? '-';
+              final String? score = anime['score'] ?? anime['rating'];
+              final String slug = anime['animeId'] ?? anime['slug'] ?? '';
+
+              return GestureDetector(
+                onTap: () {
+                  if (slug.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnimeDetailPage(slug: slug),
+                      ),
+                    );
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Poster with rating
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(
+                            poster,
+                            height: 170,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 170,
+                              color: const Color(0xFF150000),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (score != null && score.isNotEmpty)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    score,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        // Ongoing badge
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.orange,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'ONGOING',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    // Title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    
+                    // Episodes
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Text(
+                        "$episode Episodes",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        
+        // Pagination Controls
+        if (pagination != null && (pagination!['has_next_page'] == true || pagination!['has_previous_page'] == true))
+          _buildPaginationControls(),
+      ],
+    );
+  }
+
+  Widget _buildPaginationInfo() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF150000),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Page $currentPage of ${pagination!['last_visible_page']}",
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            "Total: ${animeList.length} anime",
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final hasNext = pagination!['has_next_page'] ?? false;
+    final hasPrev = pagination!['has_previous_page'] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (hasPrev)
+            ElevatedButton(
+              onPressed: () => fetchOngoingAnime(page: currentPage - 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 16),
+                  SizedBox(width: 4),
+                  Text("Previous"),
+                ],
+              ),
+            ),
+
+          const SizedBox(width: 16),
+
+          if (hasNext)
+            ElevatedButton(
+              onPressed: () => fetchOngoingAnime(page: currentPage + 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Next"),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_forward, size: 16),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class CompleteAnimePage extends StatefulWidget {
+  const CompleteAnimePage({super.key});
+
+  @override
+  State<CompleteAnimePage> createState() => _CompleteAnimePageState();
+}
+
+class _CompleteAnimePageState extends State<CompleteAnimePage> {
+  List<dynamic> animeList = [];
+  Map<String, dynamic>? pagination;
+  bool isLoading = true;
+  bool isError = false;
+  int currentPage = 1;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCompleteAnime();
+  }
+
+  Future<void> fetchCompleteAnime({int page = 1}) async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+      errorMessage = '';
+    });
+
+    try {
+      debugPrint('🔍 Fetching complete anime page $page...');
+      
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/complete-anime?page=$page'),
+      );
+
+      debugPrint('📡 Status code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        debugPrint('📦 Response keys: ${jsonData.keys}');
+        
+        if (jsonData['data'] != null) {
+          // Handle berbagai kemungkinan struktur
+          if (jsonData['data'] is List) {
+            setState(() {
+              animeList = jsonData['data'];
+              pagination = null;
+              isLoading = false;
+              currentPage = page;
+            });
+          } 
+          else if (jsonData['data']['animeList'] != null) {
+            setState(() {
+              animeList = jsonData['data']['animeList'];
+              pagination = jsonData['data']['pagination'];
+              isLoading = false;
+              currentPage = page;
+            });
+          }
+          else if (jsonData['data']['anime'] != null) {
+            setState(() {
+              animeList = jsonData['data']['anime'];
+              pagination = jsonData['data']['pagination'];
+              isLoading = false;
+              currentPage = page;
+            });
+          }
+          else {
+            setState(() {
+              animeList = [];
+              isLoading = false;
+            });
+          }
+          
+          debugPrint('✅ Loaded ${animeList.length} complete anime');
+        } else {
+          throw Exception('Invalid response structure');
+        }
+      } else {
+        setState(() {
+          isLoading = false;
+          isError = true;
+          errorMessage = 'Server error: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching complete anime: $e');
+      setState(() {
+        isLoading = false;
+        isError = true;
+        errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0000),
+      appBar: AppBar(
+        title: const Text(
+          "Complete Anime",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      body: isLoading
+          ? _buildLoadingShimmer()
+          : isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load complete anime",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => fetchCompleteAnime(page: currentPage),
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : animeList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No complete anime available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildContent(),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16.0),
+      itemCount: 8,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisExtent: 260,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      itemBuilder: (_, __) => Shimmer.fromColors(
+        baseColor: const Color(0xFF150000),
+        highlightColor: const Color(0xFF1C0000),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF150000),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Column(
+      children: [
+        // Pagination Info
+        if (pagination != null) _buildPaginationInfo(),
+        
+        // Anime Grid
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: animeList.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisExtent: 260,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemBuilder: (context, index) {
+              final anime = animeList[index];
+              
+              final String title = anime['title'] ?? 'Unknown';
+              final String poster = anime['poster'] ?? '';
+              final String episode = anime['episodes']?.toString() ?? 
+                                     anime['episode_count']?.toString() ?? '-';
+              final String? score = anime['score'] ?? anime['rating'];
+              final String slug = anime['animeId'] ?? anime['slug'] ?? '';
+
+              return GestureDetector(
+                onTap: () {
+                  if (slug.isNotEmpty) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnimeDetailPage(slug: slug),
+                      ),
+                    );
+                  }
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Poster with rating
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: Image.network(
+                            poster,
+                            height: 170,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              height: 170,
+                              color: const Color(0xFF150000),
+                              alignment: Alignment.center,
+                              child: const Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                                size: 32,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (score != null && score.isNotEmpty)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.amber,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    score,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        // Complete badge
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'COMPLETE',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 8,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    // Title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                      child: Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    
+                    // Episodes
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Text(
+                        "$episode Episodes",
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        
+        // Pagination Controls
+        if (pagination != null && (pagination!['has_next_page'] == true || pagination!['has_previous_page'] == true))
+          _buildPaginationControls(),
+      ],
+    );
+  }
+
+  Widget _buildPaginationInfo() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF150000),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            "Page $currentPage of ${pagination!['last_visible_page']}",
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            "Total: ${animeList.length} anime",
+            style: const TextStyle(
+              color: Colors.grey,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaginationControls() {
+    final hasNext = pagination!['has_next_page'] ?? false;
+    final hasPrev = pagination!['has_previous_page'] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (hasPrev)
+            ElevatedButton(
+              onPressed: () => fetchCompleteAnime(page: currentPage - 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back, size: 16),
+                  SizedBox(width: 4),
+                  Text("Previous"),
+                ],
+              ),
+            ),
+
+          const SizedBox(width: 16),
+
+          if (hasNext)
+            ElevatedButton(
+              onPressed: () => fetchCompleteAnime(page: currentPage + 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("Next"),
+                  SizedBox(width: 4),
+                  Icon(Icons.arrow_forward, size: 16),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class AnimeBatchPage extends StatefulWidget {
+  final String batchSlug;
+  final String animeTitle;
+
+  const AnimeBatchPage({
+    super.key,
+    required this.batchSlug,
+    required this.animeTitle,
+  });
+
+  @override
+  State<AnimeBatchPage> createState() => _AnimeBatchPageState();
+}
+
+class _AnimeBatchPageState extends State<AnimeBatchPage> {
+  Map<String, dynamic>? batchData;
+  bool isLoading = true;
+  bool isError = false;
+  String errorMessage = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchBatchData();
+  }
+
+  Future<void> fetchBatchData() async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+      errorMessage = '';
+    });
+
+    try {
+      debugPrint('🔍 Fetching batch: ${widget.batchSlug}');
+      
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/batch/${widget.batchSlug}'),
+      );
+
+      debugPrint('📡 Status code: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        debugPrint('📦 Response keys: ${jsonData.keys}');
+        
+        setState(() {
+          batchData = jsonData['data'];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          isError = true;
+          errorMessage = 'Server error: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ Error fetching batch: $e');
+      setState(() {
+        isLoading = false;
+        isError = true;
+        errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _launchURL(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Widget _getProviderIcon(String provider) {
+    final prov = provider.toLowerCase();
+    if (prov.contains('odfiles')) {
+      return const Icon(Icons.storage, color: Colors.red, size: 20);
+    } else if (prov.contains('pdrain') || prov.contains('pixel')) {
+      return const Icon(Icons.cloud_download, color: Colors.green, size: 20);
+    } else if (prov.contains('acefile')) {
+      return const Icon(Icons.folder, color: Colors.orange, size: 20);
+    } else if (prov.contains('gofile')) {
+      return const Icon(Icons.file_copy, color: Colors.purple, size: 20);
+    } else if (prov.contains('mega')) {
+      return const Icon(Icons.cloud, color: Colors.red, size: 20);
+    } else if (prov.contains('kfiles') || prov.contains('kraken')) {
+      return const Icon(Icons.archive, color: Colors.yellow, size: 20);
+    }
+    return const Icon(Icons.link, color: Colors.white, size: 20);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0000),
+      appBar: AppBar(
+        title: Text(
+          "Batch: ${widget.animeTitle}",
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      body: isLoading
+          ? _buildLoadingShimmer()
+          : isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load batch data",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchBatchData,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : batchData == null
+                  ? const Center(
+                      child: Text(
+                        "No batch data available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildBatchContent(),
+    );
+  }
+
+  Widget _buildLoadingShimmer() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Shimmer.fromColors(
+          baseColor: const Color(0xFF150000),
+          highlightColor: const Color(0xFF1C0000),
+          child: Container(
+            height: 100,
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF150000),
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBatchContent() {
+    final List<dynamic> batchList = batchData?['batchList'] ?? [];
+    
+    if (batchList.isEmpty) {
+      return const Center(
+        child: Text(
+          "No download links available",
+          style: TextStyle(color: Colors.grey),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: batchList.length,
+      itemBuilder: (context, index) {
+        final batch = batchList[index];
+        final String resolution = batch['resolution'] ?? 'Unknown';
+        final String size = batch['size'] ?? '?';
+        final List<dynamic> urls = batch['urls'] ?? [];
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF150000),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: ExpansionTile(
+            leading: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE50914),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                resolution,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            title: Text(
+              "$resolution • $size",
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            children: urls.map<Widget>((urlData) {
+              return ListTile(
+                leading: _getProviderIcon(urlData['title'] ?? ''),
+                title: Text(
+                  urlData['title'] ?? 'Unknown',
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+                onTap: () => _launchURL(urlData['url']),
+                trailing: const Icon(Icons.cloud_download, color: Colors.white, size: 20),
+              );
+            }).toList(),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class AnimeSchedulePage extends StatefulWidget {
   const AnimeSchedulePage({super.key});
 
@@ -1804,17 +3232,40 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
   bool isError = false;
 
   Future<void> fetchSchedule() async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+    });
+
     try {
+      debugPrint('🔍 Fetching schedule...');
+      
       final response = await http.get(
         Uri.parse('https://www.sankavollerei.com/anime/schedule'),
       );
 
+      debugPrint('📡 Schedule status code: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() {
-          scheduleData = jsonData['data'];
-          isLoading = false;
-        });
+        debugPrint('📦 Schedule response keys: ${jsonData.keys}');
+        
+        // PERBAIKAN: Data mungkin di jsonData['data'] atau langsung array
+        if (jsonData['data'] != null) {
+          setState(() {
+            scheduleData = jsonData['data'] as List;
+            isLoading = false;
+          });
+        } else if (jsonData is List) {
+          setState(() {
+            scheduleData = jsonData;
+            isLoading = false;
+          });
+        } else {
+          throw Exception('Invalid schedule response structure');
+        }
+        
+        debugPrint('✅ Loaded ${scheduleData.length} days');
       } else {
         setState(() {
           isLoading = false;
@@ -1822,7 +3273,7 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching schedule: $e');
+      debugPrint('❌ Error fetching schedule: $e');
       setState(() {
         isLoading = false;
         isError = true;
@@ -1839,7 +3290,7 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF0A0000),
       appBar: AppBar(
         title: const Text(
           "Release Schedule",
@@ -1852,56 +3303,60 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
       body: isLoading
           ? _buildLoadingShimmer()
           : isError
-          ? _buildErrorWidget()
-          : _buildScheduleContent(),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load release schedule",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchSchedule,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : scheduleData.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No schedule available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildScheduleContent(),
     );
   }
 
   Widget _buildLoadingShimmer() {
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: 7,
+      itemCount: 5,
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
-          baseColor: Colors.transparent,
-          highlightColor: const Color(0xFF2A2A2A),
+          baseColor: const Color(0xFF150000),
+          highlightColor: const Color(0xFF1C0000),
           child: Container(
             height: 200,
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: Colors.transparent,
+              color: const Color(0xFF150000),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: Colors.grey,
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Failed to load release schedule",
-            style: TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: fetchSchedule,
-            child: const Text("Try Again"),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1911,13 +3366,13 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
       itemCount: scheduleData.length,
       itemBuilder: (context, index) {
         final daySchedule = scheduleData[index];
-        final String day = daySchedule['day'];
-        final List<dynamic> animeList = daySchedule['anime_list'];
+        final String day = daySchedule['day'] ?? 'Unknown';
+        final List<dynamic> animeList = daySchedule['anime_list'] ?? [];
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: const Color(0xFF150000),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Padding(
@@ -1931,7 +3386,7 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue,
+                        color: const Color(0xFFE50914),
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
@@ -1958,15 +3413,15 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
                 // Anime List
                 if (animeList.isNotEmpty)
                   SizedBox(
-                    height: 180,
+                    height: 200,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: animeList.length,
                       itemBuilder: (context, animeIndex) {
                         final anime = animeList[animeIndex];
-                        final String title = anime['anime_name'];
-                        final String poster = anime['poster'];
-                        final String slug = anime['slug'];
+                        final String title = anime['anime_name'] ?? anime['title'] ?? 'Unknown';
+                        final String poster = anime['poster'] ?? '';
+                        final String slug = anime['slug'] ?? '';
 
                         return Container(
                           width: 120,
@@ -1975,12 +3430,14 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
                           ),
                           child: GestureDetector(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => AnimeDetailPage(slug: slug),
-                                ),
-                              );
+                              if (slug.isNotEmpty) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AnimeDetailPage(slug: slug),
+                                  ),
+                                );
+                              }
                             },
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1996,11 +3453,12 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
                                     errorBuilder: (_, __, ___) => Container(
                                       width: 120,
                                       height: 160,
-                                      color: Colors.transparent,
+                                      color: const Color(0xFF150000),
                                       alignment: Alignment.center,
                                       child: const Icon(
                                         Icons.image_not_supported,
                                         color: Colors.grey,
+                                        size: 32,
                                       ),
                                     ),
                                   ),
@@ -2008,23 +3466,44 @@ class _AnimeSchedulePageState extends State<AnimeSchedulePage> {
                                 const SizedBox(height: 8),
 
                                 // Title
-                                Expanded(
-                                  child: Text(
-                                    title,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                Text(
+                                  title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
+
+                                // Release time if available
+                                if (anime['release_time'] != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      anime['release_time'],
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
                         );
                       },
+                    ),
+                  )
+                else
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        "No anime scheduled for this day",
+                        style: TextStyle(color: Colors.grey),
+                      ),
                     ),
                   ),
               ],
@@ -2049,17 +3528,38 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
   bool isError = false;
 
   Future<void> fetchGenreList() async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+    });
+
     try {
+      debugPrint('🔍 Fetching genre list...');
+      
       final response = await http.get(
-        Uri.parse('https://www.sankavollerei.com/anime/genre/'),
+        Uri.parse('https://www.sankavollerei.com/anime/genre'),
       );
+
+      debugPrint('📡 Status code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() {
-          genreList = jsonData['data'];
-          isLoading = false;
-        });
+        debugPrint('📦 Response structure: ${jsonData.keys}');
+        
+        // PERBAIKAN: Ambil dari data.genreList
+        if (jsonData['data'] != null && jsonData['data']['genreList'] != null) {
+          setState(() {
+            genreList = jsonData['data']['genreList'];
+            isLoading = false;
+          });
+          debugPrint('✅ Loaded ${genreList.length} genres');
+        } else {
+          debugPrint('❌ Unexpected response structure');
+          setState(() {
+            isLoading = false;
+            isError = true;
+          });
+        }
       } else {
         setState(() {
           isLoading = false;
@@ -2067,7 +3567,7 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
         });
       }
     } catch (e) {
-      debugPrint('Error fetching genre list: $e');
+      debugPrint('❌ Error fetching genre list: $e');
       setState(() {
         isLoading = false;
         isError = true;
@@ -2084,7 +3584,7 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF0A0000),
       appBar: AppBar(
         title: const Text(
           "Anime Genres",
@@ -2097,8 +3597,38 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
       body: isLoading
           ? _buildLoadingShimmer()
           : isError
-          ? _buildErrorWidget()
-          : _buildGenreGrid(),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load genre list",
+                        style: TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchGenreList,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : genreList.isEmpty
+                  ? const Center(
+                      child: Text(
+                        "No genres available",
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  : _buildGenreGrid(),
     );
   }
 
@@ -2114,43 +3644,16 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
       ),
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
-          baseColor: Colors.transparent,
-          highlightColor: const Color(0xFF2A2A2A),
+          baseColor: const Color(0xFF150000),
+          highlightColor: const Color(0xFF1C0000),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.transparent,
+              color: const Color(0xFF150000),
               borderRadius: BorderRadius.circular(8),
             ),
           ),
         );
       },
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.error_outline,
-            color: Colors.grey,
-            size: 64,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            "Failed to load genre list",
-            style: TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: fetchGenreList,
-            child: const Text("Try Again"),
-          ),
-        ],
-      ),
     );
   }
 
@@ -2166,25 +3669,29 @@ class _AnimeGenreListPageState extends State<AnimeGenreListPage> {
       ),
       itemBuilder: (context, index) {
         final genre = genreList[index];
-        final String name = genre['name'];
-        final String slug = genre['slug'];
+        
+        // Sesuai struktur JSON
+        String name = genre['title'] ?? 'Unknown';
+        String slug = genre['genreId'] ?? '';
 
         return Container(
           decoration: BoxDecoration(
-            color: Colors.transparent,
+            color: const Color(0xFF150000),
             borderRadius: BorderRadius.circular(8),
           ),
           child: InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AnimeGenrePage(
-                    genreSlug: slug,
-                    genreName: name,
+              if (slug.isNotEmpty) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AnimeGenrePage(
+                      genreSlug: slug,
+                      genreName: name,
+                    ),
                   ),
-                ),
-              );
+                );
+              }
             },
             borderRadius: BorderRadius.circular(8),
             child: Center(
@@ -2212,7 +3719,7 @@ class AnimeEpisodePage extends StatefulWidget {
   final String? animePoster;
   final List<dynamic>? episodes;
   final List<dynamic>? recommendations;
-  final Function()? onHistoryUpdate; // Callback to update history
+  final Function()? onHistoryUpdate;
 
   const AnimeEpisodePage({
     super.key,
@@ -2233,6 +3740,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   Map<String, dynamic>? episodeData;
   bool isLoading = true;
   bool isError = false;
+  String errorMessage = '';
   int _currentTabIndex = 0;
 
   // WebView Controller
@@ -2243,10 +3751,18 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   // Current episode index
   int _currentEpisodeIndex = 0;
 
+  // Selected server
+  String? _selectedQuality;
+  Map<String, dynamic>? _selectedServer;
+  List<Map<String, dynamic>> _availableServers = [];
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    debugPrint('🔍 EpisodeSlug: ${widget.episodeSlug}');
+    
     fetchEpisodeData();
     _findCurrentEpisodeIndex();
   }
@@ -2254,7 +3770,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   void _findCurrentEpisodeIndex() {
     if (widget.episodes != null) {
       for (int i = 0; i < widget.episodes!.length; i++) {
-        if (widget.episodes![i]['slug'] == widget.episodeSlug) {
+        if (widget.episodes![i]['episodeId'] == widget.episodeSlug) {
           setState(() {
             _currentEpisodeIndex = i;
           });
@@ -2267,7 +3783,6 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Kembali ke portrait ketika halaman ditutup
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -2278,12 +3793,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
 
   @override
   void didChangeMetrics() {
-    // Mendeteksi perubahan ukuran layar (fullscreen)
     final physicalSize = WidgetsBinding.instance.window.physicalSize;
     final pixelRatio = WidgetsBinding.instance.window.devicePixelRatio;
     final logicalSize = physicalSize / pixelRatio;
 
-    // Jika lebar lebih besar dari tinggi, berarti landscape
     final isNowFullScreen = logicalSize.width > logicalSize.height;
 
     if (isNowFullScreen != _isFullScreen) {
@@ -2292,14 +3805,12 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
       });
 
       if (_isFullScreen) {
-        // Lock ke landscape ketika fullscreen
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       } else {
-        // Kembali ke portrait ketika keluar fullscreen
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
           DeviceOrientation.portraitDown,
@@ -2310,96 +3821,155 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   }
 
   Future<void> fetchEpisodeData() async {
+    setState(() {
+      isLoading = true;
+      isError = false;
+      errorMessage = '';
+    });
+
     try {
-      final response = await http.get(
-        Uri.parse('https://www.sankavollerei.com/anime/episode/${widget.episodeSlug}'),
-      );
+      final url = 'https://www.sankavollerei.com/anime/episode/${widget.episodeSlug}';
+      debugPrint('🌐 Fetching from: $url');
+      
+      final response = await http.get(Uri.parse(url));
+
+      debugPrint('📡 Status code: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() {
-          episodeData = jsonData['data'];
-        });
-
-        // Initialize WebView dengan custom headers
-        _initializeWebView();
-
-        // Add to watch history
-        _addToWatchHistory();
-
-        setState(() {
-          isLoading = false;
-        });
+        debugPrint('📦 Response keys: ${jsonData.keys}');
+        
+        if (jsonData['data'] != null) {
+          final data = jsonData['data'];
+          
+          setState(() {
+            episodeData = data;
+          });
+          
+          // Parse available servers dari data
+          _parseServers(data);
+          
+          // Coba auto-select quality pertama
+          if (_availableServers.isNotEmpty) {
+            _selectServer(_availableServers.first['quality'], _availableServers.first['servers'].first);
+          }
+          
+          _addToWatchHistory();
+          
+          setState(() {
+            isLoading = false;
+          });
+        } else {
+          throw Exception('Invalid response structure: missing data field');
+        }
       } else {
         setState(() {
           isLoading = false;
           isError = true;
+          errorMessage = 'Server error: ${response.statusCode}';
         });
       }
     } catch (e) {
-      debugPrint('Error: $e');
+      debugPrint('❌ Error fetching episode: $e');
       setState(() {
         isLoading = false;
         isError = true;
+        errorMessage = e.toString();
       });
     }
   }
 
-  Future<void> _addToWatchHistory() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final historyJson = prefs.getStringList('watch_history') ?? [];
-      List<Map<String, dynamic>> watchHistory = historyJson
-          .map((item) => Map<String, dynamic>.from(json.decode(item)))
-          .toList();
-
-      // Create history item
-      final historyItem = {
-        'slug': widget.animeSlug,
-        'title': widget.animeTitle,
-        'poster': widget.animePoster,
-        'last_watched_episode': episodeData?['episode'],
-        'last_watched_episode_slug': widget.episodeSlug,
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      };
-
-      // Remove if already exists to avoid duplicates
-      watchHistory.removeWhere((item) => item['slug'] == widget.animeSlug);
-
-      // Add to beginning of list
-      watchHistory.insert(0, historyItem);
-
-      // Keep only last 20 items
-      if (watchHistory.length > 20) {
-        watchHistory = watchHistory.sublist(0, 20);
-      }
-
-      // Save to preferences
-      final newHistoryJson = watchHistory.map((item) => json.encode(item)).toList();
-      await prefs.setStringList('watch_history', newHistoryJson);
-
-
-      // Trigger history update callback if provided
-      if (widget.onHistoryUpdate != null) {
-        widget.onHistoryUpdate!();
-      }
-    } catch (e) {
-      debugPrint('Error saving to watch history: $e');
+  void _parseServers(Map<String, dynamic> data) {
+    if (data['server'] != null && data['server']['qualities'] != null) {
+      final qualities = data['server']['qualities'] as List;
+      
+      _availableServers = qualities.map((quality) {
+        return {
+          'quality': quality['title'],
+          'servers': (quality['serverList'] as List).map((server) {
+            return {
+              'title': server['title'],
+              'serverId': server['serverId'],
+              'href': server['href'],
+            };
+          }).toList(),
+        };
+      }).toList();
+      
+      debugPrint('✅ Found ${_availableServers.length} quality options');
     }
   }
 
-  void _initializeWebView() {
-    if (episodeData == null) return;
+  Future<void> _selectServer(String quality, Map<String, dynamic> server) async {
+    setState(() {
+      _selectedQuality = quality;
+      _selectedServer = server;
+      _isWebViewLoading = true;
+    });
 
-    final streamUrl = episodeData!['stream_url'];
+    try {
+      // Panggil endpoint server untuk dapetin URL streaming asli
+      final serverId = server['serverId'];
+      debugPrint('🌐 Fetching server URL for: $serverId');
+      
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/server/$serverId'),
+      );
 
+      debugPrint('📡 Server response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final jsonData = json.decode(response.body);
+        debugPrint('📦 Server response keys: ${jsonData.keys}');
+        
+        // Ambil stream URL dari response
+        String streamUrl = '';
+        
+        if (jsonData['data'] != null && jsonData['data']['stream_url'] != null) {
+          streamUrl = jsonData['data']['stream_url'];
+        } else if (jsonData['stream_url'] != null) {
+          streamUrl = jsonData['stream_url'];
+        } else {
+          // Fallback ke defaultStreamingUrl
+          streamUrl = episodeData?['defaultStreamingUrl'] ?? '';
+        }
+        
+        if (streamUrl.isNotEmpty) {
+          _initializeWebView(streamUrl);
+        } else {
+          throw Exception('Stream URL not found');
+        }
+      } else {
+        // Fallback ke defaultStreamingUrl jika gagal
+        String streamUrl = episodeData?['defaultStreamingUrl'] ?? '';
+        if (streamUrl.isNotEmpty) {
+          _initializeWebView(streamUrl);
+        } else {
+          throw Exception('Failed to get stream URL');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error getting stream URL: $e');
+      setState(() {
+        _isWebViewLoading = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load stream: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _initializeWebView(String streamUrl) {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
       ..addJavaScriptChannel(
         'FullScreen',
         onMessageReceived: (JavaScriptMessage message) {
-          // Handle fullscreen events dari JavaScript
           if (message.message == 'enter') {
             _enterFullScreen();
           } else if (message.message == 'exit') {
@@ -2414,8 +3984,6 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
               setState(() {
                 _isWebViewLoading = false;
               });
-
-              // Inject JavaScript untuk mendeteksi fullscreen changes
               _injectFullScreenDetection();
             }
           },
@@ -2431,12 +3999,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
             _injectFullScreenDetection();
           },
           onWebResourceError: (WebResourceError error) {
+            debugPrint('❌ WebView error: $error');
             setState(() {
               _isWebViewLoading = false;
             });
-          },
-          onNavigationRequest: (NavigationRequest request) {
-            return NavigationDecision.navigate;
           },
         ),
       )
@@ -2448,7 +4014,6 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
 
   void _injectFullScreenDetection() {
     _webViewController.runJavaScript('''
-      // Deteksi perubahan fullscreen untuk video elements
       function handleFullScreenChange() {
         if (document.fullscreenElement || document.webkitFullscreenElement || 
             document.mozFullScreenElement || document.msFullscreenElement) {
@@ -2457,36 +4022,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
           FullScreen.postMessage('exit');
         }
       }
-
-      // Tambahkan event listeners untuk fullscreen changes
       document.addEventListener('fullscreenchange', handleFullScreenChange);
       document.addEventListener('webkitfullscreenchange', handleFullScreenChange);
       document.addEventListener('mozfullscreenchange', handleFullScreenChange);
       document.addEventListener('MSFullscreenChange', handleFullScreenChange);
-
-      // Juga monitor video elements untuk click events
-      document.addEventListener('click', function(e) {
-        if (e.target.tagName === 'VIDEO' || e.target.closest('video')) {
-          // Jika video diklik, mungkin akan masuk fullscreen
-          setTimeout(handleFullScreenChange, 100);
-        }
-      });
-
-      // Monitor untuk touch events pada mobile
-      document.addEventListener('touchend', function(e) {
-        if (e.target.tagName === 'VIDEO' || e.target.closest('video')) {
-          setTimeout(handleFullScreenChange, 100);
-        }
-      });
-
-      // Monitor untuk key events (ESC untuk keluar fullscreen)
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          setTimeout(handleFullScreenChange, 100);
-        }
-      });
-
-      console.log('Fullscreen detection injected');
     ''');
   }
 
@@ -2495,14 +4034,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
       setState(() {
         _isFullScreen = true;
       });
-
-      // Lock orientation ke landscape
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-
-      // Sembunyikan system UI
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
   }
@@ -2512,14 +4047,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
       setState(() {
         _isFullScreen = false;
       });
-
-      // Kembali ke portrait
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
-
-      // Tampilkan system UI kembali
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
   }
@@ -2527,23 +4058,58 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   Map<String, String> _getChromeHeaders() {
     return {
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
       'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
+      'Referer': 'https://otakudesu.best/',
     };
   }
 
+  Future<void> _addToWatchHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final historyJson = prefs.getStringList('watch_history') ?? [];
+      List<Map<String, dynamic>> watchHistory = historyJson
+          .map((item) => Map<String, dynamic>.from(json.decode(item)))
+          .toList();
+
+      String lastWatchedEpisode = episodeData?['title'] ?? 'Episode ${_currentEpisodeIndex + 1}';
+
+      final historyItem = {
+        'slug': widget.animeSlug,
+        'title': widget.animeTitle,
+        'poster': widget.animePoster,
+        'last_watched_episode': lastWatchedEpisode,
+        'last_watched_episode_slug': widget.episodeSlug,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+
+      watchHistory.removeWhere((item) => item['slug'] == widget.animeSlug);
+      watchHistory.insert(0, historyItem);
+
+      if (watchHistory.length > 20) {
+        watchHistory = watchHistory.sublist(0, 20);
+      }
+
+      final newHistoryJson = watchHistory.map((item) => json.encode(item)).toList();
+      await prefs.setStringList('watch_history', newHistoryJson);
+
+      if (widget.onHistoryUpdate != null) {
+        widget.onHistoryUpdate!();
+      }
+    } catch (e) {
+      debugPrint('Error saving to watch history: $e');
+    }
+  }
+
   void _refreshWebView() {
-    setState(() {
-      _isWebViewLoading = true;
-    });
-    _webViewController.reload();
+    if (_selectedServer != null && episodeData?['defaultStreamingUrl'] != null) {
+      _webViewController.reload();
+    }
   }
 
   void _openInExternalBrowser() {
-    if (episodeData != null) {
-      final streamUrl = episodeData!['stream_url'];
-      _launchURL(streamUrl);
+    if (episodeData?['defaultStreamingUrl'] != null) {
+      _launchURL(episodeData!['defaultStreamingUrl']);
     }
   }
 
@@ -2554,119 +4120,189 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
     }
   }
 
-  void _showDownloadOptions() {
-    if (episodeData == null || episodeData!['download_urls'] == null) return;
-
-    final downloadUrls = episodeData!['download_urls'];
+  void _showServerSelector() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.transparent,
+      backgroundColor: const Color(0xFF150000),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Download Episode",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                if (downloadUrls['mp4'] != null) ...[
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          expand: false,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   const Text(
-                    "MP4 Format",
+                    "Select Server",
                     style: TextStyle(
-                      color: Colors.white,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  ..._buildDownloadOptionsList(downloadUrls['mp4']),
                   const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: _availableServers.length,
+                      itemBuilder: (context, index) {
+                        final quality = _availableServers[index];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                quality['quality'],
+                                style: const TextStyle(
+                                  color: Color(0xFFE50914),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            ...(quality['servers'] as List).map((server) {
+                              return ListTile(
+                                title: Text(
+                                  server['title'],
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                                onTap: () {
+                                  Navigator.pop(context);
+                                  _selectServer(quality['quality'], server);
+                                },
+                              );
+                            }).toList(),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ],
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  List<Widget> _buildDownloadOptionsList(List<dynamic> formats) {
-    List<Widget> widgets = [];
+  void _showDownloadOptions() {
+    if (episodeData == null || episodeData!['downloadUrl'] == null) return;
 
-    for (final format in formats) {
-      final resolution = format['resolution'];
-      final urls = format['urls'] as List<dynamic>;
-
-      widgets.add(
-        Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: ExpansionTile(
-            leading: const Icon(Icons.hd, color: Colors.white),
-            title: Text(
-              resolution,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+    final downloadUrls = episodeData!['downloadUrl'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF150000),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Download Episode",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: downloadUrls['qualities']?.length ?? 0,
+                      itemBuilder: (context, index) {
+                        final quality = downloadUrls['qualities'][index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1C0000),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ExpansionTile(
+                            leading: const Icon(Icons.download, color: Colors.white),
+                            title: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  quality['title'] ?? 'Unknown',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (quality['size'] != null)
+                                  Text(
+                                    quality['size'],
+                                    style: const TextStyle(
+                                      color: Colors.grey,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            children: (quality['urls'] as List).map<Widget>((urlData) {
+                              return ListTile(
+                                leading: _getProviderIcon(urlData['title']),
+                                title: Text(
+                                  urlData['title'],
+                                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                                ),
+                                onTap: () => _launchURL(urlData['url']),
+                                trailing: const Icon(Icons.cloud_download, color: Colors.white, size: 20),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-            children: urls.map<Widget>((urlData) {
-              return ListTile(
-                leading: _getProviderIcon(urlData['provider']),
-                title: Text(
-                  urlData['provider'],
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-                subtitle: const Text(
-                  "Click to download",
-                  style: TextStyle(color: Colors.grey, fontSize: 10),
-                ),
-                onTap: () => _launchURL(urlData['url']),
-                trailing: const Icon(Icons.download, color: Colors.white, size: 20),
-              );
-            }).toList(),
-          ),
-        ),
-      );
-    }
-
-    return widgets;
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _getProviderIcon(String provider) {
-    switch (provider.toLowerCase()) {
-      case 'odfiles':
-        return const Icon(Icons.storage, color: Colors.blue, size: 20);
-      case 'pdrain':
-        return const Icon(Icons.cloud_download, color: Colors.green, size: 20);
-      case 'acefile':
-        return const Icon(Icons.folder, color: Colors.orange, size: 20);
-      case 'gofile':
-        return const Icon(Icons.file_copy, color: Colors.purple, size: 20);
-      case 'mega':
-        return const Icon(Icons.cloud, color: Colors.red, size: 20);
-      case 'kfiles':
-        return const Icon(Icons.archive, color: Colors.yellow, size: 20);
-      default:
-        return const Icon(Icons.download, color: Colors.white, size: 20);
+    final prov = provider.toLowerCase();
+    if (prov.contains('odfiles')) {
+      return const Icon(Icons.storage, color: Colors.red, size: 20);
+    } else if (prov.contains('pdrain') || prov.contains('pixel')) {
+      return const Icon(Icons.cloud_download, color: Colors.green, size: 20);
+    } else if (prov.contains('acefile')) {
+      return const Icon(Icons.folder, color: Colors.orange, size: 20);
+    } else if (prov.contains('gofile')) {
+      return const Icon(Icons.file_copy, color: Colors.purple, size: 20);
+    } else if (prov.contains('mega')) {
+      return const Icon(Icons.cloud, color: Colors.red, size: 20);
+    } else if (prov.contains('kfiles') || prov.contains('kraken')) {
+      return const Icon(Icons.archive, color: Colors.yellow, size: 20);
     }
+    return const Icon(Icons.link, color: Colors.white, size: 20);
   }
 
   void _goToNextEpisode() {
@@ -2676,13 +4312,13 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
         context,
         MaterialPageRoute(
           builder: (context) => AnimeEpisodePage(
-            episodeSlug: nextEpisode['slug'],
+            episodeSlug: nextEpisode['episodeId'],
             animeSlug: widget.animeSlug,
             animeTitle: widget.animeTitle,
             animePoster: widget.animePoster,
             episodes: widget.episodes,
             recommendations: widget.recommendations,
-            onHistoryUpdate: widget.onHistoryUpdate, // Pass callback to update history
+            onHistoryUpdate: widget.onHistoryUpdate,
           ),
         ),
       );
@@ -2692,10 +4328,10 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF141414),
+      backgroundColor: const Color(0xFF0A0000),
       appBar: _isFullScreen ? null : AppBar(
         title: Text(
-          episodeData?['episode'] ?? "Streaming Anime",
+          episodeData?['title'] ?? "Streaming Anime",
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -2706,6 +4342,13 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
         ),
         actions: [
           if (episodeData != null) ...[
+            // Server selector button
+            if (_availableServers.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.language, color: Colors.white),
+                onPressed: _showServerSelector,
+                tooltip: 'Change Server',
+              ),
             IconButton(
               icon: const Icon(Icons.refresh, color: Colors.white),
               onPressed: _refreshWebView,
@@ -2716,7 +4359,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
               onPressed: _openInExternalBrowser,
               tooltip: 'Open in Browser',
             ),
-            if (episodeData!['download_urls'] != null)
+            if (episodeData!['downloadUrl'] != null)
               IconButton(
                 onPressed: _showDownloadOptions,
                 icon: const Icon(Icons.download, color: Colors.white),
@@ -2727,68 +4370,108 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
       ),
       body: isLoading
           ? _buildLoadingShimmer()
-          : isError || episodeData == null
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              color: Colors.grey,
-              size: 64,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              "Failed to load episode",
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: fetchEpisodeData,
-              child: const Text("Try Again"),
-            ),
-          ],
-        ),
-      )
-          : _buildStreamingContent(),
+          : isError
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.grey,
+                        size: 64,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Failed to load episode",
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (errorMessage.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          errorMessage,
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: fetchEpisodeData,
+                        child: const Text("Try Again"),
+                      ),
+                    ],
+                  ),
+                )
+              : episodeData == null
+                  ? const Center(child: Text("No data", style: TextStyle(color: Colors.white)))
+                  : _buildStreamingContent(),
     );
   }
 
   Widget _buildStreamingContent() {
     final List<dynamic> episodes = widget.episodes ?? [];
     final List<dynamic> recommendations = widget.recommendations ?? [];
-    final List<dynamic> genres = [];
+    final List<dynamic> genres = episodeData?['info']?['genreList'] ?? [];
 
     return Column(
       children: [
-        // Video Player Section - Sesuaikan height berdasarkan fullscreen
+        // Video Player Section
         Container(
           height: _isFullScreen
               ? MediaQuery.of(context).size.height
-              : MediaQuery.of(context).size.height * 0.35,
+              : MediaQuery.of(context).size.height * 0.3,
           width: double.infinity,
           color: Colors.black,
           child: Stack(
             children: [
-              WebViewWidget(controller: _webViewController),
-
-              if (_isWebViewLoading)
+              // 1. WEBVIEW (Diumpetin pakai Opacity 0 selama loading biar ga abu-abu)
+              if (_selectedServer != null && episodeData?['defaultStreamingUrl'] != null)
+                Opacity(
+                  opacity: _isWebViewLoading ? 0.0 : 1.0,
+                  child: WebViewWidget(controller: _webViewController),
+                )
+              else
+                Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.videocam_off, color: Colors.grey, size: 48),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Select a server to start watching",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _showServerSelector,
+                        child: const Text("Choose Server"),
+                      ),
+                    ],
+                  ),
+                ),
+              
+              // 2. LOADING MENYIAPKAN VIDEO (Hitam pekat kaya anime1)
+              if (_isWebViewLoading && _selectedServer != null)
                 Container(
-                  color: Colors.black87,
+                  color: Colors.black, // <-- Hitam pekat, bukan black87
                   child: const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircularProgressIndicator(
-                          color: Colors.blue,
+                          color: Color(0xFFE50914),
                         ),
                         SizedBox(height: 16),
                         Text(
-                          "Loading video player...",
+                          "Menyiapkan Video...",
                           style: TextStyle(
                             color: Colors.white,
+                            fontWeight: FontWeight.bold
                           ),
                         ),
                       ],
@@ -2796,8 +4479,8 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                   ),
                 ),
 
-              // Tombol exit fullscreen manual (fallback)
-              if (_isFullScreen)
+              // 3. TOMBOL FULLSCREEN
+              if (_isFullScreen && _selectedServer != null)
                 Positioned(
                   top: 40,
                   right: 20,
@@ -2817,17 +4500,61 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
           ),
         ),
 
-        // Sembunyikan tab bar ketika fullscreen
+        // Server Info Bar (if not fullscreen)
+        if (!_isFullScreen && _selectedServer != null) ...[
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            color: const Color(0xFF150000),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE50914),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    _selectedQuality ?? 'Auto',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _selectedServer?['title'] ?? 'Server',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                TextButton(
+                  onPressed: _showServerSelector,
+                  child: const Text(
+                    'Change',
+                    style: TextStyle(color: Color(0xFFE50914)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         if (!_isFullScreen) ...[
           // Tab Bar
           Container(
             height: 50,
-            color: Colors.transparent,
+            color: const Color(0xFF150000),
             child: Row(
               children: [
                 _buildTabButton(0, Icons.playlist_play, 'Episodes'),
                 _buildTabButton(1, Icons.recommend, 'Recommendations'),
-                _buildTabButton(2, Icons.category, 'Genres'),
+                _buildTabButton(2, Icons.category, 'Info'),
               ],
             ),
           ),
@@ -2837,14 +4564,9 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
             child: IndexedStack(
               index: _currentTabIndex,
               children: [
-                // Tab 1: Episode List
                 _buildEpisodeList(episodes),
-
-                // Tab 2: Recommendations
                 _buildRecommendations(recommendations),
-
-                // Tab 3: Genres
-                _buildGenresList(genres),
+                _buildInfoTab(genres),
               ],
             ),
           ),
@@ -2857,7 +4579,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
     final isSelected = _currentTabIndex == index;
     return Expanded(
       child: Material(
-        color: isSelected ? Colors.blue : Colors.transparent,
+        color: isSelected ? const Color(0xFFE50914) : Colors.transparent,
         child: InkWell(
           onTap: () {
             setState(() {
@@ -2913,7 +4635,6 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
 
     return Column(
       children: [
-        // Next Episode Button
         if (_currentEpisodeIndex < episodes.length - 1)
           Container(
             margin: const EdgeInsets.all(16),
@@ -2921,25 +4642,30 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
               onPressed: _goToNextEpisode,
               icon: const Icon(Icons.skip_next),
               label: const Text("Next Episode"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFE50914),
+              ),
             ),
           ),
-
-        // Episode List
         Expanded(
           child: ListView.builder(
             padding: const EdgeInsets.all(8),
             itemCount: episodes.length,
             itemBuilder: (context, index) {
               final episode = episodes[index];
-              final isCurrentEpisode = episode['slug'] == widget.episodeSlug;
+              final isCurrentEpisode = episode['episodeId'] == widget.episodeSlug;
+              final episodeNumber = episode['eps']?.toString() ?? '?';
 
               return Container(
                 margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                 decoration: BoxDecoration(
                   color: isCurrentEpisode
-                      ? Colors.blue
-                      : Colors.transparent,
+                      ? const Color(0xFFE50914).withOpacity(0.2)
+                      : const Color(0xFF150000),
                   borderRadius: BorderRadius.circular(8),
+                  border: isCurrentEpisode
+                      ? Border.all(color: const Color(0xFFE50914), width: 1)
+                      : null,
                 ),
                 child: ListTile(
                   leading: Container(
@@ -2947,13 +4673,13 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                     height: 40,
                     decoration: BoxDecoration(
                       color: isCurrentEpisode
-                          ? Colors.white.withOpacity(0.2)
-                          : const Color(0xFF2A2A2A),
+                          ? const Color(0xFFE50914)
+                          : const Color(0xFF1C0000),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Center(
                       child: Text(
-                        episode['episode_number'].toString(),
+                        episodeNumber,
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -2963,7 +4689,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                     ),
                   ),
                   title: Text(
-                    episode['episode'],
+                    episode['title'] ?? 'Episode $episodeNumber',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -2971,19 +4697,28 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
+                  subtitle: episode['date'] != null && episode['date'].toString().isNotEmpty
+                      ? Text(
+                          episode['date'],
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        )
+                      : null,
                   onTap: () {
                     if (!isCurrentEpisode) {
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AnimeEpisodePage(
-                            episodeSlug: episode['slug'],
+                            episodeSlug: episode['episodeId'],
                             animeSlug: widget.animeSlug,
                             animeTitle: widget.animeTitle,
                             animePoster: widget.animePoster,
                             episodes: widget.episodes,
                             recommendations: widget.recommendations,
-                            onHistoryUpdate: widget.onHistoryUpdate, // Pass callback to update history
+                            onHistoryUpdate: widget.onHistoryUpdate,
                           ),
                         ),
                       );
@@ -2991,7 +4726,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                   },
                   trailing: Icon(
                     isCurrentEpisode ? Icons.play_arrow : Icons.play_circle_outline,
-                    color: Colors.white,
+                    color: isCurrentEpisode ? const Color(0xFFE50914) : Colors.white,
                   ),
                 ),
               );
@@ -3042,8 +4777,8 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
               context,
               MaterialPageRoute(
                 builder: (context) => AnimeDetailPage(
-                  slug: recommendation['slug'],
-                  onHistoryUpdate: widget.onHistoryUpdate, // Pass callback to update history
+                  slug: recommendation['animeId'],
+                  onHistoryUpdate: widget.onHistoryUpdate,
                 ),
               ),
             );
@@ -3051,60 +4786,35 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Poster
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(8),
                 child: Image.network(
                   recommendation['poster'],
-                  height: 140,
+                  height: 160,
                   width: double.infinity,
                   fit: BoxFit.cover,
                   errorBuilder: (_, __, ___) => Container(
-                    height: 140,
-                    color: Colors.transparent,
+                    height: 160,
+                    color: const Color(0xFF150000),
                     alignment: Alignment.center,
                     child: const Icon(
                       Icons.image_not_supported,
                       color: Colors.grey,
+                      size: 32,
                     ),
                   ),
                 ),
               ),
-
-              // Title
-              Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      recommendation['title'],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    // Rating jika ada
-                    if (recommendation['rating'] != null && recommendation['rating'].toString().isNotEmpty)
-                      Row(
-                        children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 12),
-                          const SizedBox(width: 4),
-                          Text(
-                            recommendation['rating'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
+              const SizedBox(height: 8),
+              Text(
+                recommendation['title'] ?? 'Unknown',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -3113,82 +4823,55 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
     );
   }
 
-  Widget _buildGenresList(List<dynamic> genres) {
-    if (genres.isEmpty) {
+  Widget _buildInfoTab(List<dynamic> genres) {
+    final info = episodeData?['info'];
+    
+    if (info == null) {
       return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.category,
-              color: Colors.grey,
-              size: 64,
-            ),
-            SizedBox(height: 16),
-            Text(
-              "No genres available",
-              style: TextStyle(
-                color: Colors.grey,
-              ),
-            ),
-          ],
+        child: Text(
+          "No information available",
+          style: TextStyle(color: Colors.grey),
         ),
       );
     }
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Anime Info
           const Text(
-            "Anime Genres",
+            "Information",
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: genres.map<Widget>((genre) {
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AnimeGenrePage(
-                        genreSlug: genre['slug'],
-                        genreName: genre['name'],
-                      ),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    genre['name'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF150000),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                _buildInfoRow("Duration", info['duration']),
+                _buildInfoRow("Type", info['type']),
+                _buildInfoRow("Credit", info['credit']),
+                _buildInfoRow("Encoder", info['encoder']),
+              ],
+            ),
           ),
+
           const SizedBox(height: 20),
-          // Info tambahan tentang anime
-          if (widget.animeTitle != null) ...[
+
+          // Genres
+          if (genres.isNotEmpty) ...[
             const Text(
-              "Anime Info",
+              "Genres",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -3196,16 +4879,56 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
               ),
             ),
             const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: genres.map<Widget>((genre) {
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AnimeGenrePage(
+                          genreSlug: genre['genreId'],
+                          genreName: genre['title'],
+                        ),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE50914),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      genre['title'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
+          // Anime Poster and Title
+          if (widget.animeTitle != null) ...[
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.transparent,
+                color: const Color(0xFF150000),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
                     child: Image.network(
                       widget.animePoster ?? '',
                       height: 80,
@@ -3214,7 +4937,7 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                       errorBuilder: (_, __, ___) => Container(
                         height: 80,
                         width: 60,
-                        color: const Color(0xFF2A2A2A),
+                        color: const Color(0xFF1C0000),
                         alignment: Alignment.center,
                         child: const Icon(
                           Icons.image_not_supported,
@@ -3223,17 +4946,30 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      widget.animeTitle ?? '',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Now Playing",
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.animeTitle ?? '',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -3245,51 +4981,56 @@ class _AnimeEpisodePageState extends State<AnimeEpisodePage> with WidgetsBinding
     );
   }
 
-  Widget _buildLoadingShimmer() {
-    return ListView(
-      children: [
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: Shimmer.fromColors(
-            baseColor: Colors.transparent,
-            highlightColor: const Color(0xFF2A2A2A),
-            child: Container(
-              color: Colors.transparent,
+  Widget _buildInfoRow(String label, String? value) {
+    if (value == null || value.isEmpty) return const SizedBox();
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.grey,
+                fontSize: 13,
+              ),
             ),
           ),
-        ),
-      ],
-    );
-  }
-}
-
-Widget _buildQuickAccessCard(String title, IconData icon, VoidCallback onTap) {
-  return Container(
-    decoration: BoxDecoration(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: Colors.blue, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              title,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              value,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontSize: 13,
               ),
-              textAlign: TextAlign.center,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    ),
-  );
+    );
+  }
+
+Widget _buildLoadingShimmer() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: Color(0xFFE50914)),
+          const SizedBox(height: 20),
+          const Text(
+            "Sedang Memuat Episode...",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

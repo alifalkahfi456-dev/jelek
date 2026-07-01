@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'dashboard_page.dart';
@@ -29,63 +28,46 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with TickerProviderStateMixin {
-  late VideoPlayerController _videoController;
-  late AnimationController _fadeController;
-  late AnimationController _shimmerController;
-  bool _fadeOutStarted = false;
-  double _progress = 0.0;
+class _SplashScreenState extends State<SplashScreen> {
+  late VideoPlayerController _videoCtrl;
+  bool _videoReady = false;
 
   @override
   void initState() {
     super.initState();
+    _initVideo();
+  }
 
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    );
-
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-
-    _videoController = VideoPlayerController.asset("assets/videos/splash.mp4")
+  void _initVideo() {
+    _videoCtrl = VideoPlayerController.asset('assets/videos/splash.mp4')
       ..initialize().then((_) {
-        setState(() {});
-        _videoController
-          ..setLooping(false)
-          ..play();
-
-        _videoController.addListener(_videoListener);
+        if (!mounted) return;
+        setState(() => _videoReady = true);
+        _videoCtrl.setLooping(false);
+        _videoCtrl.play();
+        
+        _videoCtrl.addListener(_onVideoProgress);
+      }).catchError((_) {
+        // Fallback jika video error
+        if (mounted) {
+          setState(() => _videoReady = false);
+          Future.delayed(const Duration(seconds: 3), _navigate);
+        }
       });
   }
 
-  void _videoListener() {
-    final position = _videoController.value.position;
-    final duration = _videoController.value.duration;
-
-    if (duration != null && duration.inMilliseconds > 0) {
-      setState(() {
-        _progress = position.inMilliseconds / duration.inMilliseconds;
-        _progress = _progress.clamp(0.0, 1.0);
-      });
-
-      if (position >= duration - const Duration(seconds: 1) && !_fadeOutStarted) {
-        _fadeOutStarted = true;
-        _fadeController.forward();
-      }
-
-      if (position >= duration) {
-        _navigateToDashboard();
-      }
+  void _onVideoProgress() {
+    if (!mounted) return;
+    final pos = _videoCtrl.value.position;
+    final dur = _videoCtrl.value.duration;
+    
+    if (dur != Duration.zero && pos >= dur) {
+      _navigate();
     }
   }
 
-  void _navigateToDashboard() {
-    _videoController.removeListener(_videoListener);
-
+  void _navigate() {
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
         builder: (_) => DashboardPage(
@@ -104,9 +86,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _videoController.dispose();
-    _fadeController.dispose();
-    _shimmerController.dispose();
+    _videoCtrl.removeListener(_onVideoProgress);
+    _videoCtrl.dispose();
     super.dispose();
   }
 
@@ -115,198 +96,94 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
-        alignment: Alignment.center,
+        fit: StackFit.expand,
         children: [
-          // Video Player
-          if (_videoController.value.isInitialized)
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(30),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.8,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
+          // Video background
+          if (_videoReady)
+            FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoCtrl.value.size.width,
+                height: _videoCtrl.value.size.height,
+                child: VideoPlayer(_videoCtrl),
+              ),
+            ),
+          
+          // Dark overlay agar tulisan lebih terbaca
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.black.withOpacity(0.5),
+                ],
+              ),
+            ),
+          ),
+
+          // Tombol Skip (pojok kanan atas)
+          Positioned(
+            top: 50,
+            right: 20,
+            child: GestureDetector(
+              onTap: _navigate,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.skip_next, color: Colors.white, size: 18),
+                    SizedBox(width: 4),
+                    Text(
+                      'SKIP/LEWATI',
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
-                    child: AspectRatio(
-                      aspectRatio: _videoController.value.aspectRatio,
-                      child: VideoPlayer(_videoController),
-                    ),
-                  ),
+                  ],
                 ),
               ),
-            )
-          else
-            const Center(child: CircularProgressIndicator(color: Colors.purple)),
+            ),
+          ),
 
-          // Title and Progress Bar
+          // Tulisan Astral Engine di tengah bawah
           Positioned(
             bottom: 80,
-            left: 40,
-            right: 40,
+            left: 0,
+            right: 0,
             child: Column(
               children: [
-                // Title Text
                 Text(
-                  "NOXTRAZ",
+                  'CYBER - CORE XRAT',
                   style: TextStyle(
-                    fontSize: 42,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    letterSpacing: 3,
+                    letterSpacing: 2,
                     shadows: [
                       Shadow(
-                        color: Colors.purpleAccent.withOpacity(0.9),
+                        color: Colors.red.withOpacity(0.5),
                         blurRadius: 10,
-                        offset: const Offset(2, 2),
-                      ),
-                      Shadow(
-                        color: Colors.black.withOpacity(0.8),
-                        blurRadius: 15,
-                        offset: const Offset(-2, -2),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
-                
-                // Enhanced Progress Bar
-                Container(
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 8),
+                Text(
+                  'Powered by @Renn_XyvXd',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.7),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
-                      children: [
-                        // Base background
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.grey.shade900.withOpacity(0.3),
-                                Colors.grey.shade800.withOpacity(0.2),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        // Animated progress bar
-                        FractionallySizedBox(
-                          widthFactor: _progress,
-                          child: AnimatedBuilder(
-                            animation: _shimmerController,
-                            builder: (context, child) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                    colors: [
-                                      const Color(0xFF8B5CF6),
-                                      const Color(0xFFA855F7),
-                                      const Color(0xFFC084FC),
-                                      const Color(0xFFA855F7),
-                                      const Color(0xFF8B5CF6),
-                                    ],
-                                    stops: [
-                                      0.0,
-                                      (_shimmerController.value - 0.3).clamp(0.0, 1.0),
-                                      _shimmerController.value,
-                                      (_shimmerController.value + 0.3).clamp(0.0, 1.0),
-                                      1.0,
-                                    ],
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFA855F7).withOpacity(0.5),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        
-                        // Subtle moving dots indicator
-                        if (_progress > 0 && _progress < 1)
-                          Positioned(
-                            left: MediaQuery.of(context).size.width * 0.8 * _progress - 40,
-                            child: AnimatedBuilder(
-                              animation: _shimmerController,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: (0.5 + (0.5 * _shimmerController.value)).clamp(0.3, 1.0),
-                                  child: Container(
-                                    width: 8,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(2),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.white.withOpacity(0.8),
-                                          blurRadius: 6,
-                                          spreadRadius: 2,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                
-                // Loading text with subtle animation
-                AnimatedBuilder(
-                  animation: _shimmerController,
-                  builder: (context, child) {
-                    return Opacity(
-                      opacity: (0.4 + (0.3 * _shimmerController.value)).clamp(0.4, 0.7),
-                      child: Text(
-                        "Loading...",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    );
-                  },
                 ),
               ],
             ),
           ),
-
-          // Fade Out Overlay
-          if (_fadeOutStarted)
-            FadeTransition(
-              opacity: _fadeController,
-              child: Container(color: Colors.black),
-            ),
         ],
       ),
     );

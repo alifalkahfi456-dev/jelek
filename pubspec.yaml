@@ -1,4 +1,4 @@
-name: xxo25
+name: syntax_phantom
 description: "Bug WhatsApp Crasher"
 publish_to: 'none'
 version: 2.0.0
@@ -9,23 +9,43 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0
-  intl: ^0.18.1
-  url_launcher: ^6.2.5
-  cupertino_icons: ^1.0.8
-  shared_preferences: ^2.2.2
-  device_info_plus: ^10.1.0
-  carousel_slider: ^4.2.1
+  
+  # Network & API
+  http: ^0.13.5
   web_socket_channel: ^2.4.0
   network_info_plus: ^4.1.0
-  permission_handler: ^11.0.0
-  video_player: ^2.8.1
-  font_awesome_flutter: ^10.7.0
+  
+  # Storage
+  shared_preferences: ^2.2.2
   path_provider: ^2.1.1
-  share_plus: ^7.0.1
-  chewie: ^1.5.2
+  
+  # Device & Permission
+  device_info_plus: ^10.1.0
+  permission_handler: ^11.0.0
+  
+  # UI Components
+  cupertino_icons: ^1.0.8
+  carousel_slider: 4.0.0
+  font_awesome_flutter: ^10.7.0
   shimmer: ^3.0.0
-  webview_flutter: ^4.4.2
+  
+  # Media
+  image_picker: ^1.0.7
+  video_player: ^2.9.2
+  chewie: ^1.5.2
+  audioplayers: ^5.2.1  # ⬅️ DITAMBAHKAN UNTUK MUSIK PAGE
+  
+  # Location
+  geolocator: ^12.0.0
+  geocoding: ^3.0.0
+  
+  # Web & Sharing
+  url_launcher: ^6.2.6
+  webview_flutter: ^4.7.0
+  share_plus: ^7.0.1
+  
+  # Utility
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
@@ -46,15 +66,24 @@ flutter:
 
   assets:
     - assets/images/logo.jpg
+    - assets/images/logo.png
+    - assets/images/login.png
+    - assets/images/reze.png
     - assets/videos/landing.mp4
     - assets/videos/splash.mp4
     - assets/videos/banner.mp4
+    - assets/videos/background.mp4
+    # ⬇️ TAMBAHKAN UNTUK ICON
     - assets/icon/icon.jpg
 
   fonts:
     - family: Orbitron
       fonts:
         - asset: fonts/Orbitron-Regular.ttf
+        - asset: fonts/Orbitron-Bold.ttf
+          weight: 700
+        - asset: fonts/Orbitron-ExtraBold.ttf
+          weight: 900
     - family: ShareTechMono
       fonts:
         - asset: fonts/ShareTechMono-Regular.ttf

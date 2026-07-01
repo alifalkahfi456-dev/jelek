@@ -21,10 +21,10 @@ class RiwayatPage extends StatefulWidget {
 
 class _RiwayatPageState extends State<RiwayatPage> {
   // --- TEMA WARNA CYAN ---
-  final Color bgDark = const Color(0xFF0B1A1A);
-  final Color primaryCyan = const Color(0xFF00ACC1);
-  final Color accentCyan = const Color(0xFF18FFFF);
-  final Color lightCyan = const Color(0xFF84FFFF);
+  final Color bgDark = const Color(0xFF06131A);
+  final Color primaryCyan = const Color(0xFF39C7D9);
+  final Color accentCyan = const Color(0xFF5EEFFF);
+  final Color lightCyan = const Color(0xFFB7FFF7);
   final Color primaryWhite = Colors.white;
   final Color accentGrey = Colors.grey.shade400;
   final Color cardGlass = Colors.white.withOpacity(0.05);
@@ -43,7 +43,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
 
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/getMyActivity?key=${widget.sessionKey}'),
+        Uri.parse('http://yorusenpai.sano.biz.id:11808/getMyActivity?key=${widget.sessionKey}'),
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -122,7 +122,7 @@ class _RiwayatPageState extends State<RiwayatPage> {
         child: isLoading
             ? const Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF00ACC1),
+            color: Color(0xFFE50914),
           ),
         )
             : activities.isEmpty

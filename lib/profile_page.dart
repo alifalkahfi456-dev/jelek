@@ -7,27 +7,27 @@ import 'change_password_page.dart';
 
 // ─── Palette (sama dengan Tools Page) ─────────────────────────────────────
 class _C {
-  static const bg        = Color(0xFF0A0F1A);
-  static const surface   = Color(0xFF0D1525);
-  static const card      = Color(0xFF111C30);
-  static const cardInner = Color(0xFF162035);
-  static const border    = Color(0xFF1C2E48);
-  static const borderLit = Color(0xFF1E3A5F);
-  static const steel     = Color(0xFF1A4F8A);
-  static const blueMid   = Color(0xFF2370BE);
-  static const blueLight = Color(0xFF4A94E8);
-  static const chrome    = Color(0xFF7AB4E8);
-  static const frost     = Color(0xFFADD4F5);
-  static const red       = Color(0xFFEF4444);
-  static const amber     = Color(0xFFF59E0B);
-  static const green     = Color(0xFF22C55E);
-  static const purple    = Color(0xFFA78BFA);
-  static const pink      = Color(0xFFEC4899);
-  static const teal      = Color(0xFF14B8A6);
-  static const blue      = Color(0xFF3B82F6);
-  static const text      = Color(0xFFDEEEFB);
-  static const textSub   = Color(0xFF6A92B8);
-  static const textDim   = Color(0xFF2E4E6E);
+  static const bg        = Color(0xFF06131A);
+  static const surface   = Color(0xFF0C1D26);
+  static const card      = Color(0xFF122833);
+  static const cardInner = Color(0xFF16313D);
+  static const border    = Color(0xFF1E4654);
+  static const borderLit = Color(0xFF2B5D6A);
+  static const steel     = Color(0xFF2FA9B8);
+  static const blueMid   = Color(0xFF39C7D9);
+  static const blueLight = Color(0xFF5EEFFF);
+  static const chrome    = Color(0xFF67DDE2);
+  static const frost     = Color(0xFFB7FFF7);
+  static const red       = Color(0xFF4CD4D8);
+  static const amber     = Color(0xFF79E6E6);
+  static const green     = Color(0xFF55D6C2);
+  static const purple    = Color(0xFF67DDE2);
+  static const pink      = Color(0xFF7CE6F0);
+  static const teal      = Color(0xFF5EEFFF);
+  static const blue      = Color(0xFF39C7D9);
+  static const text      = Color(0xFFEFFFFF);
+  static const textSub   = Color(0xFFA8D7DF);
+  static const textDim   = Color(0xFF6F95A0);
   static const white     = Color(0xFFFFFFFF);
 }
 

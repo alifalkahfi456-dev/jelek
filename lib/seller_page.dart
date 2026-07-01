@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'api_config.dart';
 
 class SellerPage extends StatefulWidget {
   final String keyToken;
@@ -11,566 +13,499 @@ class SellerPage extends StatefulWidget {
   State<SellerPage> createState() => _SellerPageState();
 }
 
-class _SellerPageState extends State<SellerPage> with TickerProviderStateMixin {
-  final _newUser = TextEditingController();
-  final _newPass = TextEditingController();
-  final _days = TextEditingController();
-  final _editUser = TextEditingController();
-  final _editDays = TextEditingController();
-  bool loading = false;
-  bool isCreating = false;
+class _SellerPageState extends State<SellerPage> {
+  List<dynamic> fullUserList = [];
+  List<dynamic> filteredList = [];
 
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  final List<String> roleOptions = ['full_up'];
+  String selectedRole = 'full_up';
 
-  // Tema warna hitam-abu-abu-transparan
-  final Color pureBlack = const Color(0xFF000000);           // HITAM MURNI
-  final Color deepBlack = const Color(0xFF0A0A0A);           // HITAM PEKAT
-  final Color darkGray = const Color(0xFF1A1A1A);            // ABU GELAP
-  final Color mediumGray = const Color(0xFF2D2D2D);          // ABU SEDANG
-  final Color lightGray = const Color(0xFF4A4A4A);           // ABU TERANG
-  final Color accentGray = const Color(0xFF6B6B6B);          // ABU ACCENT
-  final Color textGray = const Color(0xFFB0B0B0);            // ABU TEXT
-  final Color whiteText = const Color(0xFFFFFFFF);           // PUTIH
-  final Color successGray = const Color(0xFF5A5A5A);         // ABU SUCCESS
-  final Color warningGray = const Color(0xFF7A7A7A);         // ABU WARNING
-  final Color dangerGray = const Color(0xFF3A3A3A);          // ABU DANGER
+  int currentPage = 1;
+  int itemsPerPage = 25;
+
+  final createUsernameController = TextEditingController();
+  final createPasswordController = TextEditingController();
+  final createDayController = TextEditingController();
+
+  final editUsernameController = TextEditingController();
+  final editDayController = TextEditingController();
+
+  bool isLoading = false;
+
+  // --- TEMA WARNA CYAN ---
+  final Color bgDark = const Color(0xFF06131A);
+  final Color primaryCyan = const Color(0xFF39C7D9);
+  final Color accentCyan = const Color(0xFF5EEFFF);
+  final Color primaryWhite = Colors.white;
+  final Color cardGlass = Colors.white.withOpacity(0.05);
+  final Color borderGlass = Colors.white.withOpacity(0.1);
 
   @override
   void initState() {
     super.initState();
-
-    _fadeController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 800),
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
-
-    _fadeController.forward();
-    _slideController.forward();
+    _fetchUsers();
   }
 
-  @override
-  void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
-    _newUser.dispose();
-    _newPass.dispose();
-    _days.dispose();
-    _editUser.dispose();
-    _editDays.dispose();
-    super.dispose();
+  Future<void> _fetchUsers() async {
+    setState(() => isLoading = true);
+    try {
+      final res = await http.get(
+        Uri.parse('http://tirzzadminbaik.pteroqdactyl.my.id:11560/listUsers?key=${widget.keyToken}'),
+      );
+      final data = jsonDecode(res.body);
+      if (data['valid'] == true && data['authorized'] == true) {
+        fullUserList = data['users'] ?? [];
+        _filterAndPaginate();
+      } else {
+        _alert("Info", data['message'] ?? 'Gagal memuat user.');
+      }
+    } catch (_) {
+      _alert("Error", "Gagal terhubung ke server.");
+    }
+    setState(() => isLoading = false);
   }
 
-  Future<void> _create() async {
-    final u = _newUser.text.trim(), p = _newPass.text.trim(), d = _days.text.trim();
+  void _filterAndPaginate() {
+    setState(() {
+      currentPage = 1;
+      filteredList = fullUserList
+          .where((u) => u['role'] == selectedRole)
+          .toList();
+    });
+  }
+
+  List<dynamic> _getCurrentPageData() {
+    final start = (currentPage - 1) * itemsPerPage;
+    final end = (start + itemsPerPage);
+    return filteredList.sublist(
+      start,
+      end > filteredList.length ? filteredList.length : end,
+    );
+  }
+
+  int get totalPages => (filteredList.length / itemsPerPage).ceil();
+
+  Future<void> _createAccount() async {
+    final u = createUsernameController.text.trim();
+    final p = createPasswordController.text.trim();
+    final d = createDayController.text.trim();
+
     if (u.isEmpty || p.isEmpty || d.isEmpty) {
-      _showNotification("Error", "Semua field wajib diisi", dangerGray);
+      _alert("Peringatan", "Semua field wajib diisi.");
       return;
     }
 
-    setState(() {
-      loading = true;
-      isCreating = true;
-    });
+    setState(() => isLoading = true);
+    try {
+      final res = await http.get(Uri.parse(
+          "http://tirzzadminbaik.pteroqdactyl.my.id:11560/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
+      final data = jsonDecode(res.body);
 
-    final res = await http.get(Uri.parse(
-        "http://panelbyxiaonotdev.zarxsft.my.id:2033/createAccount?key=${widget.keyToken}&newUser=$u&pass=$p&day=$d"));
-    final data = jsonDecode(res.body);
-
-    if (data['created'] == true) {
-      _showNotification("Success", "Akun berhasil dibuat!", successGray);
-      _newUser.clear();
-      _newPass.clear();
-      _days.clear();
-    } else {
-      _showNotification("Error", data['message'] ?? 'Gagal membuat akun.', dangerGray);
+      if (data['created'] == true) {
+        _alert("Sukses", "✅ Akun berhasil dibuat!");
+        createUsernameController.clear();
+        createPasswordController.clear();
+        createDayController.clear();
+        _fetchUsers();
+      } else {
+        String msg = data['message'] ?? 'Gagal membuat akun.';
+        if (data['invalidDay'] == true) {
+          msg += " (Max 30 hari untuk Reseller)";
+        }
+        _alert("Gagal", "❌ $msg");
+      }
+    } catch (e) {
+      _alert("Error", "❌ Koneksi error: $e");
     }
-
-    setState(() {
-      loading = false;
-      isCreating = false;
-    });
+    setState(() => isLoading = false);
   }
 
-  Future<void> _edit() async {
-    final u = _editUser.text.trim(), d = _editDays.text.trim();
+  Future<void> _editUser() async {
+    final u = editUsernameController.text.trim();
+    final d = editDayController.text.trim();
+
     if (u.isEmpty || d.isEmpty) {
-      _showNotification("Error", "Username dan durasi wajib diisi", dangerGray);
+      _alert("Peringatan", "Semua field wajib diisi.");
       return;
     }
 
-    setState(() {
-      loading = true;
-      isCreating = false;
-    });
+    setState(() => isLoading = true);
+    try {
+      final res = await http.get(Uri.parse(
+          "http://tirzzadminbaik.pteroqdactyl.my.id:11560/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
+      final data = jsonDecode(res.body);
 
-    final res = await http.get(Uri.parse(
-        "http://panelbyxiaonotdev.zarxsft.my.id:2033/editUser?key=${widget.keyToken}&username=$u&addDays=$d"));
-    final data = jsonDecode(res.body);
-
-    if (data['edited'] == true) {
-      _showNotification("Success", "Durasi berhasil diperbarui.", successGray);
-      _editUser.clear();
-      _editDays.clear();
-    } else {
-      _showNotification("Error", data['message'] ?? 'Gagal mengubah durasi.', dangerGray);
+      if (data['edited'] == true) {
+        _alert("Sukses", "✅ Durasi berhasil diperbarui.");
+        editUsernameController.clear();
+        editDayController.clear();
+        _fetchUsers();
+      } else {
+        _alert("Gagal", "❌ ${data['message'] ?? 'Gagal mengubah durasi.'}");
+      }
+    } catch (e) {
+      _alert("Error", "❌ Koneksi error: $e");
     }
-
-    setState(() {
-      loading = false;
-      isCreating = false;
-    });
+    setState(() => isLoading = false);
   }
 
-  void _showNotification(String title, String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        content: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                darkGray.withOpacity(0.95),
-                mediumGray.withOpacity(0.9),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: lightGray.withOpacity(0.3)),
-            boxShadow: [
-              BoxShadow(
-                color: pureBlack.withOpacity(0.5),
-                blurRadius: 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.3),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: textGray.withOpacity(0.5)),
-                ),
-                child: Icon(
-                  color == successGray ? Icons.check_circle :
-                  color == dangerGray ? Icons.error : Icons.info,
-                  color: whiteText,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: whiteText,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      message,
-                      style: TextStyle(
-                        color: textGray,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  void _alert(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: bgDark,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: accentCyan.withOpacity(0.3)),
         ),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 4),
+        title: Row(
+          children: [
+            Icon(Icons.info_outline, color: accentCyan),
+            const SizedBox(width: 10),
+            Text(title, style: TextStyle(color: primaryWhite)),
+          ],
+        ),
+        content: Text(message, style: TextStyle(color: Colors.white70)),
+        actions: [
+          Center(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [primaryCyan, accentCyan]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("OK", style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildModernInput({
+  Widget _buildInput({
     required String label,
     required TextEditingController controller,
     required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool obscureText = false,
+    TextInputType type = TextInputType.text,
+    String hint = "",
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: textGray,
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                mediumGray.withOpacity(0.5),
-                darkGray.withOpacity(0.7),
-              ],
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: TextField(
+        controller: controller,
+        keyboardType: type,
+        style: TextStyle(color: primaryWhite),
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.white38),
+          labelStyle: TextStyle(color: accentCyan),
+          prefixIcon: Icon(icon, color: accentCyan),
+          filled: true,
+          fillColor: cardGlass,
+          border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: lightGray.withOpacity(0.3)),
-            boxShadow: [
-              BoxShadow(
-                color: pureBlack.withOpacity(0.3),
-                blurRadius: 5,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            borderSide: BorderSide(color: borderGlass),
           ),
-          child: TextField(
-            controller: controller,
-            keyboardType: keyboardType,
-            obscureText: obscureText,
-            style: TextStyle(color: whiteText),
-            decoration: InputDecoration(
-              prefixIcon: Icon(icon, color: textGray),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: borderGlass),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: accentCyan, width: 2),
           ),
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildGlassCard({
     required String title,
-    required String description,
     required IconData icon,
-    required List<Widget> inputs,
-    required VoidCallback onPressed,
-    required String buttonText,
-    Color? buttonColor,
+    required List<Widget> children,
   }) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: EdgeInsets.only(bottom: 25),
+      padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            darkGray.withOpacity(0.8),
-            mediumGray.withOpacity(0.6),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: lightGray.withOpacity(0.2)),
+        color: cardGlass,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderGlass),
         boxShadow: [
           BoxShadow(
-            color: pureBlack.withOpacity(0.5),
+            color: primaryCyan.withOpacity(0.1),
             blurRadius: 15,
-            offset: const Offset(0, 5),
+            offset: Offset(0, 5),
           ),
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      lightGray.withOpacity(0.3),
-                      mediumGray.withOpacity(0.5),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: accentGray.withOpacity(0.3)),
+                  color: primaryCyan.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, color: textGray, size: 24),
+                child: Icon(icon, color: accentCyan),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: whiteText,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: TextStyle(
-                        color: textGray,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+              SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: primaryWhite,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Orbitron',
+                  letterSpacing: 1,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ...inputs,
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserItem(Map user) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: cardGlass,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderGlass),
+      ),
+      child: Row(
+        children: [
           Container(
-            width: double.infinity,
-            height: 50,
+            padding: EdgeInsets.all(10),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              gradient: LinearGradient(
-                colors: [
-                  lightGray.withOpacity(0.8),
-                  mediumGray.withOpacity(0.9),
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
-              border: Border.all(color: accentGray.withOpacity(0.3)),
-              boxShadow: [
-                BoxShadow(
-                  color: pureBlack.withOpacity(0.4),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+              color: primaryCyan.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.person, color: accentCyan),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  user['username'],
+                  style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "ROLE: ${user['role'].toString().toUpperCase()} | EXP: ${user['expiredDate']}",
+                  style: TextStyle(color: Colors.white70, fontSize: 13),
                 ),
               ],
-            ),
-            child: ElevatedButton(
-              onPressed: loading ? null : onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                foregroundColor: whiteText,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                elevation: 0,
-              ),
-              child: loading && isCreating == (buttonText == "CREATE ACCOUNT")
-                  ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: whiteText,
-                  strokeWidth: 2,
-                ),
-              )
-                  : loading && isCreating == (buttonText == "UPDATE DURATION")
-                  ? SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  color: whiteText,
-                  strokeWidth: 2,
-                ),
-              )
-                  : Text(
-                buttonText,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: whiteText,
-                ),
-              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildPagination() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(totalPages, (index) {
+        final page = index + 1;
+        return ElevatedButton(
+          onPressed: () => setState(() => currentPage = page),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: currentPage == page ? accentCyan : Colors.transparent,
+            foregroundColor: currentPage == page ? primaryWhite : Colors.white54,
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(color: borderGlass),
+            ),
+          ),
+          child: Text("$page", style: TextStyle(fontSize: 12)),
+        );
+      }),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: pureBlack,
-      body: Stack(
-        children: [
-          // Background subtle effects
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkGray.withOpacity(0.2),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
+      backgroundColor: bgDark,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bgDark, primaryCyan.withOpacity(0.1), bgDark],
           ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    mediumGray.withOpacity(0.15),
-                    Colors.transparent,
-                  ],
+        ),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: BouncingScrollPhysics(),
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(Icons.storefront, color: accentCyan, size: 50),
+                SizedBox(height: 10),
+                Text(
+                  "SELLER DASHBOARD",
+                  style: TextStyle(
+                    color: primaryWhite,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Orbitron',
+                    letterSpacing: 2,
+                    shadows: [Shadow(color: primaryCyan.withOpacity(0.8), blurRadius: 10)],
+                  ),
                 ),
-              ),
-            ),
-          ),
-          
-          // Main content
-          FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
+                SizedBox(height: 40),
+
+                _buildGlassCard(
+                  title: "CREATE MEMBER",
+                  icon: FontAwesomeIcons.userPlus,
                   children: [
-                    // Header Section
+                    _buildInput(
+                      label: "Username Baru",
+                      controller: createUsernameController,
+                      icon: FontAwesomeIcons.user,
+                    ),
+                    _buildInput(
+                      label: "Password",
+                      controller: createPasswordController,
+                      icon: FontAwesomeIcons.lock,
+                    ),
+                    _buildInput(
+                      label: "Durasi (Hari)",
+                      controller: createDayController,
+                      icon: FontAwesomeIcons.calendarDay,
+                      type: TextInputType.number,
+                      hint: "Maksimal 30 hari",
+                    ),
+                    SizedBox(height: 10),
                     Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(24),
+                      height: 50,
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            mediumGray.withOpacity(0.8),
-                            darkGray.withOpacity(0.9),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border: Border.all(color: lightGray.withOpacity(0.3)),
+                        gradient: LinearGradient(colors: [primaryCyan, accentCyan]),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
-                          BoxShadow(
-                            color: pureBlack.withOpacity(0.5),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
+                          BoxShadow(color: primaryCyan.withOpacity(0.4), blurRadius: 10, offset: Offset(0, 4))
                         ],
                       ),
-                      child: Column(
-                        children: [
-                          Text(
-                            "Account Management",
-                            style: TextStyle(
-                              color: whiteText,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            "Create new accounts or extend existing ones",
-                            style: TextStyle(
-                              color: textGray,
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _createAccount,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: isLoading
+                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: primaryWhite))
+                            : Text("CREATE ACCOUNT", style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold)),
                       ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Create Account Card
-                    _buildActionCard(
-                      title: "Create New Account",
-                      description: "Create a new user account with specified duration",
-                      icon: Icons.person_add,
-                      inputs: [
-                        _buildModernInput(
-                          label: "Username",
-                          controller: _newUser,
-                          icon: Icons.person,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildModernInput(
-                          label: "Password",
-                          controller: _newPass,
-                          icon: Icons.lock,
-                          obscureText: true,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildModernInput(
-                          label: "Duration (days)",
-                          controller: _days,
-                          icon: Icons.calendar_today,
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                      onPressed: _create,
-                      buttonText: "CREATE ACCOUNT",
-                      buttonColor: successGray,
-                    ),
-
-                    // Edit Duration Card
-                    _buildActionCard(
-                      title: "Extend Account Duration",
-                      description: "Add more days to an existing user account",
-                      icon: Icons.update,
-                      inputs: [
-                        _buildModernInput(
-                          label: "Username",
-                          controller: _editUser,
-                          icon: Icons.person,
-                        ),
-                        const SizedBox(height: 16),
-                        _buildModernInput(
-                          label: "Additional Days",
-                          controller: _editDays,
-                          icon: Icons.add_circle,
-                          keyboardType: TextInputType.number,
-                        ),
-                      ],
-                      onPressed: _edit,
-                      buttonText: "UPDATE DURATION",
-                      buttonColor: warningGray,
                     ),
                   ],
                 ),
-              ),
+
+                _buildGlassCard(
+                  title: "EXTEND DURATION",
+                  icon: FontAwesomeIcons.clock,
+                  children: [
+                    _buildInput(
+                      label: "Username Target",
+                      controller: editUsernameController,
+                      icon: FontAwesomeIcons.userEdit,
+                      hint: "Username member yang ingin diperpanjang",
+                    ),
+                    _buildInput(
+                      label: "Tambah Hari",
+                      controller: editDayController,
+                      icon: FontAwesomeIcons.calendarPlus,
+                      type: TextInputType.number,
+                      hint: "Maksimal 30 hari",
+                    ),
+                    SizedBox(height: 10),
+                    Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [primaryCyan, accentCyan]),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(color: primaryCyan.withOpacity(0.4), blurRadius: 10, offset: Offset(0, 4))
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        onPressed: isLoading ? null : _editUser,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: isLoading
+                            ? SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: primaryWhite))
+                            : Text("ADD DAYS", style: TextStyle(color: primaryWhite, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+
+                _buildGlassCard(
+                  title: "MEMBER LIST",
+                  icon: FontAwesomeIcons.users,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: borderGlass),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedRole,
+                          dropdownColor: bgDark,
+                          style: TextStyle(color: primaryWhite),
+                          items: roleOptions.map((role) {
+                            return DropdownMenuItem(value: role, child: Text(role.toUpperCase()));
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              selectedRole = val;
+                              _filterAndPaginate();
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    isLoading
+                        ? Center(child: CircularProgressIndicator(color: accentCyan))
+                        : Column(
+                      children: [
+                        ..._getCurrentPageData().map((u) => _buildUserItem(u)).toList(),
+                        SizedBox(height: 20),
+                        _buildPagination(),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 30),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

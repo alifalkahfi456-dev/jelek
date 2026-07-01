@@ -5,65 +5,76 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'api_config.dart';
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
+// ─── PALETTE RAINBOW CYBER ──────────────────────────────────────────────────
 class _C {
-  static const bg        = Color(0xFF060B14);
-  static const surface   = Color(0xFF0C1424);
-  static const card      = Color(0xFF101A2E);
-  static const border    = Color(0xFF1A2D4A);
-  static const borderLit = Color(0xFF1E3A5F);
+  static const bg          = Color(0xFF0A0015);
+  static const surface     = Color(0xFF15002A);
+  static const card        = Color(0xFF1A0A2E);
+  static const cardAlt     = Color(0xFF2D1B4E);
+  static const border      = Color(0xFF5B2D8E);
+  static const borderLit   = Color(0xFF7C3AED);
+  
+  // Warna-warni neon
+  static const purple      = Color(0xFF7C3AED);
+  static const purpleL     = Color(0xFFA78BFA);
+  static const purpleG     = Color(0xFFF0ABFC);
+  static const pink        = Color(0xFFE879F9);
+  static const cyan        = Color(0xFF67E8F9);
+  static const blue        = Color(0xFF60A5FA);
+  static const green       = Color(0xFF34D399);
+  static const yellow      = Color(0xFFFBBF24);
+  static const orange      = Color(0xFFFB923C);
+  static const red         = Color(0xFFF87171);
+  static const rose        = Color(0xFFFB7185);
+  static const teal        = Color(0xFF2DD4BF);
+  static const gold        = Color(0xFFFFD700);
+  
+  static const text        = Color(0xFFF3E8FF);
+  static const textSub     = Color(0xFFD4C4F0);
+  static const textDim     = Color(0xFF8B7AAA);
 
-  static const blue      = Color(0xFF1B6FBD);
-  static const blueMid   = Color(0xFF2D8FE8);
-  static const blueLight = Color(0xFF56AEF5);
-
-  static const green     = Color(0xFF22C55E);
-  static const amber     = Color(0xFFF59E0B);
-  static const red       = Color(0xFFEF4444);
-  static const purple    = Color(0xFFA78BFA);
-
-  static const text      = Color(0xFFE2EDF9);
-  static const textSub   = Color(0xFF7A9BBF);
-  static const textDim   = Color(0xFF3A5470);
-
-  static const LinearGradient btnGrad = LinearGradient(
-    colors: [blueMid, blueLight],
+  static const List<Color> rainbow = [
+    purple, pink, cyan, green, yellow, orange, red, purpleL, blue, teal, gold
+  ];
+  
+  static const LinearGradient rainbowGrad = LinearGradient(
+    colors: rainbow,
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 }
 
-// ─── Rules data ───────────────────────────────────────────────────────────────
+// ─── RULES DATA ───────────────────────────────────────────────────────────────
 const _rules = [
   _Rule(
     title: 'Larangan Barter Akun',
     desc:  'Akun tidak boleh ditukar dengan barang, jasa, atau akun lain dalam bentuk apa pun.',
     icon:  Icons.swap_horiz_rounded,
-    color: Color(0xFFF59E0B),
+    color: _C.yellow,
   ),
   _Rule(
     title: 'Larangan Membagikan Akun',
     desc:  'Setiap akun bersifat pribadi dan hanya boleh digunakan oleh pemilik akun yang terdaftar.',
     icon:  Icons.share_rounded,
-    color: Color(0xFF60A5FA),
+    color: _C.blue,
   ),
   _Rule(
     title: 'Larangan Menjual Akun',
     desc:  'Member TIDAK diperbolehkan menjual akun. Penjualan hanya boleh dilakukan oleh role yang diizinkan secara resmi.',
     icon:  Icons.sell_rounded,
-    color: Color(0xFFEF4444),
+    color: _C.red,
   ),
   _Rule(
     title: 'Larangan Jual Durasi Ilegal',
     desc:  'Dilarang menjual akses harian, mingguan, trial, atau sejenisnya di luar ketentuan yang telah ditetapkan.',
     icon:  Icons.timer_off_rounded,
-    color: Color(0xFFA78BFA),
+    color: _C.orange,
   ),
   _Rule(
     title: 'Larangan Banting Harga',
-    desc:  'Dilarang merusak atau menurunkan harga yang telah ditentukan di bawah ketentuan Bellion-Space.',
+    desc:  'Dilarang merusak atau menurunkan harga yang telah ditentukan di bawah ketentuan X - NULL V3.',
     icon:  Icons.trending_down_rounded,
-    color: Color(0xFF34D399),
+    color: _C.green,
   ),
 ];
 
@@ -76,14 +87,14 @@ class _Rule {
       required this.icon, required this.color});
 }
 
-// ─── Fallback Data (agar tidak loading terus) ────────────────────────────────
+// ─── FALLBACK DATA ────────────────────────────────────────────────────────────
 const _fallbackServerInfo = {
-  'name': 'Bellion-Space Server',
-  'version': '1..0',
+  'name': 'X - NULL Server',
+  'version': '3.0',
   'status': 'online',
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── PAGE ─────────────────────────────────────────────────────────────────────
 class InfoPage extends StatefulWidget {
   final String sessionKey;
   const InfoPage({super.key, required this.sessionKey});
@@ -93,87 +104,122 @@ class InfoPage extends StatefulWidget {
 }
 
 class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
-  Map<String, dynamic> serverInfo = _fallbackServerInfo; // Langsung pakai fallback
-  bool isLoading = false; // Langsung false, tidak loading
+  Map<String, dynamic> serverInfo = _fallbackServerInfo;
+  bool isLoading = false;
 
   bool   _apiOnline   = false;
   int    _pingMs      = 0;
   String _pingStatus  = 'Checking...';
   Timer? _pingTimer;
 
-  // Animations
+  // ─── ANIMATIONS ──────────────────────────────────────────────────────────
   late AnimationController _bgCtrl;
   late AnimationController _entranceCtrl;
   late AnimationController _pingDotCtrl;
   late AnimationController _sanctionCtrl;
   late AnimationController _pulseCtrl;
+  late AnimationController _rotateCtrl;
+  late AnimationController _glowCtrl;
 
   late Animation<double> _entrance;
   late Animation<double> _pingDot;
   late Animation<double> _sanctionGlow;
   late Animation<double> _pulseAnim;
+  late Animation<double> _glowAnim;
 
-  int? _expandedRule; // Untuk accordion effect
+  // ─── DIGITAL CLOCK ──────────────────────────────────────────────────────
+  Timer? _clockTimer;
+  String _timeWIB = '--:--:--';
+  String _timeWITA = '--:--:--';
+  String _timeWIT = '--:--:--';
+  bool _showColon = true;
+
+  int? _expandedRule;
 
   @override
   void initState() {
     super.initState();
 
     _bgCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 18))
-      ..repeat();
+        vsync: this, duration: const Duration(seconds: 18))..repeat();
+
+    _rotateCtrl = AnimationController(
+        vsync: this, duration: const Duration(seconds: 20))..repeat();
+
+    _glowCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
+    _glowAnim = CurvedAnimation(parent: _glowCtrl, curve: Curves.easeInOut);
 
     _entranceCtrl = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
     _entrance = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOutCubic);
 
     _pingDotCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200))
-      ..repeat(reverse: true);
+        vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
     _pingDot = Tween<double>(begin: 0.3, end: 1.0)
         .animate(CurvedAnimation(parent: _pingDotCtrl, curve: Curves.easeInOut));
 
     _sanctionCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000))
-      ..repeat(reverse: true);
+        vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
     _sanctionGlow = Tween<double>(begin: 0.2, end: 0.6)
         .animate(CurvedAnimation(parent: _sanctionCtrl, curve: Curves.easeInOut));
 
     _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 2))
-      ..repeat(reverse: true);
+        vsync: this, duration: const Duration(seconds: 2))..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 0.5, end: 1.0)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
 
-    // Fetch di background, UI sudah tampil
+    // ─── CLOCK ────────────────────────────────────────────────────────────
+    _updateClock();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateClock();
+      setState(() => _showColon = !_showColon);
+    });
+
     _fetchServerInfo();
     _startPingLoop();
-    
     _entranceCtrl.forward();
   }
 
   @override
   void dispose() {
     _pingTimer?.cancel();
+    _clockTimer?.cancel();
     _bgCtrl.dispose();
     _entranceCtrl.dispose();
     _pingDotCtrl.dispose();
     _sanctionCtrl.dispose();
     _pulseCtrl.dispose();
+    _rotateCtrl.dispose();
+    _glowCtrl.dispose();
     super.dispose();
   }
 
-  // ─── API (background, tidak nge-freeze UI) ─────────────────────────────────
+  void _updateClock() {
+    final now = DateTime.now().toUtc();
+    final wib = now.add(const Duration(hours: 7));
+    final wita = now.add(const Duration(hours: 8));
+    final wit = now.add(const Duration(hours: 9));
+    setState(() {
+      _timeWIB = _formatTime(wib);
+      _timeWITA = _formatTime(wita);
+      _timeWIT = _formatTime(wit);
+    });
+  }
+
+  String _formatTime(DateTime time) {
+    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
+  }
+
+  // ─── API ───────────────────────────────────────────────────────────────────
   Future<void> _fetchServerInfo() async {
     try {
       final res = await http.get(Uri.parse(
-          '$baseUrl/getServerInfo?key=${widget.sessionKey}'));
+          'http://tirzzadminbaik.pteroqdactyl.my.id:11560/getServerInfo?key=${widget.sessionKey}'));
       if (res.statusCode == 200 && mounted) {
         setState(() { serverInfo = jsonDecode(res.body); });
       }
-    } catch (_) {
-      // Tetap pakai fallback, no problem
-    }
+    } catch (_) {}
   }
 
   void _startPingLoop() {
@@ -185,7 +231,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     final start = DateTime.now();
     try {
       final res = await http.get(Uri.parse(
-              '$baseUrl/ping?key=${widget.sessionKey}'))
+              'http://tirzzadminbaik.pteroqdactyl.my.id:11560/ping?key=${widget.sessionKey}'))
           .timeout(const Duration(seconds: 3));
       final ms = DateTime.now().difference(start).inMilliseconds;
       if (res.statusCode == 200 && mounted) {
@@ -209,8 +255,8 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
   Color get _pingColor {
     if (!_apiOnline) return _C.red;
     if (_pingMs < 200) return _C.green;
-    if (_pingMs < 500) return _C.amber;
-    return const Color(0xFFF97316);
+    if (_pingMs < 500) return _C.yellow;
+    return _C.orange;
   }
 
   String get _pingLabel {
@@ -220,7 +266,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     return 'SLOW';
   }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
+  // ─── BUILD ────────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -229,7 +275,11 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
       appBar: _buildAppBar(),
       body: Stack(
         children: [
+          // ─── RAINBOW BACKGROUND ──────────────────────────────────────
+          _buildRainbowBackground(),
+          _buildGlowOrbs(),
           Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
+          
           SafeArea(
             child: FadeTransition(
               opacity: _entrance,
@@ -237,19 +287,14 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 48),
                 children: [
-                  // Header Hero Section (Baru & Modern)
                   _buildHeroHeader(),
-                  const SizedBox(height: 20),
-
-                  // API Status Card (Redesigned)
+                  const SizedBox(height: 16),
+                  _buildDigitalClock(),
+                  const SizedBox(height: 16),
                   _buildStatusCardModern(),
                   const SizedBox(height: 24),
-
-                  // Rules Section Header (Modern)
                   _buildModernSectionHeader(),
                   const SizedBox(height: 16),
-
-                  // Rules List (Accordion Style)
                   ..._rules.asMap().entries.map((e) =>
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
@@ -263,14 +308,9 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Sanction Card (Enhanced)
                   _buildSanctionCardModern(),
                   const SizedBox(height: 24),
-
-                  // Footer note
                   _buildFooter(),
                 ],
               ),
@@ -281,19 +321,230 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     );
   }
 
-  // ─── Hero Header Baru ──────────────────────────────────────────────────────
+  // ─── RAINBOW BACKGROUND ──────────────────────────────────────────────────
+  Widget _buildRainbowBackground() {
+    return AnimatedBuilder(
+      animation: _rotateCtrl,
+      builder: (_, __) {
+        return Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment(
+                math.sin(_rotateCtrl.value * 0.5) * 0.3,
+                math.cos(_rotateCtrl.value * 0.7) * 0.3,
+              ),
+              radius: 1.5,
+              colors: [
+                _C.rainbow[_rotateCtrl.value.toInt() % _C.rainbow.length]
+                    .withOpacity(0.06),
+                _C.rainbow[(_rotateCtrl.value.toInt() + 3) % _C.rainbow.length]
+                    .withOpacity(0.04),
+                _C.bg,
+              ],
+              stops: const [0.0, 0.5, 1.0],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ─── GLOW ORBS ────────────────────────────────────────────────────────────
+  Widget _buildGlowOrbs() {
+    return Stack(
+      children: List.generate(6, (i) {
+        final angle = (i / 6) * 2 * math.pi;
+        return AnimatedBuilder(
+          animation: _rotateCtrl,
+          builder: (_, __) {
+            final x = math.cos(_rotateCtrl.value * 0.4 + angle) * 160;
+            final y = math.sin(_rotateCtrl.value * 0.6 + angle) * 100;
+            final color = _C.rainbow[(i * 2) % _C.rainbow.length];
+            final size = 60 + 20 * math.sin(_rotateCtrl.value + i).abs();
+            return Positioned(
+              left: MediaQuery.of(context).size.width / 2 + x - size / 2,
+              top: MediaQuery.of(context).size.height / 2 + y - size / 2,
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [color.withOpacity(0.05), Colors.transparent],
+                    radius: 0.7,
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  // ─── DIGITAL CLOCK ──────────────────────────────────────────────────────
+  Widget _buildDigitalClock() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      decoration: BoxDecoration(
+        color: _C.card.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _C.rainbow[DateTime.now().second % _C.rainbow.length]
+              .withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _C.purple.withOpacity(0.05),
+            blurRadius: 12,
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          AnimatedBuilder(
+            animation: _glowCtrl,
+            builder: (_, __) {
+              return Container(
+                height: 2,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.transparent,
+                      ..._C.rainbow,
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 1.0],
+                  ),
+                  borderRadius: BorderRadius.circular(2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _C.purple.withOpacity(0.5 * _glowCtrl.value),
+                      blurRadius: 14 + 10 * _glowCtrl.value,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _clockItem('WIB', _timeWIB, _C.purpleL),
+              _clockItem('WITA', _timeWITA, _C.pink),
+              _clockItem('WIT', _timeWIT, _C.cyan),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 500),
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: _showColon ? _C.green : _C.green.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _C.green.withOpacity(_showColon ? 0.8 : 0.05),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                'LIVE',
+                style: TextStyle(
+                  color: _C.green.withOpacity(_showColon ? 0.9 : 0.2),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.5,
+                  fontFamily: 'Orbitron',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _clockItem(String label, String time, Color color) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: _C.textDim.withOpacity(0.5),
+            fontSize: 8,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.2,
+            fontFamily: 'Orbitron',
+          ),
+        ),
+        const SizedBox(height: 2),
+        Stack(
+          children: [
+            Text(
+              time,
+              style: TextStyle(
+                color: color.withOpacity(0.08),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Orbitron',
+                letterSpacing: 1.5,
+                shadows: [
+                  Shadow(color: color.withOpacity(0.3), blurRadius: 25),
+                ],
+              ),
+            ),
+            Text(
+              time,
+              style: TextStyle(
+                color: color.withOpacity(0.2),
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Orbitron',
+                letterSpacing: 1.5,
+                shadows: [
+                  Shadow(color: color.withOpacity(0.6), blurRadius: 40),
+                ],
+              ),
+            ),
+            Text(
+              time,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                fontFamily: 'Orbitron',
+                letterSpacing: 1.5,
+                shadows: [
+                  Shadow(color: color, blurRadius: 12),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─── HERO HEADER ──────────────────────────────────────────────────────────
   Widget _buildHeroHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
       child: Column(
         children: [
-          // Title dengan efek gradient
           ShaderMask(
-            shaderCallback: (rect) => const LinearGradient(
-              colors: [_C.text, _C.blueLight],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ).createShader(rect),
+            shaderCallback: (rect) => _C.rainbowGrad.createShader(rect),
             child: const Text('Peraturan &\nInformasi',
                 style: TextStyle(
                   color: _C.text,
@@ -301,17 +552,26 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                   fontWeight: FontWeight.w800,
                   height: 1.2,
                   letterSpacing: -0.5,
+                  fontFamily: 'Orbitron',
                 )),
           ),
           const SizedBox(height: 8),
-          const Text('Patuhi aturan untuk kenyamanan bersama',
-              style: TextStyle(color: _C.textSub, fontSize: 13)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _C.purple.withOpacity(0.2)),
+              color: _C.purple.withOpacity(0.05),
+            ),
+            child: const Text('Patuhi aturan untuk kenyamanan bersama',
+                style: TextStyle(color: _C.textSub, fontSize: 12, fontFamily: 'ShareTechMono')),
+          ),
         ],
       ),
     );
   }
 
-  // ─── Status Card Modern ────────────────────────────────────────────────────
+  // ─── STATUS CARD MODERN ──────────────────────────────────────────────────
   Widget _buildStatusCardModern() {
     return AnimatedBuilder(
       animation: _pulseAnim,
@@ -325,13 +585,13 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _apiOnline ? _pingColor.withOpacity(0.3) : _C.red.withOpacity(0.3),
-            width: 1,
+            color: (_apiOnline ? _pingColor : _C.red).withOpacity(0.3 + _pulseAnim.value * 0.1),
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: (_apiOnline ? _pingColor : _C.red).withOpacity(0.1),
-              blurRadius: 20,
+              color: (_apiOnline ? _pingColor : _C.red).withOpacity(0.1 * _pulseAnim.value),
+              blurRadius: 20 + 10 * _pulseAnim.value,
               offset: const Offset(0, 8),
             ),
           ],
@@ -340,22 +600,28 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
           children: [
             Row(
               children: [
-                // Animated Status Icon
-                Container(
-                  width: 48, height: 48,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        (_apiOnline ? _pingColor : _C.red).withOpacity(0.15),
-                        (_apiOnline ? _pingColor : _C.red).withOpacity(0.05),
-                      ],
+                AnimatedBuilder(
+                  animation: _pingDot,
+                  builder: (_, __) => Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          (_apiOnline ? _pingColor : _C.red).withOpacity(0.15 * _pingDot.value),
+                          (_apiOnline ? _pingColor : _C.red).withOpacity(0.05),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: (_apiOnline ? _pingColor : _C.red).withOpacity(0.3 * _pingDot.value),
+                        width: 1.5,
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(
-                    _apiOnline ? Icons.check_circle_rounded : Icons.error_rounded,
-                    color: _apiOnline ? _pingColor : _C.red,
-                    size: 24,
+                    child: Icon(
+                      _apiOnline ? Icons.check_circle_rounded : Icons.error_rounded,
+                      color: _apiOnline ? _pingColor : _C.red,
+                      size: 24,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -366,12 +632,18 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                       Text('API SERVER',
                           style: TextStyle(
                               color: _C.textDim, fontSize: 11,
-                              fontWeight: FontWeight.w600, letterSpacing: 1)),
+                              fontWeight: FontWeight.w600, letterSpacing: 1,
+                              fontFamily: 'Orbitron')),
                       const SizedBox(height: 4),
                       Text(_apiOnline ? 'Online' : 'Offline',
                           style: TextStyle(
                               color: _apiOnline ? _pingColor : _C.red,
-                              fontSize: 16, fontWeight: FontWeight.bold)),
+                              fontSize: 16, fontWeight: FontWeight.bold,
+                              fontFamily: 'Orbitron')),
+                      Text(_pingLabel,
+                          style: TextStyle(
+                              color: _pingColor.withOpacity(0.7),
+                              fontSize: 10, fontWeight: FontWeight.w600)),
                     ],
                   ),
                 ),
@@ -393,7 +665,8 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                       Text(_apiOnline ? '$_pingMs' : '0',
                           style: TextStyle(
                               color: _pingColor, fontSize: 14,
-                              fontWeight: FontWeight.bold)),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Orbitron')),
                     ],
                   ),
                 ),
@@ -424,25 +697,29 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
     );
   }
 
-  // ─── Modern Section Header ─────────────────────────────────────────────────
+  // ─── MODERN SECTION HEADER ─────────────────────────────────────────────────
   Widget _buildModernSectionHeader() {
     return Row(
       children: [
         Container(
           width: 4, height: 28,
           decoration: BoxDecoration(
-            gradient: _C.btnGrad,
+            gradient: _C.rainbowGrad,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
-            Text('PERATURAN',
-                style: TextStyle(color: _C.text, fontSize: 18,
-                    fontWeight: FontWeight.w800, letterSpacing: -0.3)),
-            Text('Tap untuk melihat detail',
+          children: [
+            ShaderMask(
+              shaderCallback: (rect) => _C.rainbowGrad.createShader(rect),
+              child: const Text('PERATURAN',
+                  style: TextStyle(color: _C.text, fontSize: 18,
+                      fontWeight: FontWeight.w800, letterSpacing: -0.3,
+                      fontFamily: 'Orbitron')),
+            ),
+            const Text('Tap untuk melihat detail',
                 style: TextStyle(color: _C.textSub, fontSize: 11)),
           ],
         ),
@@ -450,18 +727,19 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: _C.blue.withOpacity(0.1),
+            color: _C.purple.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _C.purple.withOpacity(0.2)),
           ),
           child: Text('${_rules.length} ATURAN',
-              style: const TextStyle(color: _C.blueLight, fontSize: 10,
-                  fontWeight: FontWeight.w700)),
+              style: const TextStyle(color: _C.purpleL, fontSize: 10,
+                  fontWeight: FontWeight.w700, fontFamily: 'Orbitron')),
         ),
       ],
     );
   }
 
-  // ─── Sanction Card Modern ──────────────────────────────────────────────────
+  // ─── SANCTION CARD MODERN ──────────────────────────────────────────────────
   Widget _buildSanctionCardModern() {
     return AnimatedBuilder(
       animation: _sanctionCtrl,
@@ -474,9 +752,16 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
           ),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: _C.red.withOpacity(0.3 + _sanctionGlow.value * 0.2),
+            color: _C.red.withOpacity(0.3 + _sanctionGlow.value * 0.3),
             width: 1.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: _C.red.withOpacity(0.1 * _sanctionGlow.value),
+              blurRadius: 30,
+              spreadRadius: 2,
+            ),
+          ],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(24),
@@ -493,11 +778,16 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                   children: [
                     Row(
                       children: [
-                        Container(
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 500),
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: _C.red.withOpacity(0.15),
+                            color: _C.red.withOpacity(0.15 + _sanctionGlow.value * 0.1),
                             borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: _C.red.withOpacity(0.3 + _sanctionGlow.value * 0.2),
+                              width: 1.5,
+                            ),
                           ),
                           child: Icon(Icons.warning_rounded,
                               color: _C.red.withOpacity(0.8 + _sanctionGlow.value * 0.2),
@@ -507,7 +797,8 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                         const Expanded(
                           child: Text('SANKSI TEGAS',
                               style: TextStyle(color: _C.red, fontSize: 16,
-                                  fontWeight: FontWeight.w800, letterSpacing: 1)),
+                                  fontWeight: FontWeight.w800, letterSpacing: 1,
+                                  fontFamily: 'Orbitron')),
                         ),
                       ],
                     ),
@@ -526,7 +817,8 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
                           Expanded(
                             child: Text('Akun akan DIHAPUS secara permanen',
                                 style: TextStyle(color: _C.text, fontSize: 13,
-                                    fontWeight: FontWeight.w600)),
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'ShareTechMono')),
                           ),
                         ],
                       ),
@@ -565,7 +857,7 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
           const SizedBox(width: 4),
           Text(label,
               style: const TextStyle(color: _C.textSub, fontSize: 10,
-                  fontWeight: FontWeight.w500)),
+                  fontWeight: FontWeight.w500, fontFamily: 'ShareTechMono')),
         ],
       ),
     );
@@ -583,13 +875,14 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.shield_moon_rounded, color: _C.blueLight, size: 18),
+            Icon(Icons.shield_moon_rounded, color: _C.purpleL, size: 18),
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
                 'Dengan menggunakan aplikasi ini, pengguna dianggap telah '
                 'menyetujui seluruh peraturan yang berlaku.',
-                style: TextStyle(color: _C.textSub, fontSize: 11, height: 1.5),
+                style: TextStyle(color: _C.textSub, fontSize: 11, height: 1.5,
+                    fontFamily: 'ShareTechMono'),
               ),
             ),
           ],
@@ -600,19 +893,23 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
         Container(
           height: 2, width: 30,
           decoration: BoxDecoration(
-            gradient: _C.btnGrad,
+            gradient: _C.rainbowGrad,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
         const SizedBox(width: 10),
-        const Text('Bellion-Space',
-            style: TextStyle(color: _C.textDim, fontSize: 10,
-                fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+        ShaderMask(
+          shaderCallback: (rect) => _C.rainbowGrad.createShader(rect),
+          child: const Text('SYNTAX PHANTOM',
+              style: TextStyle(color: _C.text, fontSize: 10,
+                  fontWeight: FontWeight.w600, letterSpacing: 0.5,
+                  fontFamily: 'Orbitron')),
+        ),
         const SizedBox(width: 10),
         Container(
           height: 2, width: 30,
           decoration: BoxDecoration(
-            gradient: _C.btnGrad,
+            gradient: _C.rainbowGrad,
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -621,17 +918,28 @@ class _InfoPageState extends State<InfoPage> with TickerProviderStateMixin {
   }
 
   PreferredSizeWidget _buildAppBar() {
-  return AppBar(
-    backgroundColor: Colors.transparent,
-    elevation: 0,
-    automaticallyImplyLeading: false,
-    centerTitle: true,
-    title: const SizedBox.shrink(), 
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      automaticallyImplyLeading: false,
+      centerTitle: true,
+      title: const SizedBox.shrink(),
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: _C.rainbow[DateTime.now().second % _C.rainbow.length]
+                  .withOpacity(0.2),
+              width: 0.5,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-// ─── Modern Rule Card (Accordion) ────────────────────────────────────────────
+// ─── MODERN RULE CARD ─────────────────────────────────────────────────────────
 class _ModernRuleCard extends StatelessWidget {
   final _Rule rule;
   final int number;
@@ -655,12 +963,26 @@ class _ModernRuleCard extends StatelessWidget {
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: isExpanded ? color.withOpacity(0.06) : _C.card,
+          gradient: LinearGradient(
+            colors: [
+              isExpanded ? color.withOpacity(0.08) : _C.card,
+              isExpanded ? color.withOpacity(0.04) : _C.surface,
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isExpanded ? color.withOpacity(0.4) : _C.border,
             width: isExpanded ? 1.5 : 1,
           ),
+          boxShadow: isExpanded ? [
+            BoxShadow(
+              color: color.withOpacity(0.1),
+              blurRadius: 20,
+              spreadRadius: 2,
+            ),
+          ] : [],
         ),
         child: Column(
           children: [
@@ -668,7 +990,6 @@ class _ModernRuleCard extends StatelessWidget {
               padding: const EdgeInsets.all(14),
               child: Row(
                 children: [
-                  // Number badge
                   Container(
                     width: 34, height: 34,
                     decoration: BoxDecoration(
@@ -681,11 +1002,11 @@ class _ModernRuleCard extends StatelessWidget {
                     child: Center(
                       child: Text('$number',
                           style: TextStyle(color: color, fontSize: 14,
-                              fontWeight: FontWeight.bold)),
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Orbitron')),
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Icon
                   Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(
@@ -695,16 +1016,15 @@ class _ModernRuleCard extends StatelessWidget {
                     child: Icon(rule.icon, color: color, size: 18),
                   ),
                   const SizedBox(width: 12),
-                  // Title
                   Expanded(
                     child: Text(rule.title,
                         style: TextStyle(
                           color: isExpanded ? _C.text : _C.text,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
+                          fontFamily: 'Orbitron',
                         )),
                   ),
-                  // Chevron
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 300),
@@ -739,7 +1059,7 @@ class _ModernRuleCard extends StatelessWidget {
                       Expanded(
                         child: Text(rule.desc,
                             style: const TextStyle(color: _C.textSub, fontSize: 12,
-                                height: 1.5)),
+                                height: 1.5, fontFamily: 'ShareTechMono')),
                       ),
                     ],
                   ),
@@ -757,7 +1077,7 @@ class _ModernRuleCard extends StatelessWidget {
   }
 }
 
-// ─── Animated Background ──────────────────────────────────────────────────────
+// ─── ANIMATED BACKGROUND ──────────────────────────────────────────────────────
 class _AnimatedBg extends StatelessWidget {
   final AnimationController controller;
   const _AnimatedBg({required this.controller});
@@ -779,7 +1099,7 @@ class _BgPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final grid = Paint()
-      ..color = _C.border.withOpacity(0.2)
+      ..color = _C.border.withOpacity(0.15)
       ..strokeWidth = 0.5;
     const step = 40.0;
     for (double x = 0; x < size.width; x += step) {
@@ -788,15 +1108,28 @@ class _BgPainter extends CustomPainter {
     for (double y = 0; y < size.height; y += step) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
+    
     final glow = Paint()
       ..shader = RadialGradient(colors: [
-        _C.blueMid.withOpacity(0.06 + math.sin(t * math.pi * 2) * 0.02),
+        _C.purple.withOpacity(0.06 + math.sin(t * math.pi * 2) * 0.02),
         Colors.transparent,
       ], radius: 0.9).createShader(Rect.fromCircle(
           center: Offset(size.width / 2, size.height * 0.15),
           radius: size.width * 0.7));
     canvas.drawCircle(
         Offset(size.width / 2, size.height * 0.15), size.width * 0.7, glow);
+        
+    final glow2 = Paint()
+      ..shader = RadialGradient(colors: [
+        _C.pink.withOpacity(0.04 + math.cos(t * math.pi * 2) * 0.02),
+        Colors.transparent,
+      ], radius: 0.5).createShader(Rect.fromCircle(
+          center: Offset(size.width * 0.85, size.height * 0.75),
+          radius: size.width * 0.4));
+    canvas.drawCircle(
+        Offset(size.width * 0.85, size.height * 0.75),
+        size.width * 0.4,
+        glow2);
   }
 
   @override
