@@ -25,18 +25,16 @@ class _QrGeneratorPageState extends State<QrGeneratorPage> with TickerProviderSt
   late Animation<Offset> _slideAnimation;
   late Animation<double> _pulseAnimation;
 
-// Tema warna hitam – abu (nama const TETAP)
-final Color primaryDark    = const Color(0xFF050505); // background utama
-final Color primaryBlue    = const Color(0xFF1A1A1A); // abu sangat gelap
-final Color accentBlue     = const Color(0xFF2E2E2E); // abu gelap (accent / border)
-final Color lightBlue      = const Color(0xFF6F6F6F); // abu terang (icon / highlight)
-final Color cardDark       = const Color(0xFF121212); // card
-final Color cardDarker     = const Color(0xFF0B0B0B); // card lebih dalam
-
-// Status colors (tetap nama, jadi abu)
-final Color successGreen   = const Color(0xFF8A8A8A); // success → abu netral
-final Color warningOrange  = const Color(0xFF5C5C5C); // warning → abu sedang
-final Color dangerRed      = const Color(0xFF3A3A3A); // danger → abu gelap
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27);
+  final Color primaryBlue = const Color(0xFF1E3A8A);
+  final Color accentBlue = const Color(0xFF3B82F6);
+  final Color lightBlue = const Color(0xFF60A5FA);
+  final Color cardDark = const Color(0xFF151932);
+  final Color cardDarker = const Color(0xFF0F1330);
+  final Color successGreen = const Color(0xFF10B981);
+  final Color warningOrange = const Color(0xFFF59E0B);
+  final Color dangerRed = const Color(0xFFEF4444);
 
   @override
   void initState() {

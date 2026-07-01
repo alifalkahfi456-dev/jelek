@@ -10,32 +10,72 @@ class NikCheckerPage extends StatefulWidget {
   State<NikCheckerPage> createState() => _NikCheckerPageState();
 }
 
-class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProviderStateMixin {
+class _NikCheckerPageState extends State<NikCheckerPage> with TickerProviderStateMixin {
   final TextEditingController _nikController = TextEditingController();
   bool _isLoading = false;
   Map<String, dynamic>? _data;
   String? _errorMessage;
 
-  late final AnimationController _animController;
-  late final Animation<double> _fadeAnimation;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late AnimationController _pulseController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _pulseAnimation;
 
-  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
-  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27);
+  final Color primaryBlue = const Color(0xFF1E3A8A);
+  final Color accentBlue = const Color(0xFF3B82F6);
+  final Color lightBlue = const Color(0xFF60A5FA);
+  final Color cardDark = const Color(0xFF151932);
+  final Color cardDarker = const Color(0xFF0F1330);
+  final Color successGreen = const Color(0xFF10B981);
+  final Color warningOrange = const Color(0xFFF59E0B);
+  final Color dangerRed = const Color(0xFFEF4444);
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 500));
-    _fadeAnimation = CurvedAnimation(parent: _animController, curve: Curves.easeIn);
+
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _fadeController.forward();
+    _slideController.forward();
   }
 
   @override
   void dispose() {
+    _fadeController.dispose();
+    _slideController.dispose();
+    _pulseController.dispose();
     _nikController.dispose();
-    _animController.dispose();
     super.dispose();
   }
 
@@ -66,7 +106,8 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
             _data = json['data'];
             _errorMessage = null;
           });
-          _animController.forward(from: 0);
+          _fadeController.reset();
+          _fadeController.forward();
         } else {
           setState(() {
             _errorMessage = "Data tidak ditemukan atau NIK tidak valid.";
@@ -88,45 +129,493 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
     }
   }
 
-  Widget _buildCategoryCard({
+  void _copyToClipboard(String text, String label) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: successGreen.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: successGreen.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: successGreen.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  color: successGreen,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Copied!",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$label disalin ke clipboard',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: primaryDark,
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: accentBlue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.credit_card,
+                color: accentBlue,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              "NIK Checker",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: primaryDark,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Header Section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [primaryBlue, accentBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentBlue.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _pulseAnimation.value,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.credit_card,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "NIK Verification",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Check Indonesian identity card information",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Input Section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardDark,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Enter NIK Number",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardDarker,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: accentBlue.withOpacity(0.3)),
+                        ),
+                        child: TextField(
+                          controller: _nikController,
+                          keyboardType: TextInputType.number,
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. 5206085405880001',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            suffixIcon: _isLoading
+                                ? Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: accentBlue,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            )
+                                : null,
+                          ),
+                          onSubmitted: (_) => _checkNik(),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [accentBlue, lightBlue],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentBlue.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _checkNik,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isLoading
+                              ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Text(
+                                "PROCESSING...",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          )
+                              : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                "VERIFY NIK",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Error Message
+                if (_errorMessage != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: dangerRed.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: dangerRed.withOpacity(0.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: dangerRed),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 24),
+
+                // Results Section
+                if (_data != null)
+                  FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      children: [
+                        // Personal Information Card
+                        _buildInfoCard(
+                          title: "Personal Information",
+                          icon: Icons.person,
+                          color: accentBlue,
+                          children: [
+                            _buildInfoItem(
+                              label: "NIK",
+                              value: _data!["nik"]?.toString(),
+                              showCopy: true,
+                            ),
+                            _buildInfoItem(
+                              label: "Full Name",
+                              value: _data!["data"]["nama"]?.toString(),
+                              showCopy: true,
+                            ),
+                            _buildInfoItem(
+                              label: "Gender",
+                              value: _data!["data"]["kelamin"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Birth Place",
+                              value: _data!["data"]["tempat_lahir"]?.toString(),
+                              showCopy: true,
+                            ),
+                            _buildInfoItem(
+                              label: "Age",
+                              value: _data!["data"]["usia"]?.toString(),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Address Information Card
+                        _buildInfoCard(
+                          title: "Address Information",
+                          icon: Icons.location_on,
+                          color: successGreen,
+                          children: [
+                            _buildInfoItem(
+                              label: "Province",
+                              value: _data!["data"]["provinsi"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Regency/City",
+                              value: _data!["data"]["kabupaten"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "District",
+                              value: _data!["data"]["kecamatan"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Sub-district/Village",
+                              value: _data!["data"]["kelurahan"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Full Address",
+                              value: _data!["data"]["alamat"]?.toString(),
+                              showCopy: true,
+                            ),
+                            _buildInfoItem(
+                              label: "TPS",
+                              value: _data!["data"]["tps"]?.toString(),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Additional Information Card
+                        _buildInfoCard(
+                          title: "Additional Information",
+                          icon: Icons.info,
+                          color: warningOrange,
+                          children: [
+                            _buildInfoItem(
+                              label: "Zodiac",
+                              value: _data!["data"]["zodiak"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Upcoming Birthday",
+                              value: _data!["data"]["ultah_mendatang"]?.toString(),
+                            ),
+                            _buildInfoItem(
+                              label: "Market Day",
+                              value: _data!["data"]["pasaran"]?.toString(),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard({
     required String title,
     required IconData icon,
+    required Color color,
     required List<Widget> children,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      width: double.infinity,
       decoration: BoxDecoration(
         color: cardDark,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
         boxShadow: [
           BoxShadow(
-            color: darkRed.withOpacity(0.2),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 10,
-            offset: const Offset(0, 4),
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Card Header
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [darkRed, bloodRed],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
+              gradient: LinearGradient(
+                colors: [color, color.withOpacity(0.7)],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
             ),
             child: Row(
               children: [
-                Icon(icon, color: Colors.white, size: 20),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
                 const SizedBox(width: 12),
                 Text(
                   title,
@@ -134,12 +623,12 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'Orbitron',
                   ),
                 ),
               ],
             ),
           ),
+          // Card Content
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -151,21 +640,20 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
     );
   }
 
-  Widget _buildInteractiveInfoRow({
+  Widget _buildInfoItem({
     required String label,
     required String? value,
-    IconData? copyIcon = Icons.copy,
-    VoidCallback? onCopy,
+    bool showCopy = false,
   }) {
     if (value == null || value.isEmpty) return const SizedBox.shrink();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: deepBlack,
+        color: cardDarker,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: darkRed.withOpacity(0.3)),
+        border: Border.all(color: accentBlue.withOpacity(0.2)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -176,17 +664,17 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
                   value,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: lightBlue,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -194,259 +682,22 @@ class _NikCheckerPageState extends State<NikCheckerPage> with SingleTickerProvid
               ],
             ),
           ),
-          if (onCopy != null)
-            IconButton(
-              icon: Icon(copyIcon, color: lightRed, size: 20),
-              onPressed: onCopy,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(minWidth: 40),
-              tooltip: 'Salin $label',
+          if (showCopy)
+            Container(
+              margin: const EdgeInsets.only(left: 8),
+              decoration: BoxDecoration(
+                color: accentBlue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: IconButton(
+                icon: Icon(Icons.copy, color: accentBlue, size: 18),
+                onPressed: () => _copyToClipboard(value, label),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40),
+                tooltip: 'Copy $label',
+              ),
             ),
         ],
-      ),
-    );
-  }
-
-  void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$label disalin ke clipboard'),
-        backgroundColor: darkRed,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: deepBlack,
-      appBar: AppBar(
-        title: const Text(
-          'NIK Check',
-          style: TextStyle(
-            fontFamily: 'Orbitron',
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: darkRed,
-        centerTitle: true,
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: cardDark,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: darkRed.withOpacity(0.5), width: 1),
-                  boxShadow: [
-                    BoxShadow(
-                      color: darkRed.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: _nikController,
-                      keyboardType: TextInputType.number,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        labelText: 'Masukkan NIK',
-                        labelStyle: const TextStyle(color: Colors.white70),
-                        hintText: 'Contoh: 5206085405880001',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: darkRed.withOpacity(0.5)),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: bloodRed, width: 2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        filled: true,
-                        fillColor: deepBlack,
-                        suffixIcon: _isLoading
-                            ? Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              color: bloodRed,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        )
-                            : null,
-                      ),
-                      onSubmitted: (_) => _checkNik(),
-                    ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _checkNik,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: bloodRed,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 4,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(_isLoading ? Icons.hourglass_top : Icons.search, size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              _isLoading ? 'MEMPROSES...' : 'CEK DATA NIK',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Orbitron',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cardDark,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: lightRed.withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.error_outline, color: lightRed),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _errorMessage!,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: 20),
-
-              if (_data != null)
-                Expanded(
-                  child: FadeTransition(
-                    opacity: _fadeAnimation,
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildCategoryCard(
-                            title: "IDENTITAS DIRI",
-                            icon: Icons.person,
-                            children: [
-                              _buildInteractiveInfoRow(
-                                label: "NIK",
-                                value: _data!["nik"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["nik"]?.toString() ?? "", "NIK"),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Nama Lengkap",
-                                value: _data!["data"]["nama"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["nama"]?.toString() ?? "", "Nama"),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Jenis Kelamin",
-                                value: _data!["data"]["kelamin"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Tempat Lahir",
-                                value: _data!["data"]["tempat_lahir"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["tempat_lahir"]?.toString() ?? "", "Tempat Lahir"),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Usia",
-                                value: _data!["data"]["usia"]?.toString(),
-                              ),
-                            ],
-                          ),
-                          _buildCategoryCard(
-                            title: "DATA DOMISILI",
-                            icon: Icons.location_on,
-                            children: [
-                              _buildInteractiveInfoRow(
-                                label: "Provinsi",
-                                value: _data!["data"]["provinsi"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kabupaten/Kota",
-                                value: _data!["data"]["kabupaten"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kecamatan",
-                                value: _data!["data"]["kecamatan"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Kelurahan/Desa",
-                                value: _data!["data"]["kelurahan"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Alamat Lengkap",
-                                value: _data!["data"]["alamat"]?.toString(),
-                                onCopy: () => _copyToClipboard(_data!["data"]["alamat"]?.toString() ?? "", "Alamat"),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "TPS",
-                                value: _data!["data"]["tps"]?.toString(),
-                              ),
-                            ],
-                          ),
-                          _buildCategoryCard(
-                            title: "INFORMASI TAMBAHAN",
-                            icon: Icons.info,
-                            children: [
-                              _buildInteractiveInfoRow(
-                                label: "Zodiak",
-                                value: _data!["data"]["zodiak"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Ultah Mendatang",
-                                value: _data!["data"]["ultah_mendatang"]?.toString(),
-                              ),
-                              _buildInteractiveInfoRow(
-                                label: "Pasaran",
-                                value: _data!["data"]["pasaran"]?.toString(),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
       ),
     );
   }

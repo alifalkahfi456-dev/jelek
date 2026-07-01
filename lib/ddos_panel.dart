@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:ui';
 
 class AttackPanel extends StatefulWidget {
   final String sessionKey;
@@ -20,39 +19,77 @@ class AttackPanel extends StatefulWidget {
 class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin {
   final targetController = TextEditingController();
   final portController = TextEditingController();
-  final String baseUrl = "http://saitama.omdhancivok.my.id:2001";
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+  final String baseUrl = "http://hcb-1.heppyhost.my.id:25642";
+  late AnimationController _pulseController;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _pulseAnimation;
+  late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
   String selectedDoosId = "";
   double attackDuration = 60;
+  bool isAttacking = false;
 
-  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
-  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27);
+  final Color primaryBlue = const Color(0xFF1E3A8A);
+  final Color accentBlue = const Color(0xFF3B82F6);
+  final Color lightBlue = const Color(0xFF60A5FA);
+  final Color cardDark = const Color(0xFF151932);
+  final Color cardDarker = const Color(0xFF0F1330);
+  final Color successGreen = const Color(0xFF10B981);
+  final Color warningOrange = const Color(0xFFF59E0B);
+  final Color dangerRed = const Color(0xFFEF4444);
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
-      duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _pulseAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.3),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+
+    _fadeController.forward();
+    _slideController.forward();
 
     if (widget.listDoos.isNotEmpty) {
       selectedDoosId = widget.listDoos[0]['ddos_id'];
     }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
+    targetController.dispose();
+    portController.dispose();
+    super.dispose();
   }
 
   Future<void> _sendDoos() async {
@@ -62,14 +99,16 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
     final int duration = attackDuration.toInt();
 
     if (target.isEmpty || key.isEmpty) {
-      _showAlert("❌ Invalid Input", "Target IP cannot be empty.");
+      _showNotification("Invalid Input", "Target IP cannot be empty.", dangerRed);
       return;
     }
 
     if (selectedDoosId != "icmp" && (port.isEmpty || int.tryParse(port) == null)) {
-      _showAlert("❌ Invalid Port", "Please input a valid port.");
+      _showNotification("Invalid Port", "Please input a valid port.", dangerRed);
       return;
     }
+
+    setState(() => isAttacking = true);
 
     try {
       final uri = Uri.parse(
@@ -79,196 +118,86 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
       print(data);
 
       if (data["cooldown"] == true) {
-        _showAlert("⏳ Cooldown", "Please wait a moment before sending again.");
+        _showNotification("Cooldown", "Please wait a moment before sending again.", warningOrange);
       } else if (data["valid"] == false) {
-        _showAlert("❌ Invalid Key", "Your session key is invalid. Please log in again.");
+        _showNotification("Invalid Key", "Your session key is invalid. Please log in again.", dangerRed);
       } else if (data["sended"] == false) {
-        _showAlert("⚠️ Failed", "Failed to send attack. The server may be under maintenance.");
+        _showNotification("Failed", "Failed to send attack. The server may be under maintenance.", dangerRed);
       } else {
-        _showAlert("✅ Success", "Attack has been successfully sent to $target.");
+        _showNotification("Success", "Attack has been successfully sent to $target.", successGreen);
       }
     } catch (_) {
-      _showAlert("❌ Error", "An unexpected error occurred. Please try again.");
+      _showNotification("Error", "An unexpected error occurred. Please try again.", dangerRed);
     }
+
+    setState(() => isAttacking = false);
   }
 
-  void _showAlert(String title, String msg) {
-    showDialog(
-      context: context,
-      builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: AlertDialog(
-          backgroundColor: cardDark,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: BorderSide(color: bloodRed.withOpacity(0.3), width: 1.5),
-          ),
-          title: Text(title, style: TextStyle(fontWeight: FontWeight.bold, color: bloodRed)),
-          content: Text(msg, style: const TextStyle(color: Colors.white70)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text("OK", style: TextStyle(color: bloodRed)),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: bloodRed.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildGlassInputField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType keyboardType = TextInputType.text,
-    bool enabled = true,
-    String? hintText,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-      ),
-      child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        enabled: enabled,
-        style: TextStyle(color: enabled ? Colors.white : Colors.white54),
-        cursorColor: bloodRed,
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: enabled ? Colors.white70 : Colors.white38),
-          hintText: hintText,
-          hintStyle: const TextStyle(color: Colors.white54),
-          prefixIcon: Icon(icon, color: enabled ? bloodRed : Colors.white38),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          disabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.1)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        children: [
-          Icon(icon, color: bloodRed, size: 24),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.8),
-            color.withOpacity(0.6),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                letterSpacing: 1.2,
+  void _showNotification(String title, String msg, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withOpacity(0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                spreadRadius: 1,
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  color == successGreen ? Icons.check_circle :
+                  color == dangerRed ? Icons.error : Icons.info,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      msg,
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -278,271 +207,431 @@ class _AttackPanelState extends State<AttackPanel> with TickerProviderStateMixin
     final isIcmp = selectedDoosId.toLowerCase() == "icmp";
 
     return Scaffold(
-      backgroundColor: deepBlack,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
+      backgroundColor: primaryDark,
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    bloodRed.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
+                color: accentBlue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.flash_on,
+                color: accentBlue,
               ),
             ),
-          ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkRed.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
-                ),
+            const SizedBox(width: 12),
+            const Text(
+              "Attack Panel",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.rocket_launch, color: bloodRed, size: 32),
-                            const SizedBox(width: 12),
-                            const Text(
-                              "ATTACK PANEL",
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.5,
-                                color: Colors.white,
+          ],
+        ),
+        backgroundColor: primaryDark,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Header Section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [primaryBlue, accentBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentBlue.withOpacity(0.3),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      AnimatedBuilder(
+                        animation: _pulseAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _pulseAnimation.value,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: ClipOval(
+                                child: Image.asset(
+                                  'assets/images/logo.jpg',
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                          ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Network Attack Control",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Configure and launch network attacks",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                    const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: ScaleTransition(
-                        scale: _scaleAnimation,
-                        child: FadeTransition(
-                          opacity: Tween(begin: 0.6, end: 1.0).animate(_controller),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
+                // Target Configuration Card
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: cardDark,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              gradient: LinearGradient(
-                                colors: [bloodRed.withOpacity(0.4), darkRed.withOpacity(0.4)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: bloodRed.withOpacity(0.3),
-                                  blurRadius: 20,
-                                  spreadRadius: 3,
-                                ),
-                              ],
+                              color: accentBlue.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/logo.jpg',
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                              ),
+                            child: Icon(
+                              Icons.settings_ethernet,
+                              color: accentBlue,
+                              size: 20,
                             ),
                           ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Target Input", Icons.computer),
-                            _buildGlassInputField(
-                              controller: targetController,
-                              label: "Target IP",
-                              icon: Icons.computer,
-                              hintText: "e.g. 1.1.1.1",
+                          const SizedBox(width: 12),
+                          const Text(
+                            "Target Configuration",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
+                      const SizedBox(height: 20),
 
-                    const SizedBox(height: 16),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Port Configuration", Icons.wifi_tethering),
-                            _buildGlassInputField(
-                              controller: portController,
-                              label: "Port",
-                              icon: Icons.wifi_tethering,
-                              keyboardType: TextInputType.number,
-                              enabled: !isIcmp,
-                              hintText: isIcmp ? "ICMP does not use port" : "e.g. 80",
-                            ),
-                          ],
-                        ),
+                      // Target IP Input
+                      _buildModernInput(
+                        controller: targetController,
+                        label: "Target IP",
+                        hint: "e.g. 1.1.1.1",
+                        icon: Icons.computer,
                       ),
-                    ),
 
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
 
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Attack Duration", Icons.timer),
-                            const SizedBox(height: 16),
-                            Text(
-                              "⏱ ${attackDuration.toInt()} seconds",
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
+                      // Port Input
+                      _buildModernInput(
+                        controller: portController,
+                        label: "Port",
+                        hint: isIcmp ? "ICMP does not use port" : "e.g. 80",
+                        icon: Icons.wifi_tethering,
+                        enabled: !isIcmp,
+                        keyboardType: TextInputType.number,
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Duration Slider
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.timer,
+                                color: accentBlue,
+                                size: 20,
                               ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Attack Duration",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: accentBlue.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  "${attackDuration.toInt()}s",
+                                  style: TextStyle(
+                                    color: accentBlue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          SliderTheme(
+                            data: SliderTheme.of(context).copyWith(
+                              activeTrackColor: accentBlue,
+                              inactiveTrackColor: accentBlue.withOpacity(0.3),
+                              thumbColor: accentBlue,
+                              overlayColor: accentBlue.withOpacity(0.2),
+                              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                              trackHeight: 4,
                             ),
-                            const SizedBox(height: 12),
-                            Slider(
+                            child: Slider(
                               value: attackDuration,
                               min: 10,
                               max: 300,
                               divisions: 29,
-                              label: "${attackDuration.toInt()}s",
-                              activeColor: bloodRed,
-                              inactiveColor: Colors.white.withOpacity(0.2),
-                              thumbColor: lightRed,
                               onChanged: (value) {
                                 setState(() => attackDuration = value);
                               },
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
 
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 20),
 
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildGlassCard(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSectionTitle("Attack Method", Icons.flash_on),
-                            const SizedBox(height: 16),
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  colors: [
-                                    cardDark,
-                                    cardDark.withOpacity(0.8),
-                                  ],
+                      // Attack Method Dropdown
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.flash_on,
+                                color: accentBlue,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Attack Method",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  dropdownColor: cardDark,
-                                  value: selectedDoosId,
-                                  isExpanded: true,
-                                  iconEnabledColor: bloodRed,
-                                  style: const TextStyle(color: Colors.white),
-                                  borderRadius: BorderRadius.circular(16),
-                                  items: widget.listDoos.map((doos) {
-                                    return DropdownMenuItem<String>(
-                                      value: doos['ddos_id'],
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(vertical: 8),
-                                        child: Text(
-                                          doos['ddos_name'],
-                                          style: const TextStyle(color: Colors.white),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      selectedDoosId = value!;
-                                    });
-                                  },
-                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: cardDarker,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: accentBlue.withOpacity(0.3)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                dropdownColor: cardDarker,
+                                value: selectedDoosId,
+                                isExpanded: true,
+                                icon: Icon(Icons.arrow_drop_down, color: accentBlue),
+                                style: const TextStyle(color: Colors.white),
+                                items: widget.listDoos.map((doos) {
+                                  return DropdownMenuItem<String>(
+                                    value: doos['ddos_id'],
+                                    child: Text(
+                                      doos['ddos_name'],
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedDoosId = value!;
+                                  });
+                                },
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    SlideTransition(
-                      position: _slideAnimation,
-                      child: _buildActionButton(
-                        text: "LAUNCH ATTACK",
-                        icon: Icons.bolt,
-                        onPressed: _sendDoos,
-                        color: bloodRed,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 24),
+
+                // Launch Button
+                Container(
+                  width: double.infinity,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      colors: [accentBlue, lightBlue],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentBlue.withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ElevatedButton(
+                    onPressed: isAttacking ? null : _sendDoos,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isAttacking
+                        ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          "INITIATING ATTACK...",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    )
+                        : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.bolt, size: 24),
+                        SizedBox(width: 12),
+                        Text(
+                          "LAUNCH ATTACK",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    targetController.dispose();
-    portController.dispose();
-    super.dispose();
+  Widget _buildModernInput({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool enabled = true,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              color: enabled ? accentBlue : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: enabled ? Colors.white : Colors.grey,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: cardDarker,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: enabled ? accentBlue.withOpacity(0.3) : Colors.grey.withOpacity(0.3),
+            ),
+          ),
+          child: TextField(
+            controller: controller,
+            enabled: enabled,
+            keyboardType: keyboardType,
+            style: TextStyle(
+              color: enabled ? Colors.white : Colors.grey,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: enabled ? Colors.white.withOpacity(0.5) : Colors.grey.withOpacity(0.5),
+              ),
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

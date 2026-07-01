@@ -1,4 +1,4 @@
-package com.ravengetsuzo.id;
+package com.nullx.evo;
 
 import io.flutter.embedding.android.FlutterActivity;
 

@@ -6,7 +6,6 @@ import 'package:chewie/chewie.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
-import 'dart:ui';
 
 class TiktokDownloaderPage extends StatefulWidget {
   const TiktokDownloaderPage({super.key});
@@ -23,11 +22,14 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
 
-  final Color bloodRed = const Color(0xFF7B1FA2);   // Diubah jadi Violet Utama
-  final Color darkRed = const Color(0xFF4A148C);   // Diubah jadi Violet Gelap
-  final Color lightRed = const Color(0xFFE040FB);  // Diubah jadi Violet Terang (Accent)
-  final Color deepBlack = const Color(0xFF0A0A0A); // Tetap Hitam (Background)
-  final Color cardDark = const Color(0xFF1A1A1A);  // Tetap Hitam (Background Kartu)
+  // Warna tema biru hitam glassmorphism
+  final Color primaryDark = Color(0xFF0A0E27); // Biru gelap pekat
+  final Color primaryBlue = Color(0xFF1E3A8A); // Biru utama
+  final Color accentBlue = Color(0xFF3B82F6); // Biru aksen
+  final Color lightBlue = Color(0xFF60A5FA); // Biru terang
+  final Color primaryWhite = Colors.white;
+  final Color accentGrey = Colors.grey.shade400;
+  final Color glassColor = Color(0x1FFFFFFF); // Warna kaca transparan
 
   @override
   void dispose() {
@@ -99,10 +101,10 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
               looping: false,
               showControls: true,
               materialProgressColors: ChewieProgressColors(
-                playedColor: bloodRed,
-                handleColor: lightRed,
-                backgroundColor: Colors.grey[300]!,
-                bufferedColor: Colors.grey[400]!,
+                playedColor: accentBlue,
+                handleColor: lightBlue,
+                backgroundColor: accentGrey.withOpacity(0.3),
+                bufferedColor: accentGrey.withOpacity(0.2),
               ),
             );
           });
@@ -126,337 +128,479 @@ class _TiktokDownloaderPageState extends State<TiktokDownloaderPage> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error sharing: $e'),
-          backgroundColor: darkRed,
+          content: Text('Error sharing: $e', style: TextStyle(color: primaryWhite)),
+          backgroundColor: primaryBlue,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: bloodRed.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
       );
     }
   }
 
-  Widget _buildGlassCard({required Widget child, EdgeInsetsGeometry? padding}) {
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      padding: padding ?? const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: bloodRed.withOpacity(0.3),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: bloodRed.withOpacity(0.15),
-            blurRadius: 25,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
-  Widget _buildGlassInputField() {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            cardDark,
-            cardDark.withOpacity(0.8),
-          ],
-        ),
-      ),
-      child: TextField(
-        controller: _urlController,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
-        cursorColor: bloodRed,
-        decoration: InputDecoration(
-          labelText: 'Masukkan URL TikTok',
-          labelStyle: const TextStyle(color: Colors.white70),
-          hintText: 'Contoh: https://vt.tiktok.com/xxx/',
-          hintStyle: const TextStyle(color: Colors.white54),
-          prefixIcon: Icon(Icons.link, color: bloodRed),
-          filled: false,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed, width: 2),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: bloodRed.withOpacity(0.3)),
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required String text,
-    required IconData icon,
-    required VoidCallback onPressed,
-    required Color color,
-    bool isLoading = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          colors: [
-            color.withOpacity(0.8),
-            color.withOpacity(0.6),
-          ],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            blurRadius: 15,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: isLoading
-            ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Colors.white,
-          ),
-        )
-            : Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(
-              text,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: deepBlack,
-      body: Stack(
-        children: [
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    bloodRed.withOpacity(0.1),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              primaryDark,
+              Color(0xFF151937),
+              Color(0xFF0F172A),
+            ],
           ),
-          Positioned(
-            bottom: -150,
-            left: -100,
-            child: Container(
-              width: 400,
-              height: 400,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    darkRed.withOpacity(0.08),
-                    Colors.transparent,
-                  ],
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Glassmorphism AppBar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: glassColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.video_library, color: lightBlue, size: 24),
+                      const SizedBox(width: 12),
+                      Text(
+                        'TIKTOK DOWNLOADER',
+                        style: TextStyle(
+                          fontFamily: 'Orbitron',
+                          fontWeight: FontWeight.bold,
+                          color: primaryWhite,
+                          fontSize: 18,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ),
-          ),
 
-          BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _buildGlassCard(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.video_library, color: bloodRed, size: 32),
-                          const SizedBox(width: 12),
-                          const Text(
-                            "TIKTOK DOWNLOADER",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
+                const SizedBox(height: 20),
+
+                // Glassmorphism Input Section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: glassColor,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
                     ),
-
-                    const SizedBox(height: 24),
-
-                    _buildGlassCard(
-                      child: Column(
-                        children: [
-                          _buildGlassInputField(),
-                          const SizedBox(height: 16),
-                          _buildActionButton(
-                            text: "DOWNLOAD",
-                            icon: Icons.download,
-                            onPressed: _downloadTiktok,
-                            color: bloodRed,
-                            isLoading: _isLoading,
-                          ),
-                        ],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
                       ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    if (_errorMessage != null)
-                      _buildGlassCard(
-                        child: Row(
-                          children: [
-                            Icon(Icons.error_outline, color: lightRed),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _errorMessage!,
-                                style: const TextStyle(color: Colors.white70, fontSize: 14),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _urlController,
+                        style: TextStyle(color: primaryWhite, fontSize: 16),
+                        decoration: InputDecoration(
+                          labelText: 'Masukkan URL TikTok',
+                          labelStyle: TextStyle(color: lightBlue),
+                          hintText: 'Contoh: https://vt.tiktok.com/xxx/',
+                          hintStyle: TextStyle(color: accentGrey),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white.withOpacity(0.3)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: lightBlue, width: 2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.1),
+                          prefixIcon: Icon(Icons.link, color: lightBlue),
+                          suffixIcon: _isLoading
+                              ? Padding(
+                            padding: const EdgeInsets.all(12.0),
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: lightBlue,
+                                strokeWidth: 2,
                               ),
+                            ),
+                          )
+                              : null,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        width: double.infinity,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [primaryBlue, accentBlue],
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentBlue.withOpacity(0.4),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      ),
-
-                    const SizedBox(height: 20),
-
-                    if (_videoData != null)
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Column(
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _downloadTiktok,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: primaryWhite,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              _buildGlassCard(
-                                child: Column(
-                                  children: [
-                                    if (_chewieController != null)
-                                      Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(16),
-                                          border: Border.all(color: bloodRed.withOpacity(0.3)),
-                                        ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(16),
-                                          child: AspectRatio(
-                                            aspectRatio: _videoController!.value.aspectRatio,
-                                            child: Chewie(controller: _chewieController!),
-                                          ),
-                                        ),
-                                      )
-                                    else
-                                      Container(
-                                        height: 200,
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(16),
-                                          gradient: LinearGradient(
-                                            colors: [
-                                              cardDark,
-                                              cardDark.withOpacity(0.8),
-                                            ],
-                                          ),
-                                        ),
-                                        child: const Center(
-                                          child: CircularProgressIndicator(color: Colors.white),
-                                        ),
-                                      ),
-
-                                    const SizedBox(height: 16),
-
-                                    _buildActionButton(
-                                      text: "SHARE VIDEO",
-                                      icon: Icons.share,
-                                      onPressed: _shareVideo,
-                                      color: darkRed,
-                                      isLoading: false,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 16),
-
-                              _buildGlassCard(
-                                padding: const EdgeInsets.all(16),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info, color: bloodRed, size: 20),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        "Video berhasil diunduh dari TikTok",
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                              Icon(_isLoading ? Icons.hourglass_top : Icons.download, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isLoading ? 'PROSES...' : 'DOWNLOAD',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Orbitron',
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 20),
+
+                // Error Message with Glassmorphism
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.redAccent),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(color: Colors.redAccent, fontSize: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                const SizedBox(height: 20),
+
+                // Video Result with Glassmorphism
+                if (_videoData != null)
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: glassColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            // Video Header with Glassmorphism
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryBlue, accentBlue],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: accentBlue.withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.videocam, color: primaryWhite, size: 16),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "VIDEO PREVIEW",
+                                    style: TextStyle(
+                                      color: primaryWhite,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'Orbitron',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+
+                            if (_chewieController != null)
+                              Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withOpacity(0.3)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.3),
+                                      blurRadius: 10,
+                                      offset: Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: AspectRatio(
+                                    aspectRatio: _videoController!.value.aspectRatio,
+                                    child: Chewie(controller: _chewieController!),
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 200,
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                ),
+                                child: Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(color: lightBlue),
+                                      SizedBox(height: 16),
+                                      Text(
+                                        'Loading video...',
+                                        style: TextStyle(
+                                          color: lightBlue,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            // Video Info with Glassmorphism
+                            if (_videoData?['metadata'] != null)
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white.withOpacity(0.2)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _videoData!['metadata']['title'] ?? 'No Title',
+                                      style: TextStyle(
+                                        color: primaryWhite,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.person, color: lightBlue, size: 16),
+                                        SizedBox(width: 8),
+                                        Text(
+                                          'Creator: ${_videoData!['metadata']['creator'] ?? 'Unknown'}',
+                                          style: TextStyle(
+                                            color: accentGrey,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            // Share Button with Glassmorphism
+                            Container(
+                              width: double.infinity,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                gradient: LinearGradient(
+                                  colors: [accentBlue, lightBlue],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: lightBlue.withOpacity(0.4),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: _shareVideo,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: primaryWhite,
+                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.share, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'SHARE VIDEO',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: 'Orbitron',
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // Placeholder dengan Glassmorphism
+                if (_videoData == null && !_isLoading && _errorMessage == null)
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        padding: const EdgeInsets.all(30),
+                        decoration: BoxDecoration(
+                          color: glassColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.video_library,
+                              size: 80,
+                              color: lightBlue.withOpacity(0.7),
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'TikTok Downloader',
+                              style: TextStyle(
+                                color: primaryWhite,
+                                fontSize: 18,
+                                fontFamily: 'Orbitron',
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 32),
+                              child: Text(
+                                'Masukkan URL TikTok untuk mendownload video',
+                                style: TextStyle(
+                                  color: accentGrey,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-const String baseUrl = "https://panel-private-yanz.fansjkt48.web.id:10918";
+const String baseUrl = "http://panelbyxiaonotdev.zarxsft.my.id:2033";
 
 class ChangePasswordPage extends StatefulWidget {
   final String username;
@@ -34,13 +34,13 @@ class _ChangePasswordPageState extends State<ChangePasswordPage>
   late Animation<double> _animation;
   late Animation<double> _fadeAnimation;
 
-// --- Tema Hitam – Abu (tanpa ubah nama const) ---
-final Color primaryDark  = const Color(0xFF050505); // background utama (hitam pekat)
-final Color primaryBlue  = const Color(0xFF1A1A1A); // abu sangat gelap (eks primaryBlue)
-final Color accentBlue   = const Color(0xFF2E2E2E); // abu gelap (eks accentBlue)
-final Color lightBlue    = const Color(0xFF6F6F6F); // abu terang (highlight / icon)
-final Color cardDark     = const Color(0xFF121212); // card gelap
-final Color cardDarker   = const Color(0xFF0B0B0B); // card lebih gelap
+  // Tema warna hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27);
+  final Color primaryBlue = const Color(0xFF1E3A8A);
+  final Color accentBlue = const Color(0xFF3B82F6);
+  final Color lightBlue = const Color(0xFF60A5FA);
+  final Color cardDark = const Color(0xFF151932);
+  final Color cardDarker = const Color(0xFF0F1330);
 
   @override
   void initState() {

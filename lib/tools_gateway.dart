@@ -1,33 +1,16 @@
-import 'dart:math' as math;
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-// ─── Import lokal ──────────────────────────────
+import 'manage_server.dart';
+import 'wifi_internal.dart';
+import 'wifi_external.dart';
+import 'ddos_panel.dart';
+import 'nik_check.dart';
 import 'tiktok_page.dart';
 import 'instagram_page.dart';
+import 'qr_gen.dart';
 import 'domain_page.dart';
 import 'spam_ngl.dart';
-import 'game_hub.dart';
-import 'dracin_app.dart';
-import 'home_anime_page.dart';
-import 'comic_page.dart';
-import 'iqc.dart';
-import 'kalkulator.dart';
-import 'yts.dart';      // YouTube
-import 'meme.dart';     // MEME
-
-// ─── PALETTE ────────────────────────────────────
-const Color _tgBg     = Color(0xFF0b1120);
-const Color _tgCard   = Color(0xFF111827);
-const Color _tgBorder = Color(0xFF1e2d45);
-const Color _tgBlue   = Color(0xFF2563eb);
-const Color _tgCyan   = Color(0xFF22d3ee);
-const Color _tgGreen  = Color(0xFF22c55e);
-const Color _tgAmber  = Color(0xFFf59e0b);
-const Color _tgRed    = Color(0xFFef4444);
-const Color _tgPurple = Color(0xFF7c3aed);
-const Color _tgWhite  = Colors.white;
-const Color _tgSub    = Color(0xFF94a3b8);
 
 class ToolsPage extends StatefulWidget {
   final String sessionKey;
@@ -45,365 +28,71 @@ class ToolsPage extends StatefulWidget {
   State<ToolsPage> createState() => _ToolsPageState();
 }
 
-class _ToolsPageState extends State<ToolsPage>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _hexCtrl;
-  late Animation<double>   _hexAnim;
+class _ToolsPageState extends State<ToolsPage> with TickerProviderStateMixin {
+  late AnimationController _cardController;
+  late Animation<double> _cardAnimation;
+
+  final Color primaryDark = const Color(0xFF000000);
+  final Color primaryRed = const Color(0xFFB71C1C);
+  final Color accentRed = const Color(0xFFFF1744);
+  final Color primaryWhite = Colors.white;
+  final Color cardDark = const Color(0xFF1A1A1A);
+  final Color borderGrey = const Color(0xFF2A2A2A);
 
   @override
   void initState() {
     super.initState();
-    _hexCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 4))
-      ..repeat(reverse: true);
-    _hexAnim =
-        CurvedAnimation(parent: _hexCtrl, curve: Curves.easeInOut);
+    _cardController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _cardAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(
+        parent: _cardController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _cardController.forward();
   }
 
   @override
   void dispose() {
-    _hexCtrl.dispose();
+    _cardController.dispose();
     super.dispose();
   }
 
-  void _navTo(Widget page) => Navigator.push(
-      context, MaterialPageRoute(builder: (_) => page));
-
-  void _comingSoon() {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Row(children: [
-        Icon(Icons.hourglass_top_rounded,
-            color: _tgWhite, size: 16),
-        SizedBox(width: 10),
-        Text('Feature Coming Soon!',
-            style: TextStyle(
-                color: _tgWhite, fontWeight: FontWeight.bold)),
-      ]),
-      backgroundColor: _tgBlue,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12)),
-      margin: const EdgeInsets.all(16),
-    ));
-  }
-
-  void _openGameHub() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const GameHubApp());
-    } catch (e) {
-      _showError('Game Hub Error: $e');
-    }
-  }
-
-  void _openDracin() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const DracinApp());
-    } catch (e) {
-      _showError('Dracin Error: $e');
-    }
-  }
-
-  void _openHomeAnime() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const HomeAnimePage());
-    } catch (e) {
-      _showError('Home Anime Error: $e');
-    }
-  }
-
-  void _openComic() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const ComicPage());
-    } catch (e) {
-      _showError('Comic Error: $e');
-    }
-  }
-
-  void _openIqc() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const MyApp());
-    } catch (e) {
-      _showError('IQC Error: $e');
-    }
-  }
-
-  void _openCalculator() {
-    try {
-      HapticFeedback.mediumImpact();
-      _navTo(const KalkulatorApp());
-    } catch (e) {
-      _showError('Calculator Error: $e');
-    }
-  }
-
-  void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(msg, style: const TextStyle(color: _tgWhite)),
-        backgroundColor: _tgRed,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
-  // ─── Category definitions (GABUNGAN Game Hub + Nonton) ──
-  List<Map<String, dynamic>> get _categories => [
-        {
-          'title':    '🎮 Hiburan',
-          'subtitle': 'Games & Streaming',
-          'icon':     Icons.gamepad_rounded,
-          'color':    _tgPurple,
-          'items': [
-            _mkItem('GAME', Icons.gamepad_rounded, _openGameHub),
-            _mkItem('Arcade Games', Icons.emoji_events_rounded, _comingSoon),
-            _mkItem('DRACIN', Icons.flash_on_rounded, _openDracin),
-            _mkItem('ANIME', Icons.home_rounded, _openHomeAnime),
-            _mkItem('KOMIK', Icons.menu_book_rounded, _openComic),
-            _mkItem('MEME', Icons.insert_emoticon_rounded,
-                () => _navTo(const MemeGeneratorPage())),
-            _mkItem('Favorites', Icons.favorite_rounded, _comingSoon),
-          ],
-        },
-        {
-          'title':    'Network Tools',
-          'subtitle': 'WiFi & Spamming',
-          'icon':     Icons.wifi_rounded,
-          'color':    _tgCyan,
-          'items': [
-            _mkItem('SPAM NGL', Icons.newspaper_rounded,
-                () => _navTo(NglPage())),
-          ],
-        },
-        {
-          'title':    'OSINT Tools',
-          'subtitle': 'Information Gathering',
-          'icon':     Icons.search_rounded,
-          'color':    _tgGreen,
-          'items': [
-            _mkItem('Domain Check', Icons.domain_rounded,
-                () => _navTo(const DomainOsintPage())),
-            _mkItem('Phone Lookup', Icons.phone_iphone_rounded, _comingSoon),
-          ],
-        },
-        {
-          'title':    'Downloader',
-          'subtitle': 'Social Media',
-          'icon':     Icons.download_rounded,
-          'color':    _tgAmber,
-          'items': [
-            _mkItem('TIKTOK', Icons.tiktok,
-                () => _navTo(const TiktokDownloaderPage())),
-            _mkItem('INSTAGRAM', Icons.camera_alt_rounded,
-                () => _navTo(const InstagramDownloaderPage())),
-            _mkItem('YOUTUBE', Icons.youtube_searched_for,
-                () => _navTo(const YouTubeS())),
-          ],
-        },
-        {
-          'title':    'Utilities',
-          'subtitle': 'Helper Tools',
-          'icon':     Icons.build_rounded,
-          'color':    _tgPurple,
-          'items': [
-            _mkItem('IP Scanner', Icons.lan_rounded, _comingSoon),
-            _mkItem('IQC', Icons.phone_iphone_rounded, _openIqc),
-            _mkItem('Calculator', Icons.calculate_rounded, _openCalculator),
-          ],
-        },
-      ];
-
-  Map<String, dynamic> _mkItem(
-          String label, IconData icon, VoidCallback onTap) =>
-      {'label': label, 'icon': icon, 'onTap': onTap};
-
-  // ─── Flatten all items with color ────────────
-  List<Map<String, dynamic>> get _allItems {
-    List<Map<String, dynamic>> result = [];
-    for (var cat in _categories) {
-      final color = cat['color'] as Color;
-      for (var item in cat['items'] as List<Map<String, dynamic>>) {
-        result.add({
-          ...item,
-          'color': color,
-        });
-      }
-    }
-    return result;
-  }
-
-  // ─── Build grid item ──────────────────────────
-  Widget _buildGridItem(Map<String, dynamic> item) {
-    final label = item['label'] as String;
-    final icon = item['icon'] as IconData;
-    final onTap = item['onTap'] as VoidCallback;
-    final color = item['color'] as Color;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: _tgCard,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 32),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: _tgWhite,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final totalModules = _allItems.length;
-
     return Scaffold(
-      backgroundColor: _tgBg,
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0a1628),
-              Color(0xFF0b1120),
-              Color(0xFF0f1a2e),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            physics: const BouncingScrollPhysics(),
+      backgroundColor: primaryDark,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ─── HEADER ──────────────────────────────
-              const Text(
-                'CHAN XITER TOOLS',
-                style: TextStyle(
-                  color: _tgWhite,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.2,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Pusat akses berbagai menu aplikasi CHAN XITER untuk kebutuhan harian Anda.',
-                style: TextStyle(
-                  color: _tgSub,
-                  fontSize: 15,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
+              // Header Section
+              _buildHeader(),
+              
+              const SizedBox(height: 30),
 
-              // ─── TOOLS GATEWAY CARD ─────────────────
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _tgCard.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _tgBorder, width: 1),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildInfoTile(Icons.person, 'ROLE', widget.userRole),
-                    _buildInfoTile(Icons.apps, 'JUMLAH MENU',
-                        '$totalModules TOOLS'),
-                    _buildInfoTile(
-                        Icons.wifi, 'SESSION', widget.sessionKey),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // ─── KATEGORI MENU ──────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'KATEGORI MENU',
-                    style: TextStyle(
-                      color: _tgWhite,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
+              // Digital Tools Section
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildDigitalToolsSection(),
+                      
+                      const SizedBox(height: 30),
+                      
+                      // Tools Grid
+                      _buildToolsGrid(),
+                    ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _tgBlue.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _tgBlue.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      '$totalModules Modules',
-                      style: const TextStyle(
-                        color: _tgWhite,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // ─── GRID ──────────────────────────────
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 0.9,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
                 ),
-                itemCount: totalModules,
-                itemBuilder: (context, index) =>
-                    _buildGridItem(_allItems[index]),
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -411,42 +100,550 @@ class _ToolsPageState extends State<ToolsPage>
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value) {
-    return Column(
+  Widget _buildHeader() {
+    return Row(
       children: [
-        Icon(icon, color: _tgCyan, size: 22),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            color: _tgSub,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-          ),
+        Icon(
+          Icons.apps,
+          color: primaryWhite,
+          size: 28,
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: _tgWhite,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: primaryRed.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: primaryRed.withOpacity(0.5)),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.person,
+                color: accentRed,
+                size: 16,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.userRole.toUpperCase(),
+                style: TextStyle(
+                  color: accentRed,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
-}
 
-// ═════════════════════════════════════════════════
-//  HONEYCOMB PAINTER (tidak dipakai)
-// ═════════════════════════════════════════════════
-class _TgHexPainter extends CustomPainter {
-  final double pulse;
-  _TgHexPainter({required this.pulse});
+  Widget _buildDigitalToolsSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderGrey, width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: primaryDark,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.grid_view,
+              color: primaryWhite,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Digital Tools",
+                  style: TextStyle(
+                    color: primaryWhite,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Select a tool to begin",
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-  @override
-  void paint(Canvas canvas, Size size) {}
+  Widget _buildToolsGrid() {
+    final List<Map<String, dynamic>> tools = [
+      {
+        "icon": Icons.chat_bubble_outline,
+        "title": "Chat AI",
+        "subtitle": "AI-powered conversation assistant",
+        "onTap": () => _showComingSoon(context),
+      },
+      {
+        "icon": Icons.badge_outlined,
+        "title": "NIK Check",
+        "subtitle": "Validate Indonesian identity numbers",
+        "onTap": () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const NikCheckerPage()),
+        ),
+      },
+      {
+        "icon": Icons.phone_outlined,
+        "title": "Phone Lookup",
+        "subtitle": "Find information about phone numbers",
+        "onTap": () => _showComingSoon(context),
+      },
+      {
+        "icon": Icons.public,
+        "title": "Subdomain Finder",
+        "subtitle": "Discover subdomains of any domain",
+        "onTap": () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DomainOsintPage()),
+        ),
+      },
+      {
+        "icon": Icons.movie_outlined,
+        "title": "Anime",
+        "subtitle": "Tempat Nya Para Wibu Marathon Anime",
+        "onTap": () => _showComingSoon(context),
+      },
+      {
+        "icon": Icons.group_outlined,
+        "title": "Group Chat",
+        "subtitle": "Connect with community",
+        "onTap": () => _showComingSoon(context),
+      },
+      {
+        "icon": Icons.flash_on,
+        "title": "DDoS Tools",
+        "subtitle": "Network attack tools",
+        "onTap": () => _showDDoSTools(context),
+      },
+      {
+        "icon": Icons.wifi,
+        "title": "Network Tools",
+        "subtitle": "WiFi & Network utilities",
+        "onTap": () => _showNetworkTools(context),
+      },
+      {
+        "icon": Icons.download,
+        "title": "Media Downloader",
+        "subtitle": "Download from social media",
+        "onTap": () => _showDownloaderTools(context),
+      },
+      {
+        "icon": Icons.qr_code,
+        "title": "QR Generator",
+        "subtitle": "Create QR codes",
+        "onTap": () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const QrGeneratorPage()),
+        ),
+      },
+    ];
 
-  @override
-  bool shouldRepaint(_TgHexPainter old) => old.pulse != pulse;
+    return AnimatedBuilder(
+      animation: _cardAnimation,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _cardAnimation.value,
+          child: Column(
+            children: List.generate(
+              tools.length,
+              (index) => _buildToolCard(tools[index], index),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildToolCard(Map<String, dynamic> tool, int index) {
+    return TweenAnimationBuilder(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: Duration(milliseconds: 400 + (index * 50)),
+      curve: Curves.easeOutCubic,
+      builder: (context, double value, child) {
+        return Transform.translate(
+          offset: Offset((1 - value) * 50, 0),
+          child: Opacity(
+            opacity: value,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: cardDark,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: borderGrey, width: 1),
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    tool["onTap"]();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: primaryDark,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: primaryRed.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Icon(
+                            tool["icon"],
+                            color: primaryWhite,
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                tool["title"],
+                                style: TextStyle(
+                                  color: primaryWhite,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                tool["subtitle"],
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          color: Colors.grey.shade600,
+                          size: 24,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDDoSTools(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildModalSheet(
+        context,
+        "DDoS Tools",
+        Icons.flash_on,
+        [
+          _buildModalOption(
+            icon: Icons.flash_on,
+            label: "Attack Panel",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AttackPanel(
+                    sessionKey: widget.sessionKey,
+                    listDoos: widget.listDoos,
+                  ),
+                ),
+              );
+            },
+          ),
+          _buildModalOption(
+            icon: Icons.dns,
+            label: "Manage Server",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ManageServerPage(keyToken: widget.sessionKey),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNetworkTools(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildModalSheet(
+        context,
+        "Network Tools",
+        Icons.wifi,
+        [
+          _buildModalOption(
+            icon: Icons.newspaper_outlined,
+            label: "Spam NGL",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => NglPage()),
+              );
+            },
+          ),
+          _buildModalOption(
+            icon: Icons.wifi_off,
+            label: "WiFi Killer (Internal)",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => WifiKillerPage()),
+              );
+            },
+          ),
+          if (widget.userRole == "vip" || widget.userRole == "owner")
+            _buildModalOption(
+              icon: Icons.router,
+              label: "WiFi Killer (External)",
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => WifiInternalPage(sessionKey: widget.sessionKey),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showDownloaderTools(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildModalSheet(
+        context,
+        "Media Downloader",
+        Icons.download,
+        [
+          _buildModalOption(
+            icon: Icons.video_library,
+            label: "TikTok Downloader",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TiktokDownloaderPage()),
+              );
+            },
+          ),
+          _buildModalOption(
+            icon: Icons.camera_alt,
+            label: "Instagram Downloader",
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const InstagramDownloaderPage()),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModalSheet(
+    BuildContext context,
+    String title,
+    IconData icon,
+    List<Widget> options,
+  ) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      decoration: BoxDecoration(
+        color: cardDark,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+        border: Border.all(color: borderGrey),
+      ),
+      child: Column(
+        children: [
+          // Drag handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade700,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          
+          // Header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: borderGrey),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: primaryRed.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: accentRed, size: 22),
+                ),
+                const SizedBox(width: 16),
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: primaryWhite,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Options
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: ListView(
+                children: options,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModalOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: primaryDark,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderGrey),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: primaryRed.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: accentRed, size: 20),
+        ),
+        title: Text(
+          label,
+          style: TextStyle(
+            color: primaryWhite,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.grey.shade600,
+          size: 16,
+        ),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+      ),
+    );
+  }
+
+  void _showComingSoon(BuildContext context) {
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.info_outline, color: primaryWhite),
+            const SizedBox(width: 12),
+            Text(
+              'Feature Coming Soon!',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: primaryWhite,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: primaryRed,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
 }

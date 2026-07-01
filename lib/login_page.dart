@@ -1,14 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:video_player/video_player.dart';
 import 'splash.dart';
 
-const String baseUrl = "http://saitama.omdhancivok.my.id:2001";
+const String baseUrl = "http://panelbyxiaonotdev.zarxsft.my.id:2033";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -27,41 +27,49 @@ class _LoginPageState extends State<LoginPage>
   bool _obscurePassword = true;
   String? androidId;
 
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-
-  // Warna tema biru (sesuai landing)
-  static const Color _primaryBlue = Color(0xFF0A66C2);
-  static const Color _deepBlue = Color(0xFF003366);
-  static const Color _lightBlue = Color(0xFF4B9FFF);
-  static const Color _glowBlue = Color(0xFF1E88E5);
-  static const Color _cardBg = Color(0xFF0F172A);
-  static const Color _textLight = Color(0xFFF1F5F9);
-  static const Color _textDim = Color(0xFF94A3B8);
+  late AnimationController _controller;
+  late Animation<double> _fadeAnim;
+  late Animation<double> _scaleAnim;
+  late VideoPlayerController _videoController;
+  bool _videoInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initAnimations();
-    _initLogin();
+    _initAnim();
+    _initVideo();
+    initLogin();
   }
 
-  void _initAnimations() {
-    _animationController = AnimationController(
+  void _initAnim() {
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 900),
+      duration: const Duration(milliseconds: 1200),
     )..forward();
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    
+    _scaleAnim = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic));
   }
 
-  Future<void> _initLogin() async {
-    androidId = await _getAndroidId();
+  void _initVideo() {
+    _videoController = VideoPlayerController.asset('assets/videos/banner.mp4')
+      ..initialize().then((_) {
+        setState(() {
+          _videoInitialized = true;
+        });
+        _videoController.play();
+        _videoController.setLooping(true);
+        _videoController.setVolume(0.0);
+      }).catchError((error) {
+        print("Error initializing video: $error");
+      });
+  }
+
+  Future<void> initLogin() async {
+    androidId = await getAndroidId();
 
     final prefs = await SharedPreferences.getInstance();
     final savedUser = prefs.getString("username");
@@ -77,7 +85,6 @@ class _LoginPageState extends State<LoginPage>
         final data = jsonDecode(res.body);
 
         if (data['valid'] == true) {
-          if (!mounted) return;
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -104,13 +111,13 @@ class _LoginPageState extends State<LoginPage>
     }
   }
 
-  Future<String> _getAndroidId() async {
+  Future<String> getAndroidId() async {
     final deviceInfo = DeviceInfoPlugin();
     final android = await deviceInfo.androidInfo;
     return android.id ?? "unknown_device";
   }
 
-  Future<void> _login() async {
+  Future<void> login() async {
     if (!_formKey.currentState!.validate()) return;
 
     final username = userController.text.trim();
@@ -129,7 +136,7 @@ class _LoginPageState extends State<LoginPage>
       );
 
       final validData = jsonDecode(validate.body);
-      debugPrint("VALIDATE RESPONSE => $validData");
+      print("VALIDATE RESPONSE => $validData");
 
       if (validData['expired'] == true) {
         _showPopup(
@@ -150,7 +157,6 @@ class _LoginPageState extends State<LoginPage>
         prefs.setString("password", password);
         prefs.setString("key", validData['key']);
 
-        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -176,12 +182,13 @@ class _LoginPageState extends State<LoginPage>
     } catch (e) {
       _showPopup(
         title: "⚠️ Connection Error",
-        message: "Failed to connect to the server.\nPlease check your internet connection.",
-        color: _primaryBlue,
+        message:
+            "Failed to connect to the server.\nPlease check your internet connection.",
+        color: const Color(0xFFE53935),
       );
     }
 
-    if (mounted) setState(() => isLoading = false);
+    setState(() => isLoading = false);
   }
 
   void _showPopup({
@@ -193,11 +200,12 @@ class _LoginPageState extends State<LoginPage>
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        backgroundColor: Colors.black.withOpacity(0.85),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: Colors.black.withOpacity(0.9),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           title,
-          style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         content: Text(
           message,
@@ -207,10 +215,11 @@ class _LoginPageState extends State<LoginPage>
           if (showContact)
             TextButton(
               onPressed: () async {
-                final uri = Uri.parse("https://t.me/vanesha31");
+                final uri = Uri.parse("https://t.me/OfficialAlpat");
                 await launchUrl(uri, mode: LaunchMode.externalApplication);
               },
-              child: Text("Contact Admin", style: TextStyle(color: _lightBlue)),
+              child: const Text("Contact Admin",
+                  style: TextStyle(color: Color(0xFFFF5252))),
             ),
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -223,7 +232,8 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
+    _videoController.dispose();
     userController.dispose();
     passController.dispose();
     super.dispose();
@@ -231,148 +241,134 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-      ),
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          systemOverlayStyle: const SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.light,
-          ),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                _deepBlue,
-                _primaryBlue,
-                const Color(0xFF0A2540),
-              ],
-              stops: const [0.0, 0.5, 1.0],
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E17),
+      body: Stack(
+        children: [
+          // Video Background
+          if (_videoInitialized)
+            Positioned.fill(
+              child: Opacity(
+                opacity: 0.15,
+                child: FittedBox(
+                  fit: BoxFit.cover,
+                  child: SizedBox(
+                    width: _videoController.value.size.width,
+                    height: _videoController.value.size.height,
+                    child: VideoPlayer(_videoController),
+                  ),
+                ),
+              ),
+            ),
+
+          // Gradient Overlay
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF0A0E17).withOpacity(0.95),
+                    const Color(0xFF0A0E17).withOpacity(0.98),
+                  ],
+                ),
+              ),
             ),
           ),
-          child: SafeArea(
+
+          // Content
+          SafeArea(
             child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              opacity: _fadeAnim,
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Form(
+                    key: _formKey,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo glassmorphism
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [_primaryBlue, _lightBlue],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _glowBlue.withOpacity(0.5),
-                                blurRadius: 25,
-                                spreadRadius: 2,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: Image.asset(
-                              'assets/images/logo.jpg',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.security,
-                                  color: Colors.white,
-                                  size: 50,
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        // Title dengan efek gradien teks
-                        ShaderMask(
-                          shaderCallback: (Rect bounds) {
-                            return const LinearGradient(
-                              colors: [Color(0xFF4B9FFF), Color(0xFF0A66C2)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ).createShader(bounds);
-                          },
-                          child: const Text(
-                            'WELCOME BACK',
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Sign in to continue',
-                          style: TextStyle(color: _textDim, fontSize: 14, letterSpacing: 0.5),
-                        ),
-                        const SizedBox(height: 48),
-                        // Form Card
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(
-                            color: _cardBg.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              children: [
-                                _buildTextField(
-                                  controller: userController,
-                                  label: 'Username',
-                                  icon: Icons.person_outline,
+                        const SizedBox(height: 40),
+
+                        // Logo
+                        ScaleTransition(
+                          scale: _scaleAnim,
+                          child: Container(
+                            width: 160,
+                            height: 160,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.5),
+                                  blurRadius: 30,
+                                  spreadRadius: 5,
                                 ),
-                                const SizedBox(height: 20),
-                                _buildTextField(
-                                  controller: passController,
-                                  label: 'Password',
-                                  icon: Icons.lock_outline,
-                                  isPassword: true,
-                                ),
-                                const SizedBox(height: 32),
-                                _buildLoginButton(),
                               ],
                             ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.asset(
+                                'assets/images/logo.jpg',
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
                         ),
+
+                        const SizedBox(height: 50),
+
+                        // Welcome Back Text
+                        const Text(
+                          "Welcome Back",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        Text(
+                          "Login to continue",
+                          style: TextStyle(
+                            color: Colors.grey.shade500,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+
+                        const SizedBox(height: 50),
+
+                        // Username Field
+                        _buildTextField(
+                          controller: userController,
+                          hint: "Username",
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // Password Field
+                        _buildTextField(
+                          controller: passController,
+                          hint: "Password",
+                          isPassword: true,
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        // Login Button
+                        _buildLoginButton(),
+
+                        const SizedBox(height: 20),
+
+                        // Contact Admin Button
+                        _buildContactAdminButton(),
+
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
@@ -380,112 +376,210 @@ class _LoginPageState extends State<LoginPage>
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildTextField({
     required TextEditingController controller,
-    required String label,
-    required IconData icon,
+    required String hint,
     bool isPassword = false,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isPassword ? _obscurePassword : false,
-      style: const TextStyle(color: _textLight, fontSize: 16),
-      decoration: InputDecoration(
-        labelText: label,
-        labelStyle: const TextStyle(color: _textDim),
-        prefixIcon: Icon(icon, color: _lightBlue, size: 22),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: _textDim,
-                ),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-              )
-            : null,
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.white.withOpacity(0.15), width: 1),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: _lightBlue, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade800.withOpacity(0.3),
+          width: 1,
         ),
       ),
-      validator: (value) => (value == null || value.isEmpty) ? 'Please enter $label' : null,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: TextFormField(
+            controller: controller,
+            obscureText: isPassword ? _obscurePassword : false,
+            style: TextStyle(
+              color: Colors.grey.shade400,
+              fontSize: 15,
+              letterSpacing: 0.3,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 15,
+                letterSpacing: 0.5,
+              ),
+              suffixIcon: isPassword
+                  ? IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.grey.shade600,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscurePassword = !_obscurePassword;
+                        });
+                      },
+                    )
+                  : null,
+              filled: true,
+              fillColor: Colors.grey.shade900.withOpacity(0.3),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: Colors.grey.shade700,
+                  width: 1,
+                ),
+              ),
+              errorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Colors.redAccent,
+                  width: 1,
+                ),
+              ),
+              focusedErrorBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Colors.redAccent,
+                  width: 1,
+                ),
+              ),
+            ),
+            validator: (value) =>
+                value == null || value.isEmpty ? "Please enter $hint" : null,
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildLoginButton() {
-    return SizedBox(
+    return Container(
       width: double.infinity,
       height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          colors: [
+            Colors.grey.shade800.withOpacity(0.4),
+            Colors.grey.shade900.withOpacity(0.5),
+          ],
+        ),
+        border: Border.all(
+          color: Colors.grey.shade800.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
       child: ElevatedButton(
-        onPressed: isLoading ? null : _login,
+        onPressed: isLoading ? null : login,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(40)),
-          padding: EdgeInsets.zero,
-        ),
-        child: Ink(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_primaryBlue, _lightBlue],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(40),
-            boxShadow: [
-              BoxShadow(
-                color: _glowBlue.withOpacity(0.5),
-                blurRadius: 15,
-                offset: const Offset(0, 6),
-              ),
-            ],
+          disabledBackgroundColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Container(
-            alignment: Alignment.center,
-            child: isLoading
-                ? const SizedBox(
-                    height: 24,
-                    width: 24,
+          elevation: 0,
+        ),
+        child: isLoading
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 18,
+                    height: 18,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.login, color: Colors.white, size: 22),
-                      SizedBox(width: 12),
-                      Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.8,
-                        ),
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.grey.shade400,
                       ),
-                    ],
+                    ),
                   ),
+                  const SizedBox(width: 12),
+                  Text(
+                    "Logging in...",
+                    style: TextStyle(
+                      color: Colors.grey.shade400,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              )
+            : Text(
+                "LOGIN",
+                style: TextStyle(
+                  color: Colors.grey.shade300,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildContactAdminButton() {
+    return Container(
+      width: double.infinity,
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.grey.shade800.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Material(
+            color: Colors.grey.shade900.withOpacity(0.2),
+            child: InkWell(
+              onTap: () async {
+                final uri = Uri.parse("https://t.me/OfficialAlpat");
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.purple.shade300,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      "Contact Admin",
+                      style: TextStyle(
+                        color: Colors.grey.shade300,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
         ),
       ),

@@ -28,15 +28,15 @@ class _WifiKillerPageState extends State<WifiKillerPage> with TickerProviderStat
   late Animation<double> _waveAnimation;
   late Animation<double> _scanAnimation;
 
-// ===== SOFT GREY (LOW OPACITY) =====
-final Color primaryDark  = const Color(0xFFEDEDED);              // background abu terang (solid)
-final Color primaryBlue  = Colors.grey.withOpacity(0.50);       // abu muda hampir solid
-final Color accentBlue   = Colors.black.withOpacity(0.10);      // border hitam tipis
-final Color lightBlue    = Colors.grey.withOpacity(0.50);       // highlight lembut
-final Color primaryWhite = const Color(0xFF111111);              // text utama hitam lembut
-final Color accentGrey   = const Color(0xFF666666);              // text secondary
-final Color cardDark     = Colors.grey.withOpacity(0.50);       // card abu semi-solid
-final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tipis
+  // Warna tema hitam biru
+  final Color primaryDark = const Color(0xFF0A0E27); // Biru gelap pekat
+  final Color primaryBlue = const Color(0xFF1E3A8A); // Biru utama
+  final Color accentBlue = const Color(0xFF3B82F6); // Biru aksen
+  final Color lightBlue = const Color(0xFF60A5FA); // Biru terang
+  final Color primaryWhite = Colors.white;
+  final Color accentGrey = Colors.grey.shade400;
+  final Color cardDark = const Color(0xFF151937); // Biru gelap card
+  final Color glassColor = const Color(0x1FFFFFFF); // Warna kaca transparan
 
   @override
   void initState() {
@@ -228,6 +228,11 @@ final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tip
           SafeArea(
             child: Column(
               children: [
+                // Header dengan desain baru
+                _buildNewHeader(),
+
+                const SizedBox(height: 20),
+
                 // Konten utama
                 Expanded(
                   child: ssid == "-"
@@ -252,8 +257,9 @@ final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tip
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF202020),
-                const Color(0xFF1A1A1A),
+                primaryDark,
+                const Color(0xFF151937),
+                const Color(0xFF0F172A),
               ],
             ),
           ),
@@ -340,6 +346,111 @@ final Color glassColor   = Colors.grey.withOpacity(0.50);       // glass abu tip
           ),
         );
       },
+    );
+  }
+
+  Widget _buildNewHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: glassColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Logo dengan animasi pulse
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: isKilling ? _pulseAnimation.value : 1.0,
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primaryBlue, accentBlue],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(15),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accentBlue.withOpacity(0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.wifi_off,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(width: 16),
+
+          // Judul
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "WIFI KILLER",
+                  style: TextStyle(
+                    color: primaryWhite,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Orbitron',
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                Text(
+                  "Internal Network Disruption",
+                  style: TextStyle(
+                    color: lightBlue,
+                    fontSize: 14,
+                    fontFamily: 'ShareTechMono',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Status indikator
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: isKilling ? Colors.redAccent : lightBlue,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: (isKilling ? Colors.redAccent : lightBlue).withOpacity(0.5),
+                  blurRadius: 5,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
