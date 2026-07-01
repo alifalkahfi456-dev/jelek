@@ -1,348 +1,62 @@
-name: Flutter Build Bot
+name: Build Sync XxX APK
 
 on:
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Tipe build: apk-debug | apk-release | aab-release'
-        required: false
-        default: 'apk-release'
-        type: choice
-        options:
-          - apk-debug
-          - apk-release
-          - aab-release
-      flutter_version:
-        description: 'Flutter version override (kosongkan untuk default)'
-        required: false
-        default: ''
-        type: string
-
   push:
-    branches:
-      - main
-    paths:
-      - 'lib/**'
-      - 'pubspec.yaml'
-      - 'pubspec.lock'
-      - 'android/**'
-      - 'assets/**'
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    name: Build Flutter App
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '17'
-          cache: 'gradle'
+          distribution: 'temurin'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          flutter-version: '3.32.8'
-          channel: 'stable'
-          cache: true
+          python-version: '3.11'
 
-      # ============================================
-      # FIX: Missing drawable resources
-      # ============================================
-      - name: Fix missing drawable resources
+      - name: Install Pillow
+        run: pip install Pillow
+
+      - name: Generate App Icons
+        run: python3 generate_icons.py
+
+      - name: Setup Gradle Wrapper
         run: |
-          echo "🔧 Creating missing drawable resources..."
+          curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
+            "https://raw.githubusercontent.com/gradle/gradle/v8.4.0/gradle/wrapper/gradle-wrapper.jar" \
+            || curl -fsSL -o android/gradle/wrapper/gradle-wrapper.jar \
+            "https://github.com/gradle/gradle/releases/download/v8.4.0/gradle-8.4-wrapper.jar" \
+            || (cd /tmp && curl -fsSL -o gradle-bin.zip "https://services.gradle.org/distributions/gradle-8.4-bin.zip" \
+            && unzip -q gradle-bin.zip \
+            && cp gradle-8.4/lib/gradle-wrapper-*.jar $GITHUB_WORKSPACE/android/gradle/wrapper/gradle-wrapper.jar)
+          chmod +x android/gradlew
 
-          # Buat folder drawable kalo belum ada
-          mkdir -p android/app/src/main/res/drawable
-          mkdir -p android/app/src/main/res/drawable-v21
-
-          # Buat keypad_button_modern.xml
-          cat > android/app/src/main/res/drawable/keypad_button_modern.xml << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <selector xmlns:android="http://schemas.android.com/apk/res/android">
-              <item android:state_pressed="true">
-                  <shape android:shape="rectangle">
-                      <solid android:color="#4CAF50" />
-                      <corners android:radius="8dp" />
-                      <padding android:bottom="4dp" android:left="4dp" android:right="4dp" android:top="4dp" />
-                  </shape>
-              </item>
-              <item>
-                  <shape android:shape="rectangle">
-                      <solid android:color="#2196F3" />
-                      <corners android:radius="8dp" />
-                      <padding android:bottom="4dp" android:left="4dp" android:right="4dp" android:top="4dp" />
-                  </shape>
-              </item>
-          </selector>
-          EOF
-
-          # Buat versi alternative di drawable-v21
-          cp android/app/src/main/res/drawable/keypad_button_modern.xml android/app/src/main/res/drawable-v21/
-
-          echo "✅ keypad_button_modern.xml created"
-
-      # ============================================
-      # FIX: Alternative - edit layout langsung
-      # ============================================
-      - name: Alternative fix - edit layout files
+      - name: Build Release APK
         run: |
-          echo "🔧 Checking layout files..."
+          cd android
+          ./gradlew assembleRelease --no-daemon
 
-          LAYOUT_FILE="android/app/src/main/res/layout/lock_overlay.xml"
-
-          if [ -f "$LAYOUT_FILE" ]; then
-            echo "📝 Fixing $LAYOUT_FILE"
-
-            # Backup dulu
-            cp "$LAYOUT_FILE" "$LAYOUT_FILE.bak"
-
-            # Ganti referensi keypad_button_modern dengan background warna
-            sed -i 's/drawable\/keypad_button_modern/@color\/white/g' "$LAYOUT_FILE"
-            sed -i 's/@drawable\/keypad_button_modern/@color\/white/g' "$LAYOUT_FILE"
-
-            echo "✅ Layout fixed"
-          else
-            echo "⚠️ Layout file not found: $LAYOUT_FILE"
-          fi
-
-          # Cari semua layout yang mungkin refer ke keypad_button_modern
-          find android/app/src/main/res/layout -name "*.xml" -type f | while read -r file; do
-            if grep -q "keypad_button_modern" "$file"; then
-              echo "📝 Fixing $file"
-              sed -i 's/drawable\/keypad_button_modern/@android:color\/white/g' "$file"
-              sed -i 's/@drawable\/keypad_button_modern/@android:color\/white/g' "$file"
-            fi
-          done
-
-      # ============================================
-      # FIX: app/build.gradle.kts
-      # ============================================
-      - name: Fix app/build.gradle.kts
-        run: |
-          cat > android/app/build.gradle.kts << 'EOF'
-          plugins {
-              id("com.android.application")
-              id("kotlin-android")
-              id("dev.flutter.flutter-gradle-plugin")
-          }
-
-          android {
-              namespace = "com.example.app"
-              compileSdk = 35
-              ndkVersion = "28.2.13676358"
-
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_11
-                  targetCompatibility = JavaVersion.VERSION_11
-              }
-
-              defaultConfig {
-                  applicationId = "com.example.app"
-                  minSdk = 23
-                  targetSdk = 35
-                  versionCode = 1
-                  versionName = "1.0"
-              }
-
-              buildTypes {
-                  release {
-                      signingConfig = signingConfigs.getByName("debug")
-                  }
-              }
-          }
-
-          flutter {
-              source = "../.."
-          }
-          EOF
-
-          echo "✅ app/build.gradle.kts fixed"
-
-      # ============================================
-      # FIX: root build.gradle.kts
-      # ============================================
-      - name: Fix root build.gradle.kts
-        run: |
-          cat > android/build.gradle.kts << 'EOF'
-          buildscript {
-              extra.set("kotlin_version", "1.9.10")
-
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-
-              dependencies {
-                  classpath("com.android.tools.build:gradle:7.3.0")
-                  classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${extra["kotlin_version"]}")
-              }
-          }
-
-          allprojects {
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
-
-          rootProject.buildDir = file("../build")
-          subprojects {
-              project.buildDir = file("${rootProject.buildDir}/${project.name}")
-          }
-          subprojects {
-              project.evaluationDependsOn(":app")
-          }
-
-          tasks.register<Delete>("clean") {
-              delete(rootProject.buildDir)
-          }
-          EOF
-
-          echo "✅ root build.gradle.kts fixed"
-
-      # ============================================
-      # FIX: AndroidManifest.xml
-      # ============================================
-      - name: Fix AndroidManifest.xml
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-
-          if [ ! -f "$MANIFEST" ]; then
-            echo "❌ Manifest not found!"
-            exit 1
-          fi
-
-          cp "$MANIFEST" "$MANIFEST.bak"
-
-          if ! grep -q "xmlns:tools" "$MANIFEST"; then
-            sed -i 's/<manifest /<manifest xmlns:tools="http:\/\/schemas.android.com\/tools" /' "$MANIFEST"
-          fi
-
-          if ! grep -q "tools:overrideLibrary" "$MANIFEST"; then
-            sed -i '/<manifest/a \    <uses-sdk tools:overrideLibrary="io.flutter.plugins.cameraex,io.flutter.plugins.cameras,io.flutter.plugins.camera,io.flutter.plugins.camerax" />' "$MANIFEST"
-          fi
-
-          echo "✅ Manifest fixed"
-
-      # ============================================
-      # FIX: Hapus import R
-      # ============================================
-      - name: Fix Java imports
-        run: |
-          find android -name "*.java" -type f -exec sed -i '/import.*\.R;/d' {} \;
-          echo "✅ Java imports fixed"
-
-      # ============================================
-      # FIX: Duplicate icons
-      # ============================================
-      - name: Fix Duplicate Icons
-        run: |
-          sudo apt-get update -y && sudo apt-get install -y imagemagick || true
-
-          for dir in android/app/src/main/res/mipmap-*; do
-            [ -d "$dir" ] || continue
-            for base in ic_launcher ic_launcher_round ic_launcher_foreground; do
-              jpg="$dir/$base.jpg"
-              [ -f "$jpg" ] || continue
-              if [ -f "$dir/$base.png" ] || [ -f "$dir/$base.webp" ]; then
-                rm -f "$jpg"
-              else
-                convert "$jpg" "$dir/$base.png" 2>/dev/null && rm -f "$jpg"
-              fi
-            done
-          done
-          echo "✅ Icons fixed"
-
-      - name: Set Build Type
-        id: build_info
-        run: |
-          BUILD_TYPE="${{ github.event.inputs.build_type }}"
-          if [ -z "$BUILD_TYPE" ]; then
-            BUILD_TYPE="apk-debug"
-          fi
-          echo "build_type=$BUILD_TYPE" >> $GITHUB_OUTPUT
-          echo "Build type: $BUILD_TYPE"
-
-      # ============================================
-      # CLEAN & BUILD
-      # ============================================
-      - name: Flutter Clean & Pub Get
-        run: |
-          flutter clean
-          rm -rf build/ .gradle/ android/.gradle/
-          flutter config --no-analytics
-          dart --disable-analytics
-          flutter pub get
-          echo "✅ Ready to build!"
-
-      - name: Build APK Debug
-        if: steps.build_info.outputs.build_type == 'apk-debug'
-        run: |
-          flutter build apk --debug \
-            --no-shrink \
-            --target-platform android-arm,android-arm64,android-x64
-
-      - name: Build APK Release
-        if: steps.build_info.outputs.build_type == 'apk-release'
-        run: |
-          flutter build apk --release \
-            --obfuscate \
-            --split-debug-info=build/debug-info \
-            --target-platform android-arm,android-arm64,android-x64
-
-      - name: Build AAB Release
-        if: steps.build_info.outputs.build_type == 'aab-release'
-        run: |
-          flutter build appbundle --release \
-            --obfuscate \
-            --split-debug-info=build/debug-info
-
-      - name: Prepare Output Files
+      - name: Rename APK
         run: |
           mkdir -p output
-          BUILD_TYPE="${{ steps.build_info.outputs.build_type }}"
-          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-          APP_NAME=$(grep '^name:' pubspec.yaml | awk '{print $2}' | tr -d '\r')
+          find android/app/build/outputs/apk/release/ -name "*.apk" | head -1 | xargs -I{} cp {} output/SyncXxX.apk
 
-          if [ "$BUILD_TYPE" = "apk-debug" ]; then
-            APK_PATH=$(find build/app/outputs/flutter-apk -name "*.apk" | head -1)
-            [ -f "$APK_PATH" ] && cp "$APK_PATH" "output/${APP_NAME}_debug_${TIMESTAMP}.apk" || exit 1
-          elif [ "$BUILD_TYPE" = "apk-release" ]; then
-            APK_PATH=$(find build/app/outputs/flutter-apk -name "app-release.apk" | head -1)
-            [ -f "$APK_PATH" ] && cp "$APK_PATH" "output/${APP_NAME}_release_${TIMESTAMP}.apk" || exit 1
-          elif [ "$BUILD_TYPE" = "aab-release" ]; then
-            AAB_PATH=$(find build/app/outputs/bundle/release -name "*.aab" | head -1)
-            [ -f "$AAB_PATH" ] && cp "$AAB_PATH" "output/${APP_NAME}_release_${TIMESTAMP}.aab" || exit 1
-          fi
-
-          echo "✅ Output files:"
-          ls -lh output/
-
-      - name: Upload Build Artifact
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-build-${{ steps.build_info.outputs.build_type }}-${{ github.run_number }}
-          path: output/
-          retention-days: 3
-          if-no-files-found: error
-
-      - name: Build Summary
-        if: always()
-        run: |
-          echo "## Flutter Build Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| Build Type | ${{ steps.build_info.outputs.build_type }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Flutter Version | ${{ github.event.inputs.flutter_version != '' && github.event.inputs.flutter_version || '3.32.8 (default)' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| minSdkVersion | 23 ✅ |" >> $GITHUB_STEP_SUMMARY
-          echo "| Missing Drawable | keypad_button_modern (FIXED ✅) |" >> $GITHUB_STEP_SUMMARY
-          echo "| Run Number | #${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          name: CyberPro-APK
+          path: output/SyncXxX.apk
+          retention-days: 30
