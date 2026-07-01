@@ -1,53 +1,12 @@
-// login_page.dart
 import 'dart:convert';
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
-import 'api_config.dart';
 import 'splash.dart';
 
-// ─── Palette: Dark Premium dengan Warna Cerah (Tanpa Hitam) ──────────────────
-class _C {
-  // Background - navy/indigo tones
-  static const bg         = Color(0xFF0B1120);    // navy gelap
-  static const surface    = Color(0xFF111827);    // slate gelap
-  static const card       = Color(0xFF1E293B);    // slate medium
-  static const border     = Color(0xFF334155);    // slate terang
-  static const borderLit  = Color(0xFF475569);    // slate lebih terang
-
-  // Warna aksen - biru, cyan, emas (cerah)
-  static const steel      = Color(0xFF60A5FA);    // biru terang
-  static const blueMid    = Color(0xFF3B82F6);    // biru medium
-  static const blueLight  = Color(0xFF93C5FD);    // biru muda
-  static const chrome     = Color(0xFF38BDF8);    // cyan
-  static const frost      = Color(0xFFBAE6FD);    // cyan muda
-
-  // Warna status
-  static const green      = Color(0xFF22C55E);
-  static const amber      = Color(0xFFF59E0B);
-  static const red        = Color(0xFFEF4444);
-
-  // Teks
-  static const text       = Color(0xFFF3F4F6);    // putih
-  static const textSub    = Color(0xFF9CA3AF);    // abu terang
-  static const textDim    = Color(0xFF6B7280);    // abu medium
-
-  // Gradien
-  static const LinearGradient metalGrad = LinearGradient(
-    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8), Color(0xFF1E3A8A)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-  
-  static const LinearGradient accentGrad = LinearGradient(
-    colors: [Color(0xFF38BDF8), Color(0xFF3B82F6), Color(0xFF6366F1)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-}
+const String baseUrl = "https://panel-private-yanz.fansjkt48.web.id:10918";
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -58,901 +17,435 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage>
     with TickerProviderStateMixin {
-  final userCtrl    = TextEditingController();
-  final passCtrl    = TextEditingController();
-  final _formKey    = GlobalKey<FormState>();
+  final userController = TextEditingController();
+  final passController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
 
-  bool _isLoading       = false;
-  bool _obscurePass     = true;
-  String? _androidId;
+  bool isLoading = false;
+  bool _obscurePassword = true;
+  bool _navigated = false;
+  String? androidId;
 
-  // Splash state
-  bool _showSplash = false;
-  double _splashImageOpacity = 0.0;
-
-  // Animations
-  late AnimationController _bgCtrl;
-  late AnimationController _entranceCtrl;
-  late AnimationController _logoCtrl;
-  late AnimationController _btnCtrl;
-  late AnimationController _shakeCtrl;
-
-  late Animation<double> _fade;
-  late Animation<Offset>  _slide;
-  late Animation<double>  _logoGlow;
-  late Animation<double>  _btnPulse;
-  late Animation<double>  _shake;
+  late AnimationController _slideController;
+  late AnimationController _rotateController;
+  late Animation<Offset> _slideAnim;
+  late Animation<double> _rotateAnim;
 
   @override
   void initState() {
     super.initState();
-
-    _bgCtrl = AnimationController(
-        vsync: this, duration: const Duration(seconds: 18))
-      ..repeat();
-
-    _entranceCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1000));
-    _fade  = CurvedAnimation(parent: _entranceCtrl, curve: Curves.easeOut);
-    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(CurvedAnimation(
-            parent: _entranceCtrl, curve: Curves.easeOutCubic));
-
-    _logoCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2200))
-      ..repeat(reverse: true);
-    _logoGlow = Tween<double>(begin: 0.4, end: 1.0)
-        .animate(CurvedAnimation(parent: _logoCtrl, curve: Curves.easeInOut));
-
-    _btnCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1600))
-      ..repeat(reverse: true);
-    _btnPulse = Tween<double>(begin: 1.0, end: 1.05)
-        .animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeInOut));
-
-    _shakeCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 500));
-    _shake = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -8.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -8.0, end: 8.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 8.0, end: -5.0),  weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -5.0, end: 5.0),   weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 5.0, end: 0.0),    weight: 1),
-    ]).animate(CurvedAnimation(parent: _shakeCtrl, curve: Curves.easeInOut));
-
-    _entranceCtrl.forward();
+    _initAnim();
     _initLogin();
+  }
+
+  void _initAnim() {
+    _slideController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    )..forward();
+
+    _rotateController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 20),
+    )..repeat();
+
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _slideController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
+
+    _rotateAnim =
+        Tween<double>(begin: 0, end: 1).animate(_rotateController);
+  }
+
+  Future<void> _initLogin() async {
+    androidId = await _getAndroidId();
+
+    final prefs = await SharedPreferences.getInstance();
+    final savedUser = prefs.getString("username");
+    final savedPass = prefs.getString("password");
+    final savedKey = prefs.getString("key");
+
+    if (savedUser == null || savedPass == null || savedKey == null) return;
+
+    try {
+      final res = await http.get(Uri.parse(
+        "$baseUrl/myInfo"
+        "?username=$savedUser"
+        "&password=$savedPass"
+        "&androidId=$androidId"
+        "&key=$savedKey",
+      ));
+
+      final data = jsonDecode(res.body);
+      if (data['valid'] == true && mounted && !_navigated) {
+        _goToSplash(savedUser, savedPass, data);
+      }
+    } catch (_) {}
+  }
+
+  Future<String> _getAndroidId() async {
+    final deviceInfo = DeviceInfoPlugin();
+    final android = await deviceInfo.androidInfo;
+    return android.id ?? "unknown_device";
+  }
+
+  Future<void> login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final username = userController.text.trim();
+    final password = passController.text.trim();
+
+    setState(() => isLoading = true);
+
+    try {
+      final res = await http.post(
+        Uri.parse("$baseUrl/validate"),
+        body: {
+          "username": username,
+          "password": password,
+          "androidId": androidId ?? "unknown_device",
+        },
+      );
+
+      final data = jsonDecode(res.body);
+      if (!mounted) return;
+
+      if (data['expired'] == true) {
+        _showPopup(
+          title: "⏳ Access Expired",
+          message: "Your access has expired.\nPlease renew it.",
+          color: Colors.amber,
+          showContact: true,
+        );
+      } else if (data['valid'] != true) {
+        _showPopup(
+          title: "❌ Login Failed",
+          message: "Invalid username or password.",
+          color: Colors.redAccent,
+        );
+      } else if (!_navigated) {
+        final prefs = await SharedPreferences.getInstance();
+        prefs.setString("username", username);
+        prefs.setString("password", password);
+        prefs.setString("key", data['key']);
+
+        _goToSplash(username, password, data);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _showPopup(
+        title: "⚠️ Connection Error",
+        message:
+            "Failed to connect to the server.\nPlease check your connection.",
+        color: Colors.teal,
+      );
+    } finally {
+      if (mounted) setState(() => isLoading = false);
+    }
+  }
+
+  void _goToSplash(String user, String pass, Map<String, dynamic> data) {
+    _navigated = true;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SplashScreen(
+          username: user,
+          password: pass,
+          role: data['role'],
+          sessionKey: data['key'],
+          expiredDate: data['expiredDate'],
+          listBug: (data['listBug'] as List? ?? [])
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(),
+          listDoos: (data['listDoos'] as List? ?? [])
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  void _showPopup({
+    required String title,
+    required String message,
+    Color color = Colors.redAccent,
+    bool showContact = false,
+  }) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        ),
+        content: Text(
+          message,
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          if (showContact)
+            TextButton(
+              onPressed: () async {
+                await launchUrl(
+                  Uri.parse("https://t.me/KaiiOfficial"),
+                  mode: LaunchMode.externalApplication,
+                );
+              },
+              child: const Text("Contact Admin"),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Close"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   void dispose() {
-    _bgCtrl.dispose();
-    _entranceCtrl.dispose();
-    _logoCtrl.dispose();
-    _btnCtrl.dispose();
-    _shakeCtrl.dispose();
-    userCtrl.dispose();
-    passCtrl.dispose();
+    _slideController.dispose();
+    _rotateController.dispose();
+    userController.dispose();
+    passController.dispose();
     super.dispose();
   }
 
-  // ─── Init auto-login ──────────────────────────────────────────────────────
-  Future<void> _initLogin() async {
-    final info = await DeviceInfoPlugin().androidInfo;
-    _androidId = info.id;
-
-    final prefs    = await SharedPreferences.getInstance();
-    final savedUser = prefs.getString('username');
-    final savedPass = prefs.getString('password');
-    final savedKey  = prefs.getString('key');
-
-    if (savedUser != null && savedPass != null && savedKey != null) {
-      try {
-        final res  = await http.get(Uri.parse(
-            '$baseUrl/myInfo?username=$savedUser&password=$savedPass&androidId=$_androidId&key=$savedKey'));
-        final data = jsonDecode(res.body);
-
-        if (data['valid'] == true && mounted) {
-          _showSplashAndNavigate(data, savedUser, savedPass);
-        }
-      } catch (_) {}
-    }
-  }
-
-  List<Map<String, dynamic>> _parseList(dynamic raw) =>
-      (raw as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-
-  // ─── Splash & Navigate ────────────────────────────────────────────────────
-  void _showSplashAndNavigate(Map data, String username, String password) {
-    if (!mounted) return;
-    setState(() {
-      _showSplash = true;
-      _splashImageOpacity = 0.0;
-    });
-
-    // Fade in (0.8s)
-    Future.delayed(const Duration(milliseconds: 80), () {
-      if (!mounted) return;
-      setState(() => _splashImageOpacity = 1.0);
-    });
-
-    // Fade out start at 2.2s → fade out (0.8s)
-    Future.delayed(const Duration(milliseconds: 2200), () {
-      if (!mounted) return;
-      setState(() => _splashImageOpacity = 0.0);
-    });
-
-    // Navigate at 3s total
-    Future.delayed(const Duration(milliseconds: 3000), () {
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => SplashScreen(
-          username: username, password: password,
-          role: data['role'], sessionKey: data['key'],
-          expiredDate: data['expiredDate'],
-          listBug: _parseList(data['listBug']),
-          listDoos: _parseList(data['listDDoS']),
-          news: _parseList(data['news']),
-        )),
-      );
-    });
-  }
-
-  // ─── Login ────────────────────────────────────────────────────────────────
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final username = userCtrl.text.trim();
-    final password = passCtrl.text.trim();
-
-    setState(() => _isLoading = true);
-
-    try {
-      final res  = await http.post(Uri.parse('$baseUrl/validate'), body: {
-        'username': username,
-        'password': password,
-        'androidId': _androidId ?? 'unknown',
-      });
-      final data = jsonDecode(res.body);
-
-      if (data['expired'] == true) {
-        _shakeCtrl.forward(from: 0);
-        _showAlert(
-          title:   'Akses Habis',
-          message: 'Masa akses Anda telah berakhir. Silakan perpanjang.',
-          type:    _AlertType.warning,
-          showContact: true,
-        );
-      } else if (data['valid'] != true) {
-        _shakeCtrl.forward(from: 0);
-        final msg = (data['message'] ?? '').toString().toLowerCase();
-        if (msg.contains('perangkat') || msg.contains('device') ||
-            msg.contains('another')) {
-          _showAlert(
-            title:   'Sesi Aktif',
-            message: 'Akun ini sedang login di perangkat lain.',
-            type:    _AlertType.warning,
-          );
-        } else {
-          _showAlert(
-            title:   'Login Gagal',
-            message: 'Username atau password salah.',
-            type:    _AlertType.error,
-          );
-        }
-      } else {
-        final prefs = await SharedPreferences.getInstance();
-        prefs.setString('username', username);
-        prefs.setString('password', password);
-        prefs.setString('key', data['key']);
-
-        if (mounted) {
-          _showSplashAndNavigate(data, username, password);
-        }
-      }
-    } catch (_) {
-      _shakeCtrl.forward(from: 0);
-      _showAlert(
-        title:   'Koneksi Error',
-        message: 'Gagal terhubung ke server. Periksa jaringan Anda.',
-        type:    _AlertType.error,
-      );
-    }
-
-    if (mounted) setState(() => _isLoading = false);
-  }
-
-  // ─── Alert dialog ─────────────────────────────────────────────────────────
-  void _showAlert({
-    required String title,
-    required String message,
-    required _AlertType type,
-    bool showContact = false,
-  }) {
-    final color = switch (type) {
-      _AlertType.error   => _C.red,
-      _AlertType.warning => _C.amber,
-      _AlertType.success => _C.green,
-    };
-    final icon = switch (type) {
-      _AlertType.error   => Icons.error_rounded,
-      _AlertType.warning => Icons.warning_amber_rounded,
-      _AlertType.success => Icons.check_circle_rounded,
-    };
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: '',
-      barrierColor: Colors.black87,
-      transitionDuration: const Duration(milliseconds: 320),
-      transitionBuilder: (_, anim, __, child) => ScaleTransition(
-        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-        child: FadeTransition(opacity: anim, child: child),
-      ),
-      pageBuilder: (ctx, _, __) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_C.card, _C.surface],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
-            boxShadow: [
-              BoxShadow(color: color.withOpacity(0.15), blurRadius: 50),
-            ],
-          ),
-          padding: const EdgeInsets.all(28),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: 60, height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withOpacity(0.1),
-                border: Border.all(color: color.withOpacity(0.3)),
-              ),
-              child: Icon(icon, color: color, size: 30),
-            ),
-            const SizedBox(height: 18),
-            Text(title, style: const TextStyle(color: _C.text,
-                fontSize: 20, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 10),
-            Text(message, textAlign: TextAlign.center,
-                style: const TextStyle(color: _C.textSub,
-                    fontSize: 13, height: 1.5)),
-            const SizedBox(height: 24),
-            if (showContact) ...[
-              _GradBtn(
-                label: 'HUBUNGI ADMIN',
-                fullWidth: true,
-                onTap: () async {
-                  Navigator.pop(ctx);
-                  await launchUrl(Uri.parse('https://t.me/MarvelNovaX'),
-                      mode: LaunchMode.externalApplication);
-                },
-              ),
-              const SizedBox(height: 12),
-            ],
-            _OutlineBtn(
-              label: showContact ? 'TUTUP' : 'OK',
-              fullWidth: true,
-              onTap: () => Navigator.pop(ctx),
-            ),
-          ]),
-        ),
-      ),
-    );
-  }
-
-  // ─── Build ────────────────────────────────────────────────────────────────
+  // ======================= UI BUILD METHOD (ASLI LU) =======================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.bg,
-      body: Stack(
-        children: [
-          Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fade,
-              child: SlideTransition(
-                position: _slide,
-                child: Center(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildLogo(),
-                        const SizedBox(height: 28),
-                        _buildHeading(),
-                        const SizedBox(height: 32),
-                        AnimatedBuilder(
-                          animation: _shake,
-                          builder: (_, child) => Transform.translate(
-                            offset: Offset(_shake.value, 0),
-                            child: child,
-                          ),
-                          child: _buildForm(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFF0F3460),
+              Color(0xFF16213E),
+              Color(0xFF0F3460)
+            ],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              top: -100,
+              left: -100,
+              child: AnimatedBuilder(
+                animation: _rotateAnim,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _rotateAnim.value * 2 * 3.14159,
+                    child: Container(
+                      width: 300,
+                      height: 300,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.teal.withOpacity(0.1),
+                          width: 2,
                         ),
-                        const SizedBox(height: 24),
-                        _buildFooter(),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
-          ),
-          // Splash overlay
-          if (_showSplash) _buildSplashOverlay(),
-        ],
-      ),
-    );
-  }
-
-  // ─── Logo ─────────────────────────────────────────────────────────────────
-  Widget _buildLogo() {
-    return AnimatedBuilder(
-      animation: _logoGlow,
-      builder: (_, __) => Stack(
-        alignment: Alignment.center,
-        children: [
-          // Outer ring glow
-          Container(
-            width: 130, height: 130,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  _C.blueMid.withOpacity(_logoGlow.value * 0.15),
-                  Colors.transparent,
-                ],
-                radius: 0.8,
+            Positioned(
+              bottom: -150,
+              right: -150,
+              child: AnimatedBuilder(
+                animation: _rotateAnim,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: -_rotateAnim.value * 2 * 3.14159,
+                    child: Container(
+                      width: 400,
+                      height: 400,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.blue.withOpacity(0.1),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
-          ),
-          // Outer ring
-          Container(
-            width: 110, height: 110,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _C.blueMid.withOpacity(_logoGlow.value * 0.3),
-                width: 1.5,
-              ),
-            ),
-          ),
-          // Mid ring
-          Container(
-            width: 92, height: 92,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: _C.blueLight.withOpacity(_logoGlow.value * 0.5),
-                width: 2,
-              ),
-            ),
-          ),
-          // Core
-          Hero(
-            tag: 'logo',
-            child: Container(
-              width: 76, height: 76,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1E293B), Color(0xFF111827)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: _C.blueLight.withOpacity(_logoGlow.value * 0.8),
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: _C.blueMid.withOpacity(_logoGlow.value * 0.6),
-                    blurRadius: 30,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Image.asset('assets/images/logo.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(
-                      Icons.rocket_rounded, color: _C.blueLight, size: 40)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeading() {
-    return Column(children: [
-      ShaderMask(
-        shaderCallback: (b) => const LinearGradient(
-          colors: [Color(0xFF60A5FA), Color(0xFF38BDF8), Color(0xFFA78BFA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ).createShader(b),
-        child: const Text(
-          'Bellion-Space',
-          style: TextStyle(
-            fontSize: 30,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            letterSpacing: 1,
-          ),
-        ),
-      ),
-      const SizedBox(height: 8),
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: _C.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _C.border, width: 1),
-        ),
-        child: const Text('Masuk untuk melanjutkan',
-            style: TextStyle(color: _C.textSub, fontSize: 13,
-                fontWeight: FontWeight.w500)),
-      ),
-    ]);
-  }
-
-  // ─── Form ─────────────────────────────────────────────────────────────────
-  Widget _buildForm() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_C.card, _C.surface],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _C.border, width: 1),
-        boxShadow: [
-          BoxShadow(color: _C.blueMid.withOpacity(0.1),
-              blurRadius: 40, offset: const Offset(0, 15)),
-        ],
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(children: [
-          // Section header with icon
-          Row(children: [
-            Container(
-              width: 5, height: 20,
-              decoration: BoxDecoration(
-                gradient: _C.accentGrad,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Icon(Icons.account_circle_rounded,
-                color: _C.blueMid, size: 18),
-            const SizedBox(width: 8),
-            const Text('KREDENSIAL AKUN',
-                style: TextStyle(color: _C.text, fontSize: 13,
-                    fontWeight: FontWeight.w700, letterSpacing: 0.5)),
-          ]),
-          const SizedBox(height: 22),
-
-          // Username
-          _LoginField(
-            controller: userCtrl,
-            label: 'Username',
-            icon: Icons.person_outline_rounded,
-            validator: (v) => (v == null || v.isEmpty)
-                ? 'Username tidak boleh kosong' : null,
-          ),
-          const SizedBox(height: 16),
-
-          // Password
-          _LoginField(
-            controller: passCtrl,
-            label: 'Password',
-            icon: Icons.lock_outline_rounded,
-            obscure: _obscurePass,
-            onToggleObscure: () =>
-                setState(() => _obscurePass = !_obscurePass),
-            validator: (v) => (v == null || v.isEmpty)
-                ? 'Password tidak boleh kosong' : null,
-          ),
-          const SizedBox(height: 28),
-
-          // Submit
-          _LoginButton(
-            isLoading: _isLoading,
-            pulseAnim: _btnPulse,
-            onTap: _login,
-          ),
-        ]),
-      ),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Text('Belum punya akses? ',
-            style: TextStyle(color: _C.textSub, fontSize: 13)),
-        GestureDetector(
-          onTap: () => launchUrl(
-              Uri.parse('https://t.me/MarvelNovaX'),
-              mode: LaunchMode.externalApplication),
-          child: ShaderMask(
-            shaderCallback: (b) => _C.accentGrad.createShader(b),
-            child: const Text('BELI SEKARANG',
-                style: TextStyle(color: Colors.white, fontSize: 13,
-                    fontWeight: FontWeight.w800, letterSpacing: 0.5)),
-          ),
-        ),
-      ]),
-      const SizedBox(height: 24),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.circle, color: _C.blueMid, size: 5),
-        const SizedBox(width: 8),
-        const Text('© 2026 Bellion-Space',
-            style: TextStyle(color: _C.textDim, fontSize: 11,
-                fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-        const SizedBox(width: 8),
-        Icon(Icons.circle, color: _C.blueMid, size: 5),
-      ]),
-    ]);
-  }
-
-  // ─── Splash Overlay ──────────────────────────────────────────────────────
-  Widget _buildSplashOverlay() {
-    return Container(
-      color: Colors.black,
-      child: Center(
-        child: AnimatedOpacity(
-          opacity: _splashImageOpacity,
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOut,
-          child: Image.asset(
-            'assets/images/bokep.png',
-            width: MediaQuery.of(context).size.width * 0.85,
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Login Field ──────────────────────────────────────────────────────────────
-class _LoginField extends StatefulWidget {
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool obscure;
-  final VoidCallback? onToggleObscure;
-  final String? Function(String?)? validator;
-
-  const _LoginField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    this.obscure = false,
-    this.onToggleObscure,
-    this.validator,
-  });
-
-  @override
-  State<_LoginField> createState() => _LoginFieldState();
-}
-
-class _LoginFieldState extends State<_LoginField> {
-  bool _focused = false;
-  final _focus = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => setState(() => _focused = _focus.hasFocus));
-  }
-
-  @override
-  void dispose() { _focus.dispose(); super.dispose(); }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: _C.bg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _focused ? _C.blueMid : _C.border,
-          width: _focused ? 1.5 : 1.0,
-        ),
-        boxShadow: _focused
-            ? [BoxShadow(color: _C.blueMid.withOpacity(0.15),
-                blurRadius: 16, offset: const Offset(0, 4))]
-            : [],
-      ),
-      child: TextFormField(
-        controller: widget.controller,
-        focusNode: _focus,
-        obscureText: widget.obscure,
-        validator: widget.validator,
-        style: const TextStyle(color: _C.text, fontSize: 15,
-            fontWeight: FontWeight.w500),
-        cursorColor: _C.blueMid,
-        decoration: InputDecoration(
-          labelText: widget.label,
-          labelStyle: TextStyle(color: _focused ? _C.blueLight : _C.textSub, 
-              fontSize: 13, fontWeight: FontWeight.w500),
-          floatingLabelStyle:
-              const TextStyle(color: _C.blueMid, fontSize: 11),
-          prefixIcon: Icon(widget.icon,
-              color: _focused ? _C.blueLight : _C.textSub, size: 20),
-          suffixIcon: widget.onToggleObscure != null
-              ? IconButton(
-                  icon: Icon(
-                    widget.obscure
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    color: _focused ? _C.blueLight : _C.textSub, size: 20,
-                  ),
-                  onPressed: widget.onToggleObscure,
-                )
-              : null,
-          errorStyle: const TextStyle(color: _C.red, fontSize: 11),
-          border: InputBorder.none,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Login Button ─────────────────────────────────────────────────────────────
-class _LoginButton extends StatefulWidget {
-  final bool isLoading;
-  final Animation<double> pulseAnim;
-  final VoidCallback onTap;
-
-  const _LoginButton({
-    required this.isLoading,
-    required this.pulseAnim,
-    required this.onTap,
-  });
-
-  @override
-  State<_LoginButton> createState() => _LoginButtonState();
-}
-
-class _LoginButtonState extends State<_LoginButton> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) {
-        setState(() => _down = false);
-        if (!widget.isLoading) widget.onTap();
-      },
-      onTapCancel: () => setState(() => _down = false),
-      child: AnimatedBuilder(
-        animation: widget.pulseAnim,
-        builder: (_, __) => Transform.scale(
-          scale: widget.isLoading || _down ? 1.0 : widget.pulseAnim.value,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            height: 56,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: widget.isLoading ? _C.metalGrad : _C.accentGrad,
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: _down || widget.isLoading
-                  ? []
-                  : [
+            Center(
+              child: SlideTransition(
+                position: _slideAnim,
+                child: Container(
+                  margin: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: Colors.teal.withOpacity(0.3),
+                      width: 1,
+                    ),
+                    boxShadow: [
                       BoxShadow(
-                        color: _C.blueMid.withOpacity(
-                            widget.pulseAnim.value * 0.5),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 20,
+                        spreadRadius: 5,
                       ),
                     ],
-            ),
-            child: Center(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                child: widget.isLoading
-                    ? const SizedBox(
-                        key: ValueKey('loading'),
-                        width: 22, height: 22,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2.5, color: Colors.white),
-                      )
-                    : const Row(
-                        key: ValueKey('idle'),
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.login_rounded,
-                              color: Colors.white, size: 20),
-                          SizedBox(width: 12),
-                          Text('MASUK',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 1,
-                              )),
-                        ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [Colors.teal, Colors.blue],
+                          ),
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/images/logo.jpg',
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        "RavenGetSuzo",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        "Please Log-in",
+                        style: TextStyle(
+                          color: Colors.white54,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            _buildMinimalInput(
+                                userController, "Username", Icons.person),
+                            const SizedBox(height: 16),
+                            _buildMinimalInput(
+                              passController,
+                              "Password",
+                              Icons.lock,
+                              isPassword: true,
+                            ),
+                            const SizedBox(height: 32),
+                            _buildMinimalButton(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMinimalInput(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: isPassword ? _obscurePassword : false,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: label,
+          hintStyle: const TextStyle(color: Colors.white38),
+          prefixIcon: Icon(icon, color: Colors.teal.withOpacity(0.7)),
+          suffixIcon: isPassword
+              ? IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off
+                        : Icons.visibility,
+                    color: Colors.white38,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
           ),
         ),
       ),
     );
   }
-}
 
-// ─── Gradient Button ──────────────────────────────────────────────────────────
-class _GradBtn extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool fullWidth;
-
-  const _GradBtn({required this.label, required this.onTap,
-      this.fullWidth = false});
-
-  @override
-  State<_GradBtn> createState() => _GradBtnState();
-}
-
-class _GradBtnState extends State<_GradBtn> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _down = false),
-      child: AnimatedScale(
-        scale: _down ? 0.96 : 1.0,
-        duration: const Duration(milliseconds: 120),
-        child: Container(
-          height: 48,
-          width: widget.fullWidth ? double.infinity : null,
-          decoration: BoxDecoration(
-            gradient: _C.metalGrad,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: _down ? [] : [
-              BoxShadow(color: _C.blueMid.withOpacity(0.4),
-                  blurRadius: 16, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: Center(
-            child: Text(widget.label,
-                style: const TextStyle(color: Colors.white,
-                    fontWeight: FontWeight.w800, fontSize: 14,
-                    letterSpacing: 0.5)),
-          ),
+  Widget _buildMinimalButton() {
+    return Container(
+      width: double.infinity,
+      height: 50,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          colors: [Colors.teal, Colors.blue],
         ),
+      ),
+      child: ElevatedButton(
+        onPressed: isLoading ? null : login,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+        ),
+        child: isLoading
+            ? const CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              )
+            : const Text(
+                "LOGIN",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 1.2,
+                ),
+              ),
       ),
     );
   }
 }
-
-// ─── Outline Button ───────────────────────────────────────────────────────────
-class _OutlineBtn extends StatefulWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool fullWidth;
-
-  const _OutlineBtn({required this.label, required this.onTap,
-      this.fullWidth = false});
-
-  @override
-  State<_OutlineBtn> createState() => _OutlineBtnState();
-}
-
-class _OutlineBtnState extends State<_OutlineBtn> {
-  bool _down = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _down = true),
-      onTapUp: (_) { setState(() => _down = false); widget.onTap(); },
-      onTapCancel: () => setState(() => _down = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
-        height: 48,
-        width: widget.fullWidth ? double.infinity : null,
-        decoration: BoxDecoration(
-          color: _down ? _C.border.withOpacity(0.3) : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _C.border, width: 1.5),
-        ),
-        child: Center(
-          child: Text(widget.label,
-              style: const TextStyle(color: _C.textSub,
-                  fontWeight: FontWeight.w700, fontSize: 14,
-                  letterSpacing: 0.5)),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Animated Background ──────────────────────────────────────────────────────
-class _AnimatedBg extends StatelessWidget {
-  final AnimationController controller;
-  const _AnimatedBg({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) =>
-          CustomPaint(painter: _BgPainter(controller.value)),
-    );
-  }
-}
-
-class _BgPainter extends CustomPainter {
-  final double t;
-  _BgPainter(this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = _C.border.withOpacity(0.2)
-      ..strokeWidth = 0.8;
-    const step = 40.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-    
-    final glow = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.blueMid.withOpacity(0.12 + math.sin(t * math.pi * 2) * 0.04),
-        Colors.transparent,
-      ], radius: 0.75).createShader(Rect.fromCircle(
-          center: Offset(size.width / 2, size.height * 0.35),
-          radius: size.width * 0.7));
-    canvas.drawCircle(
-        Offset(size.width / 2, size.height * 0.35), size.width * 0.7, glow);
-
-    final glow2 = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.chrome.withOpacity(0.08 + math.cos(t * math.pi * 2) * 0.03),
-        Colors.transparent,
-      ], radius: 0.5).createShader(Rect.fromCircle(
-          center: Offset(size.width * 0.15, size.height * 0.75),
-          radius: size.width * 0.4));
-    canvas.drawCircle(
-        Offset(size.width * 0.15, size.height * 0.75), size.width * 0.4, glow2);
-  }
-
-  @override
-  bool shouldRepaint(_BgPainter old) => old.t != t;
-}
-
-enum _AlertType { error, warning, success }

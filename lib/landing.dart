@@ -1,35 +1,8 @@
-import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:video_player/video_player.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'api_config.dart';
-import 'login_page.dart';
-
-// ─── Palette: Dark Cyan/Teal ────────────────────────────────
-class _C {
-  // Background tones - dark navy/slate
-  static const bg         = Color(0xFF0E1117);
-  static const surface    = Color(0xFF161B22);
-  static const card       = Color(0xFF1A1F2B);
-  static const logoBg     = Color(0xFF1C2130);
-  static const border     = Color(0xFF2A3040);
-  
-  static const cyan       = Color(0xFF1DE9B6);
-  static const cyanDark   = Color(0xFF00C9A0);
-  static const cyanDim    = Color(0xFF0D8A72);
-  static const cyanBorder = Color(0xFF1DE9B6);
-  
-  static const text       = Color(0xFFECEFF4);
-  static const textSub    = Color(0xFFADB5BD);
-  static const textDim    = Color(0xFF6B7280);
-
-  static const socialCyan = Color(0xFF1DE9B6);
-  static const socialGrey = Color(0xFF2A3040);
-  static const socialPurple = Color(0xFF7C3AED);
-}
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -38,537 +11,445 @@ class LandingPage extends StatefulWidget {
   State<LandingPage> createState() => _LandingPageState();
 }
 
-class _LandingPageState extends State<LandingPage>
-    with TickerProviderStateMixin {
-
-  late AnimationController _fadeCtrl;
-  late Animation<double> _fadeAnim;
-  late AnimationController _floatCtrl;
+class _LandingPageState extends State<LandingPage> with TickerProviderStateMixin {
+  late VideoPlayerController _controller;
+  late AnimationController _fadeController;
+  late AnimationController _slideController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
   @override
   void initState() {
     super.initState();
-    _fadeCtrl = AnimationController(
+    _controller = VideoPlayerController.asset("assets/videos/landing.mp4")
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.setLooping(true);
+        _controller.play();
+      });
+
+    _fadeController = AnimationController(
+      duration: const Duration(seconds: 2),
       vsync: this,
-      duration: const Duration(milliseconds: 800),
     );
-    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
-    
-    _floatCtrl = AnimationController(
+
+    _slideController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fadeCtrl.forward();
-    });
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _slideController, curve: Curves.elasticOut),
+    );
+
+    _fadeController.forward();
+    _slideController.forward();
   }
 
   @override
   void dispose() {
-    _fadeCtrl.dispose();
-    _floatCtrl.dispose();
+    _controller.dispose();
+    _fadeController.dispose();
+    _slideController.dispose();
     super.dispose();
   }
 
   Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
+    final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      throw Exception('Could not launch $uri');
+      throw Exception("Could not launch $uri");
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.bg,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [
-              _C.surface,
-              _C.bg,
-              Color(0xFF0A0C10),
-            ],
-            stops: [0, 0.5, 1],
-          ),
-        ),
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnim,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 24),
-                  _buildLogoBox(),
-                  const SizedBox(height: 32),
-                  _buildBigTitle(),
-                  const SizedBox(height: 28),
-                  _buildDescCard(),
-                  const SizedBox(height: 20),
-                  _buildLoginButton(),
-                  const SizedBox(height: 14),
-                  _buildContactSupportButton(),
-                  const SizedBox(height: 28),
-                  _buildSocialSection(),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogoBox() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 24),
-    child: AnimatedBuilder(
-      animation: _floatCtrl,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, 5 * _floatCtrl.value),
-          child: Container(
-            width: double.infinity,
-            height: 210,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _C.logoBg.withOpacity(0.9),
-                  _C.card.withOpacity(0.8),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: _C.cyan.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: _C.cyan.withOpacity(0.1),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                  offset: const Offset(0, 10),
+      backgroundColor: const Color(0xFF0A0E27),
+      body: Stack(
+        children: [
+          // Background pattern
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topRight,
+                  radius: 1.5,
+                  colors: [
+                    Color(0xFF1A237E),
+                    Color(0xFF0A0E27),
+                    Color(0xFF000511),
+                  ],
                 ),
-              ],
+              ),
+              child: CustomPaint(
+                painter: BackgroundPattern(),
+              ),
             ),
-            child: Stack(
-              fit: StackFit.expand,
+          ),
+
+          // Main content
+          SafeArea(
+            child: Column(
               children: [
-                // Gambar full bingkai
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Image.asset(
-                    'assets/images/login.png',
-                    width: double.infinity,
-                    height: double.infinity,
-                    fit: BoxFit.cover,
+                // Header with logo
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Image.asset(
+                          "assets/images/logo.jpg",
+                          width: 40,
+                          height: 40,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: const Text(
+                          "V10.0",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                // Overlay gelap agar teks lebih terbaca
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(28),
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [
-                        Colors.black.withOpacity(0.7),
-                        Colors.transparent,
+
+                // Video section with new design
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 20),
+
+                        // Video container with new design
+                        FadeTransition(
+                          opacity: _fadeAnimation,
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: Container(
+                              height: 280,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF3949AB).withOpacity(0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Stack(
+                                  children: [
+                                    _controller.value.isInitialized
+                                        ? SizedBox(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      child: FittedBox(
+                                        fit: BoxFit.cover,
+                                        child: SizedBox(
+                                          width: _controller.value.size.width,
+                                          height: _controller.value.size.height,
+                                          child: VideoPlayer(_controller),
+                                        ),
+                                      ),
+                                    )
+                                        : Container(
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      color: const Color(0xFF1A237E),
+                                      child: const Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            CircularProgressIndicator(
+                                              color: Color(0xFF5C6BC0),
+                                              strokeWidth: 3,
+                                            ),
+                                            SizedBox(height: 16),
+                                            Text(
+                                              "Loading content...",
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Gradient overlay
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topCenter,
+                                            end: Alignment.bottomCenter,
+                                            colors: [
+                                              Colors.transparent,
+                                              Colors.black.withOpacity(0.7),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    // Title with new design
+                                    Positioned(
+                                      bottom: 30,
+                                      left: 0,
+                                      right: 0,
+                                      child: Center(
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withOpacity(0.6),
+                                            borderRadius: BorderRadius.circular(30),
+                                            border: Border.all(
+                                              color: const Color(0xFF5C6BC0).withOpacity(0.5),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            "RavenGetSuzo",
+                                            style: TextStyle(
+                                              fontSize: 28,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                              letterSpacing: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 60),
+
+                        // Login button with new design
+                        Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF3949AB).withOpacity(0.4),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3949AB),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () {
+                              Navigator.pushNamed(context, "/login");
+                            },
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.login_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Login",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        // Register button with new design
+                        Container(
+                          width: double.infinity,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: const Color(0xFF5C6BC0),
+                              width: 2,
+                            ),
+                          ),
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF5C6BC0),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              side: BorderSide.none,
+                            ),
+                            onPressed: () => _openUrl("https://t.me/KaiiOfficial"),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.app_registration_rounded, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Register",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    ),
-  );
-}
 
-  Widget _buildBigTitle() {
-    return Column(
-      children: [
-        ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [
-              Color(0xFFFFFFFF), // putih di kiri
-              Color(0xFF1DE9B6), // cyan di tengah-kanan
-              Color(0xFFFFFFFF), // putih hint di ujung
-            ],
-            stops: [0.0, 0.6, 1.0],
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-          ).createShader(bounds),
-          child: const Text(
-            'Bellion-Space',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 44,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Orbitron',
-              letterSpacing: 4,
-              height: 1.0,
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          width: 140,
-          height: 2,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            gradient: const LinearGradient(
-              colors: [Colors.transparent, _C.cyan, _C.cyanDark, Colors.transparent],
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_C.cyan.withOpacity(0.1), _C.cyanDark.withOpacity(0.05)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _C.cyan.withOpacity(0.2)),
-          ),
-          child: const Text(
-            'G A C O R   •   T E R U P D A T E   •   S T A B I L',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: _C.cyan,
-              fontSize: 11,
-              letterSpacing: 2,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Orbitron',
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDescCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _C.card.withOpacity(0.7),
-              _C.card.withOpacity(0.5),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: _C.cyan.withOpacity(0.2),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: _C.cyan.withOpacity(0.08),
-              blurRadius: 15,
-              spreadRadius: 1,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [_C.cyanDim.withOpacity(0.6), _C.cyan.withOpacity(0.3)],
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: _C.cyan.withOpacity(0.5), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: _C.cyan.withOpacity(0.3),
-                    blurRadius: 10,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.shield_outlined,
-                  color: _C.cyan,
-                  size: 30,
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Color(0xFF1DE9B6), Color(0xFF00C9A0)],
-              ).createShader(bounds),
-              child: const Text(
-                'Bellion-Space BUG',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'Orbitron',
-                  letterSpacing: 2,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Aplikasi dengan design elegant dan fitur terbaru.\nPengembangan langsung oleh TEAM Bellion-Space.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: _C.textSub,
-                fontSize: 13,
-                height: 1.6,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLoginButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              _C.cyan.withOpacity(0.15),
-              _C.cyanDark.withOpacity(0.1),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _C.cyan, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: _C.cyan.withOpacity(0.2),
-              blurRadius: 10,
-              spreadRadius: 1,
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => LoginPage()),
-            ),
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.rocket_launch_rounded, color: _C.cyan, size: 20),
-                  SizedBox(width: 12),
-                  Text(
-                    'LOGIN TO BELLION-SPACE',
-                    style: TextStyle(
-                      color: _C.cyan,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Orbitron',
-                      letterSpacing: 2,
+                // Footer with new design
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    border: Border(
+                      top: BorderSide(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactSupportButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: BoxDecoration(
-          color: _C.card.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _C.border, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 8,
-              spreadRadius: 0,
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => _openUrl('https://t.me/MarvelNovaX'),
-            borderRadius: BorderRadius.circular(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.headset_mic_rounded, color: _C.textSub, size: 20),
-                const SizedBox(width: 12),
-                Text(
-                  'CONTACT SUPPORT',
-                  style: TextStyle(
-                    color: _C.textSub,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Orbitron',
-                    letterSpacing: 2,
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Connect With Us",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildSocialButton(
+                            icon: FontAwesomeIcons.telegram,
+                            url: "https://t.me/KaiiOfficial",
+                          ),
+                          const SizedBox(width: 16),
+                          _buildSocialButton(
+                            icon: FontAwesomeIcons.tiktok,
+                            url: "https://tiktok.com/kaiianomalii",
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "© 2025 RavenGetSuzo - All Rights Reserved",
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildSocialSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              _C.card.withOpacity(0.6),
-              _C.card.withOpacity(0.4),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: _C.border, width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3),
-              blurRadius: 12,
-              spreadRadius: 2,
-              offset: const Offset(0, 5),
-            ),
-          ],
+  Widget _buildSocialButton({required IconData icon, required String url}) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.2),
+          width: 1,
         ),
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: _C.cyan.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _C.cyan.withOpacity(0.2)),
-              ),
-              child: Text(
-                'HUBUNGI KAMI',
-                style: TextStyle(
-                  color: _C.cyan,
-                  fontSize: 11,
-                  letterSpacing: 2,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-  children: [
-    _buildSocialItem(
-      icon: FontAwesomeIcons.telegram,
-      bgColor: Color(0xFF29B6F6),
-      label: 'Telegram',
-      onTap: () => _openUrl('https://t.me/MarvelNovaX'),
-    ),
-    _buildSocialItem(
-      icon: FontAwesomeIcons.tiktok,
-      bgColor: Color(0xFF6B7280),
-      label: 'TikTok',
-      onTap: () => _openUrl('https://tiktok.com/@mrvlprst'),
-    ),
-    _buildSocialItem(
-      icon: FontAwesomeIcons.instagram,
-      bgColor: Color(0xFFE1306C),
-      label: 'Instagram',
-      onTap: () => _openUrl('https://instagram.com/vellone23_'),
-    ),
-  ],
-),
-          ],
+      ),
+      child: IconButton(
+        icon: FaIcon(
+          icon,
+          color: const Color(0xFF5C6BC0),
+          size: 20,
         ),
+        onPressed: () => _openUrl(url),
       ),
     );
   }
+}
 
-  Widget _buildSocialItem({
-  required IconData icon,
-  required Color bgColor,
-  required String label,
-  required VoidCallback onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Column(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: bgColor.withOpacity(0.15),
-            border: Border.all(color: bgColor.withOpacity(0.8), width: 2),
-            boxShadow: [
-              BoxShadow(
-                color: bgColor.withOpacity(0.35),
-                blurRadius: 14,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Center(
-            child: FaIcon(icon, color: bgColor, size: 26),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          label,
-          style: TextStyle(
-            color: _C.textSub,
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 1,
-          ),
-        ),
-      ],
-    ),
-  );
- }
+// Custom painter for background pattern
+class BackgroundPattern extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.03)
+      ..style = PaintingStyle.fill;
+
+    const dotSize = 2.0;
+    const spacing = 30.0;
+
+    for (double x = 0; x < size.width; x += spacing) {
+      for (double y = 0; y < size.height; y += spacing) {
+        canvas.drawCircle(Offset(x, y), dotSize, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

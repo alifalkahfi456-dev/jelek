@@ -1,7 +1,7 @@
-name: xerion
+name: xxo25
 description: "Bug WhatsApp Crasher"
 publish_to: 'none'
-version: 6.0.0
+version: 2.0.0
 
 environment:
   sdk: ^3.8.1
@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.5
-  image_picker: ^1.0.7
-  intl: ^0.19.0
   url_launcher: ^6.2.6
   cupertino_icons: ^1.0.8
   shared_preferences: ^2.2.2
@@ -26,12 +24,10 @@ dependencies:
   share_plus: ^7.0.1
   chewie: ^1.5.2
   shimmer: ^3.0.0
-  webview_flutter: ^4.7.0
-  geolocator: ^12.0.0
-  geocoding: ^3.0.0
+  webview_flutter: ^4.4.2
 
 dev_dependencies:
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.13.1 # versi terbaru saat ini
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
@@ -39,9 +35,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path_android: "assets/icon/icon.jpg"
-  image_path_ios: "assets/icon/icon.jpg"
-  image_path: "assets/icon/icon.jpg"
+  image_path_android: assets/icon/icon.jpg
+  image_path_ios: assets/icon/icon/icon.jpg
+  image_path: assets/icon/icon.jpg
   min_sdk_android: 21
 
 flutter:
@@ -49,18 +45,17 @@ flutter:
 
   assets:
     - assets/images/logo.jpg
-    - assets/images/logo.png
-    - assets/images/login.png
-    - assets/images/reze.png
+    - assets/images/rapen.jpg
     - assets/videos/landing.mp4
     - assets/videos/splash.mp4
     - assets/videos/banner.mp4
-    - assets/videos/background.mp4
+    - assets/videos/bg.mp4
+    - assets/videos/loading.mp4
 
   fonts:
     - family: Orbitron
       fonts:
-        - asset: fonts/Astral.ttf
+        - asset: fonts/Orbitron-Regular.ttf
     - family: ShareTechMono
       fonts:
-        - asset: fonts/Astral.ttf
+        - asset: fonts/ShareTechMono-Regular.ttf
