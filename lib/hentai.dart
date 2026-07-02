@@ -7,38 +7,12 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// --- Palette (sama dengan Tools Page) ---
-class _C {
-  static const bg        = Color(0xFF0D0000);
-  static const surface   = Color(0xFF0D1525);
-  static const card      = Color(0xFF180000);
-  static const cardInner = Color(0xFF1C0000);
-  static const border    = Color(0xFF1C0000);
-  static const borderLit = Color(0xFF3B0A0A);
-  static const steel     = Color(0xFF7A0000);
-  static const blueMid   = Color(0xFFB01010);
-  static const blueLight = Color(0xFFE50914);
-  static const chrome    = Color(0xFFFF4040);
-  static const frost     = Color(0xFFFF8080);
-  static const red       = Color(0xFFEF4444);
-  static const amber     = Color(0xFFF59E0B);
-  static const green     = Color(0xFF22C55E);
-  static const purple    = Color(0xFFFF4040);
-  static const pink      = Color(0xFFEC4899);
-  static const teal      = Color(0xFFE50914);
-  static const blue      = Color(0xFF3B82F6);
-  static const text      = Color(0xFFF5E0E0);
-  static const textSub   = Color(0xFFB06060);
-  static const textDim   = Color(0xFF5C2020);
-  static const white     = Color(0xFFFFFFFF);
-}
-
-// Constants yang dipakai di file
-const Color kPrimaryColor = _C.blueLight;
-const Color kAccentColor = _C.pink;
-const Color kBackgroundColor = _C.bg;
-const Color kCardColor = _C.card;
-const Color kHighlightColor = _C.cardInner;
+// --- DEATHXRAT Security Theme Constants ---
+const Color kPrimaryColor = Color(0xFFB8B8CC); // Glowing Silver
+const Color kAccentColor = Colors.redAccent; // Adult Indicator Color
+const Color kBackgroundColor = Color(0xFF070709); // Deep Dark
+const Color kCardColor = Color(0xFF111118); // Dark Grey Cards
+const Color kHighlightColor = Color(0xFF161620); // Shimmer Highlight
 
 class HomeHentaiPage extends StatefulWidget {
   const HomeHentaiPage({super.key});
@@ -69,22 +43,33 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
   }
 
   Future<void> _loadWatchHistory() async {
-    setState(() => _isHistoryLoading = true);
+    setState(() {
+      _isHistoryLoading = true;
+    });
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final historyJson = prefs.getStringList('hentai_watch_history') ?? [];
       setState(() {
-        _watchHistory = historyJson.map((item) => Map<String, dynamic>.from(json.decode(item))).toList();
+        _watchHistory = historyJson
+            .map((item) => Map<String, dynamic>.from(json.decode(item)))
+            .toList();
         _isHistoryLoading = false;
       });
     } catch (e) {
-      setState(() => _isHistoryLoading = false);
+      debugPrint('Error loading watch history: $e');
+      setState(() {
+        _isHistoryLoading = false;
+      });
     }
   }
 
   Future<void> fetchContentData() async {
     try {
-      final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/home'));
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/home'),
+      );
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
         setState(() {
@@ -95,6 +80,7 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
         throw Exception('Gagal memuat data');
       }
     } catch (e) {
+      debugPrint('Error: $e');
       setState(() => isLoading = false);
     }
   }
@@ -107,17 +93,31 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
       });
       return;
     }
-    setState(() => isSearching = true);
+
+    setState(() {
+      isSearching = true;
+    });
+
     try {
-      final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/search/$query'));
+      final response = await http.get(
+        Uri.parse('https://www.sankavollerei.com/anime/search/$query'),
+      );
+
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() => searchResults = jsonData['data']['animeList'] ?? []);
+        setState(() {
+          searchResults = jsonData['data']['animeList'] ?? [];
+        });
       } else {
-        setState(() => searchResults = []);
+        setState(() {
+          searchResults = [];
+        });
       }
     } catch (e) {
-      setState(() => searchResults = []);
+      debugPrint('Search Error: $e');
+      setState(() {
+        searchResults = [];
+      });
     }
   }
 
@@ -144,10 +144,6 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
       appBar: AppBar(
         backgroundColor: kBackgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, color: kPrimaryColor, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: Row(
           children: [
             Container(
@@ -160,11 +156,11 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
             ),
             const SizedBox(width: 12),
             const Text(
-              'ADULT HUB',
+              'X-HUB',
               style: TextStyle(
                 fontWeight: FontWeight.w900,
-                color: _C.text,
-                fontSize: 16,
+                color: Colors.white,
+                fontFamily: 'Rajdhani',
                 letterSpacing: 3,
               ),
             ),
@@ -172,13 +168,15 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
         ),
         actions: [
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            margin: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [_C.steel, _C.blueMid]),
-              borderRadius: BorderRadius.circular(20),
+              color: kAccentColor.withOpacity(0.2),
+              border: Border.all(color: kAccentColor),
+              borderRadius: BorderRadius.circular(4),
             ),
-            child: const Text("18+", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+            alignment: Alignment.center,
+            child: const Text("18+", style: TextStyle(color: kAccentColor, fontFamily: 'Rajdhani', fontWeight: FontWeight.bold, fontSize: 12)),
           ),
         ],
       ),
@@ -187,31 +185,46 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
           // Search Bar
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: kCardColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: _C.border),
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                style: const TextStyle(color: _C.text),
-                decoration: InputDecoration(
-                  hintText: "Search content...",
-                  hintStyle: TextStyle(color: _C.textSub),
-                  prefixIcon: Icon(Icons.search, color: kPrimaryColor),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(icon: Icon(Icons.clear, color: kPrimaryColor), onPressed: _clearSearch)
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani'),
+              decoration: InputDecoration(
+                hintText: "Search content...",
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontFamily: 'Rajdhani'),
+                prefixIcon: const Icon(Icons.search, color: kPrimaryColor),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: kPrimaryColor),
+                        onPressed: _clearSearch,
+                      )
+                    : null,
+                filled: true,
+                fillColor: kCardColor,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: kPrimaryColor.withOpacity(0.1)),
                 ),
-                onChanged: (value) {
-                  if (value.isNotEmpty) searchContent(value);
-                  else setState(() { isSearching = false; searchResults.clear(); });
-                },
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: const BorderSide(color: kPrimaryColor),
+                ),
               ),
+              onChanged: (value) {
+                if (value.isNotEmpty) {
+                  searchContent(value);
+                } else {
+                  setState(() {
+                    isSearching = false;
+                    searchResults.clear();
+                  });
+                }
+              },
+              onSubmitted: (value) {
+                if (value.isNotEmpty) {
+                  searchContent(value);
+                }
+              },
             ),
           ),
 
@@ -233,7 +246,10 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
   Widget _buildHomeContent() {
     return RefreshIndicator(
       onRefresh: () async {
-        await Future.wait([fetchContentData(), _loadWatchHistory()]);
+        await Future.wait([
+          fetchContentData(),
+          _loadWatchHistory(),
+        ]);
       },
       color: kPrimaryColor,
       backgroundColor: kCardColor,
@@ -243,7 +259,7 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Watch History Section
-            _buildSectionHeader(Icons.history_rounded, "WATCH HISTORY"),
+            _buildSectionHeader(Icons.history, "WATCH HISTORY"),
             const SizedBox(height: 12),
 
             if (_isHistoryLoading)
@@ -252,30 +268,43 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: 5,
-                  itemBuilder: (context, index) => Container(
-                    width: 120,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Shimmer.fromColors(
-                      baseColor: kCardColor,
-                      highlightColor: kHighlightColor,
-                      child: Container(
-                        height: 160,
-                        decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12)),
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: 120,
+                      margin: const EdgeInsets.only(right: 12),
+                      child: Shimmer.fromColors(
+                        baseColor: kCardColor,
+                        highlightColor: kHighlightColor,
+                        child: Container(
+                          height: 160,
+                          decoration: BoxDecoration(
+                            color: kCardColor,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               )
             else if (_watchHistory.isEmpty)
               Container(
-                height: 100,
+                height: 120,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: kCardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _C.border),
+                  border: Border.all(color: kPrimaryColor.withOpacity(0.1)),
                 ),
-                child: Text("No watch history yet.", style: TextStyle(color: _C.textSub)),
+                child: const Text(
+                  "No watch history yet.\nStart streaming!",
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 14,
+                    fontFamily: 'Rajdhani'
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               )
             else
               SizedBox(
@@ -283,36 +312,57 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: _watchHistory.length,
-                  itemBuilder: (context, index) => _buildHistoryCard(_watchHistory[index]),
+                  itemBuilder: (context, index) {
+                    final content = _watchHistory[index];
+                    return _buildHistoryCard(content);
+                  },
                 ),
               ),
 
-            const SizedBox(height: 24),
-
             // Quick Access Section
-            _buildSectionHeader(Icons.dashboard_rounded, "QUICK ACCESS"),
+            _buildSectionHeader(Icons.dashboard, "QUICK ACCESS"),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _buildQuickAccessCard("Genres", Icons.local_offer_rounded, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HentaiGenreListPage())).then((_) => refreshHistory());
-                })),
+                Expanded(
+                  child: _buildQuickAccessCard(
+                    "Tags & Genres",
+                    Icons.local_offer,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const HentaiGenreListPage()),
+                      ).then((_) => refreshHistory());
+                    },
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildQuickAccessCard("Schedule", Icons.schedule_rounded, () {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => const HentaiSchedulePage())).then((_) => refreshHistory());
-                })),
+                Expanded(
+                  child: _buildQuickAccessCard(
+                    "Schedule",
+                    Icons.schedule,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const HentaiSchedulePage()),
+                      ).then((_) => refreshHistory());
+                    },
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
 
             // Ongoing Section
-            _buildSectionHeader(Icons.live_tv_rounded, "CURRENTLY AIRING"),
+            _buildSectionHeader(Icons.live_tv, "CURRENTLY AIRING"),
             const SizedBox(height: 12),
             _buildContentGrid(contentData!['ongoing']['animeList'] ?? []),
             const SizedBox(height: 24),
 
             // Complete Section
-            _buildSectionHeader(Icons.check_circle_rounded, "COMPLETED SERIES"),
+            _buildSectionHeader(Icons.check_circle, "COMPLETED SERIES"),
             const SizedBox(height: 12),
             _buildContentGrid(contentData!['completed']['animeList'] ?? []),
           ],
@@ -324,11 +374,18 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
   Widget _buildSectionHeader(IconData icon, String title) {
     return Row(
       children: [
-        Container(width: 3, height: 16, decoration: BoxDecoration(color: kPrimaryColor, borderRadius: BorderRadius.circular(2))),
+        Icon(icon, color: kPrimaryColor, size: 20),
         const SizedBox(width: 8),
-        Icon(icon, color: kPrimaryColor, size: 18),
-        const SizedBox(width: 8),
-        Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: _C.text, letterSpacing: 1)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'Rajdhani',
+            color: kPrimaryColor,
+            letterSpacing: 2,
+          ),
+        ),
       ],
     );
   }
@@ -340,18 +397,28 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
       child: GestureDetector(
         onTap: () {
           if (content['last_watched_episode_slug'] != null) {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => HentaiEpisodePage(
-              episodeSlug: content['last_watched_episode_slug'],
-              contentSlug: content['slug'],
-              contentTitle: content['title'],
-              contentPoster: content['poster'],
-              onHistoryUpdate: refreshHistory,
-            ))).then((_) => refreshHistory());
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HentaiEpisodePage(
+                  episodeSlug: content['last_watched_episode_slug'],
+                  contentSlug: content['slug'],
+                  contentTitle: content['title'],
+                  contentPoster: content['poster'],
+                  onHistoryUpdate: refreshHistory, 
+                ),
+              ),
+            ).then((_) => refreshHistory());
           } else {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => HentaiDetailPage(
-              slug: content['slug'],
-              onHistoryUpdate: refreshHistory,
-            ))).then((_) => refreshHistory());
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HentaiDetailPage(
+                  slug: content['slug'],
+                  onHistoryUpdate: refreshHistory,
+                ),
+              ),
+            ).then((_) => refreshHistory());
           }
         },
         child: Column(
@@ -361,16 +428,31 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(content['poster'], height: 160, width: 120, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(height: 160, width: 120, color: kCardColor, child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                  child: Image.network(
+                    content['poster'],
+                    height: 160,
+                    width: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 160,
+                      width: 120,
+                      color: kCardColor,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
                   ),
                 ),
                 Positioned(
-                  top: 8, right: 8,
+                  top: 8,
+                  right: 8,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), shape: BoxShape.circle, border: Border.all(color: kAccentColor, width: 1)),
-                    child: Icon(Icons.play_arrow, color: kAccentColor, size: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: kAccentColor, width: 1),
+                    ),
+                    child: const Icon(Icons.play_arrow, color: kAccentColor, size: 16),
                   ),
                 ),
                 Positioned(
@@ -378,16 +460,39 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [Colors.transparent, Colors.black.withOpacity(0.9)]),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.transparent, Colors.black.withOpacity(0.9)],
+                      ),
                       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
                     ),
-                    child: Text(content['last_watched_episode'] ?? '', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    child: Text(
+                      content['last_watched_episode'] ?? '',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontFamily: 'Rajdhani',
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
-            Text(content['title'], style: const TextStyle(color: _C.text, fontSize: 11, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+            const SizedBox(height: 8),
+            Text(
+              content['title'],
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'Rajdhani',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),
@@ -396,47 +501,128 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
 
   Widget _buildSearchResults() {
     if (searchResults.isEmpty) {
-      return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(Icons.search_off, color: _C.textSub, size: 48),
-        SizedBox(height: 12),
-        Text("No results found", style: TextStyle(color: _C.textSub)),
-      ]));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, color: Colors.grey, size: 64),
+            SizedBox(height: 16),
+            Text("No results found", style: TextStyle(color: Colors.grey, fontFamily: 'Rajdhani', fontSize: 16)),
+          ],
+        ),
+      );
     }
+
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16.0),
       itemCount: searchResults.length,
-      itemBuilder: (context, index) => _buildSearchResultCard(searchResults[index]),
+      itemBuilder: (context, index) {
+        final content = searchResults[index];
+        return _buildSearchResultCard(content);
+      },
     );
   }
 
   Widget _buildSearchResultCard(Map<String, dynamic> content) {
+    final String title = content['title'];
+    final String poster = content['poster'];
+    final String? status = content['status'];
+    final String? score = content['score'];
+    final String slug = content['animeId']; 
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _C.border)),
-      child: ListTile(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: kCardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: kPrimaryColor.withOpacity(0.1)),
+      ),
+      child: InkWell(
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (context) => HentaiDetailPage(
-            slug: content['animeId'],
-            onHistoryUpdate: refreshHistory,
-          ))).then((_) => refreshHistory());
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HentaiDetailPage(
+                slug: slug,
+                onHistoryUpdate: refreshHistory,
+              ),
+            ),
+          ).then((_) => refreshHistory());
         },
-        leading: ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.network(content['poster'], width: 50, height: 70, fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(width: 50, height: 70, color: kHighlightColor, child: const Icon(Icons.image_not_supported, color: Colors.grey, size: 24)),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  poster,
+                  width: 80,
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 80, height: 120, color: kHighlightColor,
+                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 16, fontFamily: 'Rajdhani', fontWeight: FontWeight.bold, color: Colors.white),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (score != null && score.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 14),
+                              const SizedBox(width: 4),
+                              Text(score, style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 12, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        if (status != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: _getStatusColor(status), borderRadius: BorderRadius.circular(4)),
+                            child: Text(
+                              status,
+                              style: const TextStyle(color: Colors.black, fontFamily: 'Rajdhani', fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        title: Text(content['title'], style: const TextStyle(color: _C.text, fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Row(children: [
-          if (content['score'] != null) ...[
-            Icon(Icons.star, color: Colors.amber, size: 12),
-            const SizedBox(width: 4),
-            Text(content['score'], style: const TextStyle(color: _C.textSub, fontSize: 11)),
-          ],
-        ]),
-        trailing: Icon(Icons.play_circle_filled_rounded, color: kAccentColor, size: 28),
       ),
     );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'ongoing':
+        return kAccentColor; 
+      case 'completed':
+        return kPrimaryColor; 
+      default:
+        return Colors.grey;
+    }
   }
 
   Widget _buildContentGrid(List<dynamic> list) {
@@ -446,42 +632,72 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
       shrinkWrap: true,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.65,
+        mainAxisExtent: 260,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),
       itemBuilder: (context, index) {
         final content = list[index];
+        final String title = content['title'];
+        final String poster = content['poster'];
+        final String? episode = content['episodes']?.toString();
+        final String slug = content['animeId'];
+
         return GestureDetector(
           onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (context) => HentaiDetailPage(
-              slug: content['animeId'],
-              onHistoryUpdate: refreshHistory,
-            ))).then((_) => refreshHistory());
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => HentaiDetailPage(
+                  slug: slug,
+                  onHistoryUpdate: refreshHistory,
+                ),
+              ),
+            ).then((_) => refreshHistory());
           },
           child: Container(
-            decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _C.border)),
+            decoration: BoxDecoration(
+              color: kCardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: kPrimaryColor.withOpacity(0.1)),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Image.network(content['poster'], height: 150, width: double.infinity, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(height: 150, color: kHighlightColor, child: const Icon(Icons.image_not_supported, color: Colors.grey)),
+                  child: Image.network(
+                    poster,
+                    height: 170,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 170, color: kCardColor,
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(content['title'], style: const TextStyle(color: _C.text, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 13, fontFamily: 'Rajdhani', fontWeight: FontWeight.w700, color: Colors.white),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const Spacer(),
                 Padding(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text("EP ${content['episodes'] ?? '-'}", style: TextStyle(color: kAccentColor, fontSize: 10, fontWeight: FontWeight.bold)),
-                      Icon(Icons.play_circle_filled_rounded, color: kPrimaryColor, size: 20),
+                      Text(
+                        episode != null ? "EP $episode" : "-",
+                        style: const TextStyle(fontSize: 11, fontFamily: 'Rajdhani', color: kAccentColor, fontWeight: FontWeight.bold),
+                      ),
+                      const Icon(Icons.play_circle_fill, color: kPrimaryColor, size: 18),
                     ],
                   ),
                 ),
@@ -495,13 +711,17 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
 
   Widget _buildLoadingShimmer() {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 6,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.65, crossAxisSpacing: 12, mainAxisSpacing: 12),
+      padding: const EdgeInsets.all(16.0),
+      itemCount: 8,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2, mainAxisExtent: 260, crossAxisSpacing: 12, mainAxisSpacing: 12,
+      ),
       itemBuilder: (_, __) => Shimmer.fromColors(
         baseColor: kCardColor,
         highlightColor: kHighlightColor,
-        child: Container(decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12))),
+        child: Container(
+          decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12)),
+        ),
       ),
     );
   }
@@ -511,14 +731,16 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, color: _C.textSub, size: 48),
-          const SizedBox(height: 12),
-          Text("Failed to load data", style: TextStyle(color: _C.textSub)),
-          const SizedBox(height: 12),
+          const Icon(Icons.error_outline, color: Colors.grey, size: 64),
+          const SizedBox(height: 16),
+          const Text("Failed to load data", style: TextStyle(color: Colors.grey, fontFamily: 'Rajdhani', fontSize: 16)),
+          const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () async { await Future.wait([fetchContentData(), _loadWatchHistory()]); },
-            style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor),
-            child: const Text("Try Again", style: TextStyle(color: Colors.black)),
+            onPressed: () async {
+              await Future.wait([fetchContentData(), _loadWatchHistory()]);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, foregroundColor: Colors.black),
+            child: const Text("Try Again", style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -526,10 +748,10 @@ class _HomeHentaiPageState extends State<HomeHentaiPage> {
   }
 }
 
-// ─── Detail Page ─────────────────────────────────────────────────────────────
 class HentaiDetailPage extends StatefulWidget {
   final String slug;
-  final Function()? onHistoryUpdate;
+  final Function()? onHistoryUpdate; 
+
   const HentaiDetailPage({super.key, required this.slug, this.onHistoryUpdate});
 
   @override
@@ -539,6 +761,7 @@ class HentaiDetailPage extends StatefulWidget {
 class _HentaiDetailPageState extends State<HentaiDetailPage> {
   Map<String, dynamic>? detail;
   bool isLoading = true;
+  bool isError = false;
 
   @override
   void initState() {
@@ -551,12 +774,15 @@ class _HentaiDetailPageState extends State<HentaiDetailPage> {
       final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/anime/${widget.slug}'));
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() { detail = jsonData['data']; isLoading = false; });
+        setState(() {
+          detail = jsonData['data'];
+          isLoading = false;
+        });
       } else {
-        setState(() => isLoading = false);
+        setState(() { isLoading = false; isError = true; });
       }
     } catch (e) {
-      setState(() => isLoading = false);
+      setState(() { isLoading = false; isError = true; });
     }
   }
 
@@ -567,75 +793,117 @@ class _HentaiDetailPageState extends State<HentaiDetailPage> {
       appBar: AppBar(
         backgroundColor: kBackgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_rounded, color: kPrimaryColor, size: 20),
-          onPressed: () => Navigator.pop(context),
+        iconTheme: const IconThemeData(color: kPrimaryColor),
+        title: const Text(
+          "CONTENT DETAILS",
+          style: TextStyle(fontWeight: FontWeight.w900, fontFamily: 'Rajdhani', color: Colors.white, letterSpacing: 2),
         ),
-        title: Text("DETAILS", style: TextStyle(color: _C.text, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2)),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : detail == null
-              ? const Center(child: Text("Failed to load", style: TextStyle(color: _C.textSub)))
+          : isError || detail == null
+              ? const Center(child: Text("Failed to load details.", style: TextStyle(color: Colors.white, fontFamily: 'Rajdhani')))
               : _buildDetail(),
     );
   }
 
   Widget _buildDetail() {
     final content = detail!;
-    final episodes = content['episodeList'] ?? [];
+    final List<dynamic> episodes = content['episodeList'] ?? [];
+    final List<dynamic> recommendations = content['recommendedAnimeList'] ?? [];
+    final List<dynamic> genres = content['genreList'] ?? [];
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.network(content['poster'], height: 200, width: 140, fit: BoxFit.cover)),
-            const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(content['title'], style: const TextStyle(color: _C.text, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Row(children: [Icon(Icons.star, color: Colors.amber, size: 14), const SizedBox(width: 4), Text(content['score'] ?? '-', style: const TextStyle(color: _C.text))]),
-              const SizedBox(height: 8),
-              _buildInfoChip("Status", content['status']),
-              _buildInfoChip("Episodes", content['episodes']?.toString()),
-              _buildInfoChip("Duration", content['duration']),
-            ])),
-          ]),
-          const SizedBox(height: 20),
-          const Text("SYNOPSIS", style: TextStyle(color: kPrimaryColor, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 2)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  content['poster'],
+                  height: 220,
+                  width: 150,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      content['title'],
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Rajdhani', color: Colors.white),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 16),
+                        const SizedBox(width: 4),
+                        Text(content['score'] ?? '-', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildInfoItem('Status', content['status']),
+                    _buildInfoItem('Episodes', content['episodes']?.toString()),
+                    _buildInfoItem('Duration', content['duration']),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          
+          const Text("SYNOPSIS", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, fontFamily: 'Rajdhani', color: kPrimaryColor, letterSpacing: 2)),
           const SizedBox(height: 8),
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _C.border)),
-            child: Text(content['synopsis']?['paragraphs']?.join('\n\n') ?? '-', style: TextStyle(color: _C.textSub, height: 1.5)),
+            decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: kPrimaryColor.withOpacity(0.1))),
+            child: Text(
+              content['synopsis']?['paragraphs']?.join('\n\n') ?? '-',
+              style: const TextStyle(color: Colors.white70, fontFamily: 'Rajdhani', height: 1.5),
+            ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
+
           if (episodes.isNotEmpty) ...[
-            const Text("EPISODES", style: TextStyle(color: kPrimaryColor, fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 2)),
+            const Text("EPISODES", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, fontFamily: 'Rajdhani', color: kPrimaryColor, letterSpacing: 2)),
             const SizedBox(height: 8),
             ListView.builder(
-              shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
               itemCount: episodes.length,
               itemBuilder: (context, index) {
                 final ep = episodes[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(10), border: Border.all(color: _C.border)),
+                  decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: kPrimaryColor.withOpacity(0.1))),
                   child: ListTile(
-                    leading: Container(width: 36, height: 36, decoration: BoxDecoration(color: kPrimaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                      child: Center(child: Text(ep['eps'].toString(), style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)))),
-                    title: Text(ep['title'], style: const TextStyle(color: _C.text, fontSize: 13)),
-                    trailing: Icon(Icons.play_circle_filled_rounded, color: kAccentColor, size: 28),
+                    leading: Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(color: kPrimaryColor.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+                      child: Center(child: Text(ep['eps'].toString(), style: const TextStyle(color: kPrimaryColor, fontFamily: 'Rajdhani', fontWeight: FontWeight.bold))),
+                    ),
+                    title: Text(ep['title'], style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani')),
+                    trailing: const Icon(Icons.play_circle_fill, color: kAccentColor),
                     onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => HentaiEpisodePage(
-                        episodeSlug: ep['episodeId'],
-                        contentSlug: widget.slug,
-                        contentTitle: content['title'],
-                        contentPoster: content['poster'],
-                        onHistoryUpdate: widget.onHistoryUpdate,
-                      ))).then((_) { if (widget.onHistoryUpdate != null) widget.onHistoryUpdate!(); });
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => HentaiEpisodePage(
+                            episodeSlug: ep['episodeId'],
+                            contentSlug: widget.slug,
+                            contentTitle: content['title'],
+                            contentPoster: content['poster'],
+                            episodes: episodes,
+                            onHistoryUpdate: widget.onHistoryUpdate,
+                          ),
+                        ),
+                      ).then((_) { if (widget.onHistoryUpdate != null) widget.onHistoryUpdate!(); });
                     },
                   ),
                 );
@@ -647,39 +915,64 @@ class _HentaiDetailPageState extends State<HentaiDetailPage> {
     );
   }
 
-  Widget _buildInfoChip(String label, String? value) {
+  Widget _buildInfoItem(String label, String? value) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: RichText(text: TextSpan(children: [
-        TextSpan(text: '$label: ', style: const TextStyle(color: _C.textSub, fontSize: 11)),
-        TextSpan(text: value ?? '-', style: const TextStyle(color: _C.text, fontSize: 12, fontWeight: FontWeight.w500)),
-      ])),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: RichText(
+        text: TextSpan(
+          children: [
+            TextSpan(text: '$label: ', style: const TextStyle(color: Colors.grey, fontFamily: 'Rajdhani', fontSize: 12)),
+            TextSpan(text: value ?? '-', style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 13, fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
     );
   }
 }
 
-// ─── Episode Page ────────────────────────────────────────────────────────────
+// ---------------- EPISODE / PLAYER PAGE ----------------
 class HentaiEpisodePage extends StatefulWidget {
   final String episodeSlug;
-  final String? contentSlug, contentTitle, contentPoster;
-  final Function()? onHistoryUpdate;
-  const HentaiEpisodePage({super.key, required this.episodeSlug, this.contentSlug, this.contentTitle, this.contentPoster, this.onHistoryUpdate});
+  final String? contentSlug;
+  final String? contentTitle;
+  final String? contentPoster;
+  final List<dynamic>? episodes;
+  final List<dynamic>? recommendations;
+  final Function()? onHistoryUpdate; 
+
+  const HentaiEpisodePage({
+    super.key, required this.episodeSlug, this.contentSlug, this.contentTitle,
+    this.contentPoster, this.episodes, this.recommendations, this.onHistoryUpdate,
+  });
 
   @override
   State<HentaiEpisodePage> createState() => _HentaiEpisodePageState();
 }
 
-class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
+class _HentaiEpisodePageState extends State<HentaiEpisodePage> with WidgetsBindingObserver {
   Map<String, dynamic>? episodeData;
   bool isLoading = true;
   late WebViewController _webViewController;
   bool _isWebViewLoading = true;
+  bool _isFullScreen = false;
   String? _streamUrl;
+  List<dynamic> _qualities = [];
+  int _selectedQualityIndex = 0;
+  int _selectedServerIndex = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     fetchEpisodeData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    super.dispose();
   }
 
   Future<void> fetchEpisodeData() async {
@@ -687,12 +980,13 @@ class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
       final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/episode/${widget.episodeSlug}'));
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-        setState(() { episodeData = jsonData['data']; });
+        setState(() {
+          episodeData = jsonData['data'];
+          _qualities = episodeData?['server']?['qualities'] ?? [];
+        });
         await _fetchStreamUrl();
         _initializeWebView();
         _addToWatchHistory();
-        setState(() => isLoading = false);
-      } else {
         setState(() => isLoading = false);
       }
     } catch (e) {
@@ -701,13 +995,16 @@ class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
   }
 
   Future<void> _fetchStreamUrl() async {
-    final qualities = episodeData?['server']?['qualities'] ?? [];
-    if (qualities.isEmpty) return;
-    final serverId = qualities[0]['serverList'][0]['serverId'];
+    if (_qualities.isEmpty) return;
+    final serverId = _qualities[_selectedQualityIndex]['serverList'][_selectedServerIndex]['serverId'];
     try {
       final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/server/$serverId'));
-      if (response.statusCode == 200) setState(() => _streamUrl = json.decode(response.body)['data']['url']);
-    } catch (e) {}
+      if (response.statusCode == 200) {
+        setState(() => _streamUrl = json.decode(response.body)['data']['url']);
+      }
+    } catch (e) {
+      debugPrint('Stream URL error: $e');
+    }
   }
 
   Future<void> _addToWatchHistory() async {
@@ -715,12 +1012,16 @@ class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
       final prefs = await SharedPreferences.getInstance();
       final historyJson = prefs.getStringList('hentai_watch_history') ?? [];
       List<Map<String, dynamic>> watchHistory = historyJson.map((item) => Map<String, dynamic>.from(json.decode(item))).toList();
-      watchHistory.removeWhere((item) => item['slug'] == widget.contentSlug);
-      watchHistory.insert(0, {
-        'slug': widget.contentSlug, 'title': widget.contentTitle, 'poster': widget.contentPoster,
-        'last_watched_episode': episodeData?['title'], 'last_watched_episode_slug': widget.episodeSlug,
+      final historyItem = {
+        'slug': widget.contentSlug,
+        'title': widget.contentTitle,
+        'poster': widget.contentPoster,
+        'last_watched_episode': episodeData?['title'],
+        'last_watched_episode_slug': widget.episodeSlug,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
+      };
+      watchHistory.removeWhere((item) => item['slug'] == widget.contentSlug);
+      watchHistory.insert(0, historyItem);
       if (watchHistory.length > 20) watchHistory = watchHistory.sublist(0, 20);
       await prefs.setStringList('hentai_watch_history', watchHistory.map((item) => json.encode(item)).toList());
       if (widget.onHistoryUpdate != null) widget.onHistoryUpdate!();
@@ -732,7 +1033,11 @@ class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
-      ..setNavigationDelegate(NavigationDelegate(onPageFinished: (url) => setState(() => _isWebViewLoading = false)))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (url) => setState(() => _isWebViewLoading = false),
+        ),
+      )
       ..loadRequest(Uri.parse(_streamUrl!), headers: {'Referer': 'https://www.sankavollerei.com/'});
   }
 
@@ -740,27 +1045,41 @@ class _HentaiEpisodePageState extends State<HentaiEpisodePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
-      appBar: AppBar(
+      appBar: _isFullScreen ? null : AppBar(
         backgroundColor: Colors.black,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_rounded, color: kPrimaryColor, size: 20), onPressed: () => Navigator.pop(context)),
-        title: Text(episodeData?['title'] ?? "Streaming", style: const TextStyle(color: _C.text, fontSize: 13)),
+        title: Text(episodeData?['title'] ?? "Streaming", style: const TextStyle(fontFamily: 'Rajdhani', color: Colors.white, fontSize: 14)),
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : Column(children: [
-              Container(height: MediaQuery.of(context).size.height * 0.4, width: double.infinity, color: Colors.black,
-                child: Stack(children: [
-                  if (_streamUrl != null) WebViewWidget(controller: _webViewController),
-                  if (_isWebViewLoading) const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
-                ]),
-              ),
-              Expanded(child: Center(child: Text("Enjoy the content.", style: TextStyle(color: _C.textSub)))),
-            ]),
+      body: isLoading 
+          ? const Center(child: CircularProgressIndicator(color: kAccentColor))
+          : Column(
+              children: [
+                Container(
+                  height: _isFullScreen ? MediaQuery.of(context).size.height : MediaQuery.of(context).size.height * 0.35,
+                  width: double.infinity,
+                  color: Colors.black,
+                  child: Stack(
+                    children: [
+                      if (_streamUrl != null) WebViewWidget(controller: _webViewController),
+                      if (_isWebViewLoading) const Center(child: CircularProgressIndicator(color: kAccentColor)),
+                    ],
+                  ),
+                ),
+                if (!_isFullScreen) Expanded(
+                  child: Container(
+                    color: kBackgroundColor,
+                    child: Center(
+                      child: Text("Enjoy the content.", style: TextStyle(color: Colors.white.withOpacity(0.5), fontFamily: 'Rajdhani')),
+                    ),
+                  ),
+                )
+              ],
+            ),
     );
   }
 }
 
-// ─── Genre List Page ─────────────────────────────────────────────────────────
+// ---------------- ADDITIONAL PAGES (GENRE & SCHEDULE) ----------------
 class HentaiGenreListPage extends StatefulWidget {
   const HentaiGenreListPage({super.key});
   @override State<HentaiGenreListPage> createState() => _HentaiGenreListPageState();
@@ -780,8 +1099,11 @@ class _HentaiGenreListPageState extends State<HentaiGenreListPage> {
     try {
       final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/genre/'));
       if (response.statusCode == 200) {
-        setState(() { genreList = json.decode(response.body)['data']['genreList']; isLoading = false; });
-      } else { setState(() => isLoading = false); }
+        setState(() {
+          genreList = json.decode(response.body)['data']['genreList'];
+          isLoading = false;
+        });
+      }
     } catch (_) { setState(() => isLoading = false); }
   }
 
@@ -789,29 +1111,23 @@ class _HentaiGenreListPageState extends State<HentaiGenreListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: kBackgroundColor,
-        elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_rounded, color: kPrimaryColor, size: 20), onPressed: () => Navigator.pop(context)),
-        title: const Text("GENRES", style: TextStyle(color: _C.text, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2)),
+      appBar: AppBar(backgroundColor: kBackgroundColor, title: const Text("TAGS & GENRES", style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.bold, color: Colors.white))),
+      body: isLoading ? const Center(child: CircularProgressIndicator(color: kPrimaryColor)) : GridView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: genreList.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 3.0),
+        itemBuilder: (context, index) {
+          return Container(
+            decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(8), border: Border.all(color: kAccentColor.withOpacity(0.2))),
+            alignment: Alignment.center,
+            child: Text(genreList[index]['title'], style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.bold)),
+          );
+        },
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : GridView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: genreList.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 12, childAspectRatio: 2.5),
-              itemBuilder: (context, index) => Container(
-                decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(10), border: Border.all(color: _C.border)),
-                alignment: Alignment.center,
-                child: Text(genreList[index]['title'], style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w600)),
-              ),
-            ),
     );
   }
 }
 
-// ─── Schedule Page ───────────────────────────────────────────────────────────
 class HentaiSchedulePage extends StatefulWidget {
   const HentaiSchedulePage({super.key});
   @override State<HentaiSchedulePage> createState() => _HentaiSchedulePageState();
@@ -831,8 +1147,11 @@ class _HentaiSchedulePageState extends State<HentaiSchedulePage> {
     try {
       final response = await http.get(Uri.parse('https://www.sankavollerei.com/anime/schedule'));
       if (response.statusCode == 200) {
-        setState(() { scheduleData = json.decode(response.body)['data']; isLoading = false; });
-      } else { setState(() => isLoading = false); }
+        setState(() {
+          scheduleData = json.decode(response.body)['data'];
+          isLoading = false;
+        });
+      }
     } catch (_) { setState(() => isLoading = false); }
   }
 
@@ -840,43 +1159,38 @@ class _HentaiSchedulePageState extends State<HentaiSchedulePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: kBackgroundColor,
-        elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back_ios_rounded, color: kPrimaryColor, size: 20), onPressed: () => Navigator.pop(context)),
-        title: const Text("SCHEDULE", style: TextStyle(color: _C.text, fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2)),
+      appBar: AppBar(backgroundColor: kBackgroundColor, title: const Text("RELEASE SCHEDULE", style: TextStyle(fontFamily: 'Rajdhani', fontWeight: FontWeight.bold, color: Colors.white))),
+      body: isLoading ? const Center(child: CircularProgressIndicator(color: kPrimaryColor)) : ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: scheduleData.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Text("${scheduleData[index]['day']} - ${scheduleData[index]['anime_list'].length} Updates", style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 16)),
+          );
+        },
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: scheduleData.length,
-              itemBuilder: (context, index) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _C.border)),
-                child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                  Text(scheduleData[index]['day'], style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
-                  Text("${scheduleData[index]['anime_list'].length} updates", style: TextStyle(color: _C.textSub, fontSize: 12)),
-                ]),
-              ),
-            ),
     );
   }
 }
 
 // Komponen Reusable
 Widget _buildQuickAccessCard(String title, IconData icon, VoidCallback onTap) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: _C.border)),
-      child: Column(children: [
-        Icon(icon, color: kAccentColor, size: 24),
-        const SizedBox(height: 8),
-        Text(title, style: const TextStyle(color: _C.text, fontSize: 12, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
-      ]),
+  return Container(
+    decoration: BoxDecoration(color: kCardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: kPrimaryColor.withOpacity(0.1))),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, color: kAccentColor, size: 28),
+            const SizedBox(height: 8),
+            Text(title, style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontSize: 14, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          ],
+        ),
+      ),
     ),
   );
 }

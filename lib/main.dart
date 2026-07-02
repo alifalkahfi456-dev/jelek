@@ -1,86 +1,132 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; 
+
+// Import Halaman Utama
+import 'landing_page.dart'; 
 import 'login_page.dart';
-import 'dashboard_page.dart';
+import 'loader_page.dart';
 import 'home_page.dart';
 import 'seller_page.dart';
 import 'admin_page.dart';
-import 'landing.dart';
+import 'buy_account.dart';
+import 'splash.dart'; 
+import 'device_dashboard.dart';
+import 'control_panel.dart';
 
 void main() {
-  runApp(const MyApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // MODIFIKASI: Mengembalikan rute awal ke '/' (Landing Page)
+  String initialRoute = '/'; 
+
+  runApp(MyApp(startRoute: initialRoute));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String startRoute;
+  const MyApp({super.key, required this.startRoute});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'dhotpat',
+      title: 'NXOB V2',
       theme: ThemeData(
         brightness: Brightness.dark,
-        fontFamily: 'dhotpatxploid',
+        fontFamily: 'ShareTechMono', 
         scaffoldBackgroundColor: Colors.black,
-        colorScheme: ColorScheme.dark().copyWith(
+        colorScheme: const ColorScheme.dark().copyWith(
+          primary: Colors.redAccent,
           secondary: Colors.purple,
         ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          centerTitle: true,
+        ),
       ),
-      initialRoute: '/',
+      initialRoute: startRoute, 
+      
       onGenerateRoute: (settings) {
+        // Mengambil argumen dari Navigator.pushNamed
+        final args = settings.arguments as Map<String, dynamic>?;
+
         switch (settings.name) {
           case '/':
-            return MaterialPageRoute(builder: (_) => LandingPage());
+            return MaterialPageRoute(builder: (_) => const LandingPage());
+
           case '/login':
             return MaterialPageRoute(builder: (_) => const LoginPage());
-          case '/dashboard':
-            final args = settings.arguments as Map<String, dynamic>;
+
+          case '/splash':
+            return MaterialPageRoute(
+              builder: (_) => SplashPage(data: args ?? {}),
+            );
+
+          case '/buy_account':
+            return MaterialPageRoute(builder: (_) => const BuyAccountPage());
+
+          case '/loader':
             return MaterialPageRoute(
               builder: (_) => DashboardPage(
-                username: args['username'],
-                password: args['password'],
-                role: args['role'],
-                sessionKey: args['key'],
-                expiredDate: args['expiredDate'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
-                listDoos: List<Map<String, dynamic>>.from(args['listDoos'] ?? []), // ✅ aman
-                news: List<Map<String, dynamic>>.from(args['news'] ?? []), // ✅ aman
+                username: args?['username'] ?? '',
+                password: args?['password'] ?? '',
+                role: args?['role'] ?? 'member',
+                sessionKey: args?['key'] ?? '',
+                expiredDate: args?['expiredDate'] ?? '',
+                listBug: List<Map<String, dynamic>>.from(args?['listBug'] ?? []),
+                listPayload: List<Map<String, dynamic>>.from(args?['listPayload'] ?? []),
+                listDDoS: List<Map<String, dynamic>>.from(args?['listDDoS'] ?? []),
+                news: List<Map<String, dynamic>>.from(args?['news'] ?? []),
               ),
             );
 
-          case '/home':
-            final args = settings.arguments as Map<String, dynamic>;
+          case '/attack':
             return MaterialPageRoute(
-              builder: (_) => HomePage(
-                username: args['username'],
-                password: args['password'],
-                listBug: List<Map<String, dynamic>>.from(args['listBug'] ?? []), // ✅ aman
-                role: args['role'],
-                expiredDate: args['expiredDate'],
-                sessionKey: args['sessionKey'],
+              builder: (_) => AttackPage(
+                username: args?['username'] ?? '',
+                password: args?['password'] ?? '',
+                listBug: List<Map<String, dynamic>>.from(args?['listBug'] ?? []),
+                role: args?['role'] ?? '',
+                expiredDate: args?['expiredDate'] ?? '',
+                sessionKey: args?['sessionKey'] ?? '',
               ),
             );
 
           case '/seller':
-            final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
-              builder: (_) => SellerPage(
-                keyToken: args['keyToken'],
-              ),
+              builder: (_) => SellerPage(keyToken: args?['keyToken'] ?? ''),
             );
 
           case '/admin':
-            final args = settings.arguments as Map<String, dynamic>;
             return MaterialPageRoute(
-              builder: (_) => AdminPage(
-                sessionKey: args['sessionKey'],
-              ),
+              builder: (_) => AdminPage(sessionKey: args?['sessionKey'] ?? ''),
+            );
+
+          case '/login_rat':
+            // SINKRONISASI: Meneruskan username agar dashboard bisa memfilter target per-admin
+            return MaterialPageRoute(
+              builder: (_) => DeviceDashboardPage(username: args?['username'] ?? 'guest'),
+            );
+
+          case '/dashboard_rat':
+            // SINKRONISASI: Memastikan ID terdeteksi dengan mem-passing username operator
+            return MaterialPageRoute(
+              builder: (_) => DeviceDashboardPage(username: args?['username'] ?? 'guest'),
+            );
+
+          case '/control_panel':
+            // SUNTIKAN VVIP: Meneruskan parameter 'settings' sangat krusial agar Map {device, operator} 
+            // terbaca di ControlCenterPage dan ID tidak menjadi 'unknown'
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ControlCenterPage(),
             );
 
           default:
             return MaterialPageRoute(
               builder: (_) => const Scaffold(
-                body: Center(child: Text("404 - Not Found")),
+                body: Center(child: Text("404 - PANEL NOT FOUND", style: TextStyle(color: Colors.red))),
               ),
             );
         }

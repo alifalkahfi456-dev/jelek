@@ -1,363 +1,688 @@
-// phone_lookup.dart
-import 'dart:math' as math;
+// phone_lookup_page.dart
+
+import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' as html_parser;
+import 'package:html/dom.dart' as dom;
+import 'package:video_player/video_player.dart';
+import 'dart:ui';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-// ─── Palette (sama dengan Tools Page) ─────────────────────────────────────
-class _C {
-  static const bg        = Color(0xFF0D0000);
-  static const surface   = Color(0xFF0D1525);
-  static const card      = Color(0xFF180000);
-  static const cardInner = Color(0xFF1C0000);
-  static const border    = Color(0xFF1C0000);
-  static const borderLit = Color(0xFF3B0A0A);
-  static const steel     = Color(0xFF7A0000);
-  static const blueMid   = Color(0xFFB01010);
-  static const blueLight = Color(0xFFE50914);
-  static const chrome    = Color(0xFFFF4040);
-  static const frost     = Color(0xFFFF8080);
-  static const red       = Color(0xFFEF4444);
-  static const amber     = Color(0xFFF59E0B);
-  static const green     = Color(0xFF22C55E);
-  static const purple    = Color(0xFFFF4040);
-  static const pink      = Color(0xFFEC4899);
-  static const teal      = Color(0xFFE50914);
-  static const blue      = Color(0xFF3B82F6);
-  static const text      = Color(0xFFF5E0E0);
-  static const textSub   = Color(0xFFB06060);
-  static const textDim   = Color(0xFF5C2020);
-}
-
-// ─── Model Hasil Phone Lookup ────────────────────────────────────────────
-class PhoneLookupResult {
-  final String phoneNumber;
-  final String phoneFormatted;
-  final String countryCode;
-  final String countryName;
-  final String carrier;
-  final String lineType;
-  final bool isValid;
-  final String? city;
-  final String? operatorCode;
-  final Map<String, dynamic> details;
-
-  PhoneLookupResult({
-    required this.phoneNumber,
-    required this.phoneFormatted,
-    required this.countryCode,
-    required this.countryName,
-    required this.carrier,
-    required this.lineType,
-    required this.isValid,
-    this.city,
-    this.operatorCode,
-    required this.details,
-  });
-}
-
-// ─── Phone Validator Service ─────────────────────────────────────────────
-class PhoneValidator {
-  // Data operator Indonesia
-  static final Map<String, Map<String, String>> _indonesianOperators = {
-    'Telkomsel': {
-      'prefix': '0811,0812,0813,0821,0822,0823,0851,0852,0853,08521,08522,08523,081,082,085',
-      'codes': '0811,0812,0813,0821,0822,0823,0851,0852,0853'
-    },
-    'XL Axiata': {
-      'prefix': '0817,0818,0819,0859,0877,0878,0879,0817,0818,0819,0859,0877,0878,0879',
-      'codes': '0817,0818,0819,0859,0877,0878,0879'
-    },
-    'Indosat (IM3/Ooredoo)': {
-      'prefix': '0814,0815,0816,0855,0856,0857,0858,0814,0815,0816,0855,0856,0857,0858',
-      'codes': '0814,0815,0816,0855,0856,0857,0858'
-    },
-    'Tri (3)': {
-      'prefix': '0895,0896,0897,0898,0899,0895,0896,0897,0898,0899',
-      'codes': '0895,0896,0897,0898,0899'
-    },
-    'Smartfren': {
-      'prefix': '0881,0882,0883,0884,0885,0886,0887,0888,0889,0881,0882,0883,0884,0885,0886,0887,0888,0889',
-      'codes': '0881,0882,0883,0884,0885,0886,0887,0888,0889'
-    },
-    'Axis': {
-      'prefix': '0831,0832,0833,0834,0835,0836,0837,0838,0831,0832,0833,0834,0835,0836,0837,0838',
-      'codes': '0831,0832,0833,0834,0835,0836,0837,0838'
-    },
-    'By.U': {
-      'prefix': '0851,0852,0853',
-      'codes': '0851,0852,0853'
-    },
-  };
-
-  // Data negara dengan kode + validasi
-  static final Map<String, Map<String, String>> _countries = {
-    '+62': {'name': 'Indonesia', 'pattern': r'^(\+62|0)[0-9]{9,12}$'},
-    '+1': {'name': 'United States', 'pattern': r'^\+1[0-9]{10}$'},
-    '+44': {'name': 'United Kingdom', 'pattern': r'^\+44[0-9]{10}$'},
-    '+91': {'name': 'India', 'pattern': r'^\+91[0-9]{10}$'},
-    '+60': {'name': 'Malaysia', 'pattern': r'^\+60[0-9]{9,10}$'},
-    '+65': {'name': 'Singapore', 'pattern': r'^\+65[0-9]{8}$'},
-    '+63': {'name': 'Philippines', 'pattern': r'^\+63[0-9]{10}$'},
-    '+66': {'name': 'Thailand', 'pattern': r'^\+66[0-9]{9}$'},
-    '+84': {'name': 'Vietnam', 'pattern': r'^\+84[0-9]{9,10}$'},
-    '+81': {'name': 'Japan', 'pattern': r'^\+81[0-9]{10}$'},
-    '+82': {'name': 'South Korea', 'pattern': r'^\+82[0-9]{10}$'},
-    '+86': {'name': 'China', 'pattern': r'^\+86[0-9]{11}$'},
-    '+61': {'name': 'Australia', 'pattern': r'^\+61[0-9]{9}$'},
-    '+49': {'name': 'Germany', 'pattern': r'^\+49[0-9]{10,11}$'},
-    '+33': {'name': 'France', 'pattern': r'^\+33[0-9]{9}$'},
-    '+39': {'name': 'Italy', 'pattern': r'^\+39[0-9]{10}$'},
-    '+34': {'name': 'Spain', 'pattern': r'^\+34[0-9]{9}$'},
-    '+55': {'name': 'Brazil', 'pattern': r'^\+55[0-9]{11}$'},
-    '+7': {'name': 'Russia', 'pattern': r'^\+7[0-9]{10}$'},
-    '+20': {'name': 'Egypt', 'pattern': r'^\+20[0-9]{10}$'},
-    '+27': {'name': 'South Africa', 'pattern': r'^\+27[0-9]{9}$'},
-    '+90': {'name': 'Turkey', 'pattern': r'^\+90[0-9]{10}$'},
-  };
-
-  static String detectCarrier(String phoneNumber) {
-    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    // Hapus kode negara 62 jika ada
-    if (cleanNumber.startsWith('62')) {
-      cleanNumber = cleanNumber.substring(2);
-    }
-    
-    // Format 0xxxx
-    if (!cleanNumber.startsWith('0')) {
-      cleanNumber = '0$cleanNumber';
-    }
-    
-    // Cek prefix 4 digit pertama
-    String prefix4 = cleanNumber.length >= 4 ? cleanNumber.substring(0, 4) : '';
-    String prefix3 = cleanNumber.length >= 3 ? cleanNumber.substring(0, 3) : '';
-    
-    for (var entry in _indonesianOperators.entries) {
-      if (entry.value['codes']!.contains(prefix4) || 
-          entry.value['codes']!.contains(prefix3)) {
-        return entry.key;
-      }
-    }
-    
-    return 'Unknown';
-  }
-
-  static String detectLineType(String phoneNumber) {
-    String cleanNumber = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
-    
-    if (cleanNumber.startsWith('62')) {
-      cleanNumber = cleanNumber.substring(2);
-    }
-    if (!cleanNumber.startsWith('0')) {
-      cleanNumber = '0$cleanNumber';
-    }
-    
-    // Mobile: 08xxx, 06xxx
-    if (cleanNumber.startsWith('08') || cleanNumber.startsWith('06')) {
-      return 'Mobile / Cellular';
-    }
-    // Fixed line: 02xxx (area code)
-    if (cleanNumber.startsWith('02')) {
-      return 'Landline / Fixed Line';
-    }
-    // Toll-free / Special
-    if (cleanNumber.startsWith('001') || cleanNumber.startsWith('007')) {
-      return 'Toll Free / Special';
-    }
-    
-    return 'Mobile';
-  }
-
-  static String formatPhoneNumber(String phoneNumber) {
-    String clean = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
-    
-    if (clean.startsWith('+62')) {
-      String local = clean.substring(3);
-      if (local.startsWith('0')) local = local.substring(1);
-      // Format: +62 812 3456 7890
-      if (local.length >= 4) {
-        if (local.length == 10) {
-          return '+62 ${local.substring(0, 3)} ${local.substring(3, 6)} ${local.substring(6)}';
-        } else if (local.length == 11) {
-          return '+62 ${local.substring(0, 4)} ${local.substring(4, 7)} ${local.substring(7)}';
-        } else if (local.length == 12) {
-          return '+62 ${local.substring(0, 3)} ${local.substring(3, 7)} ${local.substring(7)}';
-        }
-      }
-      return '+62 $local';
-    }
-    
-    return clean;
-  }
-
-  static PhoneLookupResult validate(String rawNumber) {
-    String cleanNumber = rawNumber.replaceAll(RegExp(r'[\s\-\(\)]'), '');
-    
-    // Deteksi kode negara
-    String detectedCountryCode = '';
-    String detectedCountryName = '';
-    bool isValid = false;
-    
-    for (var entry in _countries.entries) {
-      if (cleanNumber.startsWith(entry.key)) {
-        detectedCountryCode = entry.key;
-        detectedCountryName = entry.value['name']!;
-        RegExp pattern = RegExp(entry.value['pattern']!);
-        isValid = pattern.hasMatch(cleanNumber);
-        break;
-      }
-    }
-    
-    // Cek format Indonesia tanpa +62
-    if (detectedCountryCode.isEmpty) {
-      if (RegExp(r'^0[0-9]{9,12}$').hasMatch(cleanNumber)) {
-        detectedCountryCode = '+62';
-        detectedCountryName = 'Indonesia';
-        isValid = true;
-        cleanNumber = '+62${cleanNumber.substring(1)}';
-      }
-    }
-    
-    // Jika tidak detect, coba format lain
-    if (detectedCountryCode.isEmpty) {
-      if (RegExp(r'^[0-9]{8,15}$').hasMatch(cleanNumber)) {
-        detectedCountryCode = '+??';
-        detectedCountryName = 'Unknown';
-        isValid = true;
-      }
-    }
-    
-    String carrier = 'Unknown';
-    String operatorCode = '';
-    String? city;
-    
-    if (detectedCountryName == 'Indonesia') {
-      carrier = detectCarrier(cleanNumber);
-      
-      // Deteksi kode area untuk fixed line
-      String localNumber = cleanNumber.replaceAll(RegExp(r'[^0-9]'), '');
-      if (localNumber.startsWith('62')) localNumber = localNumber.substring(2);
-      if (!localNumber.startsWith('0')) localNumber = '0$localNumber';
-      
-      if (localNumber.startsWith('021')) city = 'Jakarta';
-      else if (localNumber.startsWith('022')) city = 'Bandung';
-      else if (localNumber.startsWith('0231')) city = 'Cirebon';
-      else if (localNumber.startsWith('024')) city = 'Semarang';
-      else if (localNumber.startsWith('0271')) city = 'Surakarta';
-      else if (localNumber.startsWith('0274')) city = 'Yogyakarta';
-      else if (localNumber.startsWith('031')) city = 'Surabaya';
-      else if (localNumber.startsWith('0341')) city = 'Malang';
-      else if (localNumber.startsWith('0361')) city = 'Denpasar';
-      else if (localNumber.startsWith('0411')) city = 'Makassar';
-      else if (localNumber.startsWith('061')) city = 'Medan';
-      else if (localNumber.startsWith('0711')) city = 'Palembang';
-      else if (localNumber.startsWith('0751')) city = 'Padang';
-      else if (localNumber.startsWith('0771')) city = 'Pangkal Pinang';
-      
-      // Extract operator code (3-4 digit setelah 0/62)
-      String numPart = localNumber.replaceFirst('0', '');
-      if (numPart.length >= 4) {
-        operatorCode = numPart.substring(0, 4);
-      } else if (numPart.length >= 3) {
-        operatorCode = numPart.substring(0, 3);
-      }
-    }
-    
-    String formatted = formatPhoneNumber(cleanNumber);
-    String lineType = detectLineType(cleanNumber);
-    
-    return PhoneLookupResult(
-      phoneNumber: rawNumber,
-      phoneFormatted: formatted,
-      countryCode: detectedCountryCode,
-      countryName: detectedCountryName,
-      carrier: carrier,
-      lineType: lineType,
-      isValid: isValid,
-      city: city,
-      operatorCode: operatorCode.isNotEmpty ? operatorCode : null,
-      details: {
-        'raw': rawNumber,
-        'clean': cleanNumber,
-        'formatted': formatted,
-        'length': cleanNumber.replaceAll(RegExp(r'[^0-9]'), '').length,
-      },
-    );
-  }
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────
 class PhoneLookupPage extends StatefulWidget {
-  const PhoneLookupPage({super.key});
+  final String sessionKey;
+
+  const PhoneLookupPage({super.key, required this.sessionKey});
 
   @override
   State<PhoneLookupPage> createState() => _PhoneLookupPageState();
 }
 
 class _PhoneLookupPageState extends State<PhoneLookupPage> with TickerProviderStateMixin {
-  late AnimationController _bgCtrl;
   final TextEditingController _phoneController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  
+  Map<String, String>? _phoneData;
   bool _isLoading = false;
-  PhoneLookupResult? _result;
-  String? _errorMessage;
+
+  // GLOWING GREY THEME
+  final Color _primaryColor = const Color(0xFFB8B8CC);
+  final Color _secondaryColor = const Color(0xFF787890);
+  final Color _accentColor = const Color(0xFFD8D8EC);
+  final Color _successColor = const Color(0xFF8899AA);
+  final Color _warningColor = const Color(0xFFC8B890);
+  final Color _darkBg = const Color(0xFF0C0C10);
+  final Color _darkerBg = const Color(0xFF070709);
+  final Color _surfaceColor = const Color(0xFF161620);
+  final Color _cardColor = const Color(0xFF111118);
+  final Color _glowColor1 = const Color(0xFFE0E0F8);
+  final Color _glowColor2 = const Color(0xFF9090B4);
+  final Color _glowColor3 = const Color(0xFFBBBBD0);
+  final Color _goldColor = const Color(0xFFCCBB88);
+  final Color _roseColor = const Color(0xFFBB8899);
+
+  // Animation Controllers
+  late AnimationController _glowController;
+  late AnimationController _fadeController;
+  late AnimationController _rotateController;
+  late Animation<double> _glowAnimation;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _rotateAnimation;
+
+  // Video Controller
+  VideoPlayerController? _videoController;
+
+  // List of user agents
+  final List<String> _userAgents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+  ];
 
   @override
   void initState() {
     super.initState();
-    _bgCtrl = AnimationController(
+    _initializeAnimations();
+    _initVideoBackground();
+  }
+
+  void _initializeAnimations() {
+    _glowController = AnimationController(
+      duration: const Duration(milliseconds: 2500),
       vsync: this,
-      duration: const Duration(seconds: 16),
-    )..repeat();
+    );
+    _glowController.repeat(reverse: true);
+    _glowAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _glowController, curve: Curves.easeInOutSine),
+    );
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic),
+    );
+    _fadeController.forward();
+
+    _rotateController = AnimationController(
+      duration: const Duration(seconds: 20),
+      vsync: this,
+    );
+    _rotateController.repeat();
+    _rotateAnimation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _rotateController, curve: Curves.linear),
+    );
   }
 
-  @override
-  void dispose() {
-    _bgCtrl.dispose();
-    _phoneController.dispose();
-    super.dispose();
+  Future<void> _initVideoBackground() async {
+    try {
+      _videoController = VideoPlayerController.asset('assets/videos/banner.mp4')
+        ..initialize().then((_) {
+          _videoController?.setLooping(true);
+          _videoController?.setVolume(0.0);
+          _videoController?.play();
+          if (mounted) setState(() {});
+        }).catchError((e) {
+          debugPrint("Gagal memuat video background: $e");
+        });
+    } catch (e) {
+      debugPrint("Exception saat memuat video: $e");
+    }
   }
 
-  void _lookupPhone() {
-    if (!_formKey.currentState!.validate()) return;
-    
+  Widget _buildAnimatedBackground() {
+    return Stack(
+      children: [
+        if (_videoController != null && _videoController!.value.isInitialized)
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              child: SizedBox(
+                width: _videoController!.value.size.width,
+                height: _videoController!.value.size.height,
+                child: Opacity(opacity: 0.06, child: VideoPlayer(_videoController!)),
+              ),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(-0.2, -0.4),
+                radius: 1.6,
+                colors: [_glowColor1.withOpacity(0.05), _darkerBg, _darkBg],
+              ),
+            ),
+          ),
+
+        // Rotating rings
+        AnimatedBuilder(
+          animation: _rotateAnimation,
+          builder: (context, _) {
+            final size = MediaQuery.of(context).size;
+            return Stack(
+              children: [
+                Positioned(
+                  bottom: -size.height * 0.15,
+                  right: -size.width * 0.2,
+                  child: Transform.rotate(
+                    angle: _rotateAnimation.value * pi * 2,
+                    child: Container(
+                      width: size.width * 0.7,
+                      height: size.width * 0.7,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _glowColor1.withOpacity(0.05), width: 1),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: -size.height * 0.08,
+                  left: -size.width * 0.15,
+                  child: Transform.rotate(
+                    angle: -_rotateAnimation.value * pi,
+                    child: Container(
+                      width: size.width * 0.5,
+                      height: size.width * 0.5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: _glowColor2.withOpacity(0.06), width: 0.8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+
+        // Vignette
+        Container(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: Alignment.center,
+              radius: 1.0,
+              colors: [
+                Colors.transparent,
+                Colors.black.withOpacity(0.55),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassCard({required Widget child}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _glowColor1.withOpacity(0.12), width: 1),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6)),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  String _getRandomUA() {
+    final random = Random();
+    return _userAgents[random.nextInt(_userAgents.length)];
+  }
+
+  Future<void> _lookupPhone() async {
+    if (_phoneController.text.isEmpty) return;
+
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
-      _result = null;
+      _phoneData = null;
     });
-    
-    final phone = _phoneController.text.trim();
-    
-    // Simulasi loading sebentar agar smooth
-    Future.delayed(const Duration(milliseconds: 500), () {
-      final result = PhoneValidator.validate(phone);
-      
-      setState(() {
-        _result = result;
-        _isLoading = false;
-        
-        if (!result.isValid && result.countryName == 'Unknown') {
-          _errorMessage = 'Format nomor tidak dikenali. Gunakan format internasional (+62, +1, dll)';
+
+    try {
+      final phoneNumber = _phoneController.text.trim();
+      final url = Uri.parse('https://free-lookup.net/$phoneNumber');
+
+      final response = await http.get(
+        url,
+        headers: {
+          "User-Agent": _getRandomUA(),
+          "Accept-Language": "en-US,en;q=0.9"
+        },
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final document = html_parser.parse(response.body);
+        final items = document.querySelectorAll('.report-summary__list div');
+
+        Map<String, String> info = {};
+
+        for (int i = 0; i < items.length; i += 2) {
+          if (i + 1 < items.length) {
+            final key = items[i].text.trim();
+            final value = items[i + 1].text.trim();
+            info[key] = value.isNotEmpty ? value : 'Not found';
+          }
         }
+
+        setState(() {
+          _phoneData = info;
+        });
+      } else {
+        _showSnackBar('Failed to connect to phone lookup service', isError: true);
+      }
+    } catch (e) {
+      _showSnackBar('Error: ${e.toString()}', isError: true);
+    } finally {
+      setState(() {
+        _isLoading = false;
       });
-    });
+    }
   }
 
-  void _copyToClipboard(String text, String label) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          '$label disalin',
-          style: const TextStyle(color: Colors.white),
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message, style: const TextStyle(color: Colors.white, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600)),
+      backgroundColor: isError ? _roseColor.withOpacity(0.9) : _glowColor1.withOpacity(0.92),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ));
+  }
+
+  Widget _buildNeonHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, _) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: _cardColor,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: _glowColor1.withOpacity(0.3), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: _glowColor1.withOpacity(0.12 * _glowAnimation.value),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _glowColor1.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _glowColor1.withOpacity(0.2), width: 1),
+                  ),
+                  child: const Icon(FontAwesomeIcons.phone, color: Color(0xFFE0E0F8), size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          colors: [_glowColor1, _accentColor, _glowColor2],
+                        ).createShader(bounds),
+                        child: const Text(
+                          "PHONE LOOKUP",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: "Rajdhani",
+                            letterSpacing: 3,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Phone number intelligence",
+                        style: TextStyle(
+                          color: _glowColor2.withOpacity(0.7),
+                          fontSize: 11,
+                          fontFamily: "Rajdhani",
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchCard() {
+    return _buildGlassCard(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: _glowColor1.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [BoxShadow(color: _glowColor1.withOpacity(0.5), blurRadius: 6)],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "PHONE NUMBER",
+                  style: TextStyle(
+                    color: _glowColor2.withOpacity(0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
+                    fontFamily: "Rajdhani",
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _glowColor1.withOpacity(0.15), width: 1),
+                color: _cardColor,
+              ),
+              child: TextField(
+                controller: _phoneController,
+                style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 14, fontFamily: 'Rajdhani', fontWeight: FontWeight.w600),
+                cursorColor: _glowColor1,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  hintText: "Enter phone number with country code",
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 12, fontFamily: 'Rajdhani'),
+                  prefixIcon: Icon(FontAwesomeIcons.magnifyingGlass, color: _glowColor2.withOpacity(0.5), size: 18),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.transparent,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            GestureDetector(
+              onTap: _isLoading ? null : _lookupPhone,
+              child: Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  color: _glowColor1.withOpacity(0.92),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _glowColor1.withOpacity(0.3),
+                      blurRadius: 20,
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: _isLoading
+                      ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Color(0xFF070709), strokeWidth: 2.5))
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(FontAwesomeIcons.search, size: 16, color: Color(0xFF070709)),
+                            SizedBox(width: 12),
+                            Text(
+                              "LOOKUP PHONE",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontFamily: 'Rajdhani',
+                                letterSpacing: 3,
+                                fontSize: 12,
+                                color: Color(0xFF070709),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
+          ],
         ),
-        backgroundColor: _C.blueMid,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildResultsCard() {
+    if (_isLoading) {
+      return _buildGlassCard(
+        child: const Padding(
+          padding: EdgeInsets.all(40),
+          child: Center(
+            child: Column(
+              children: [
+                CircularProgressIndicator(color: Color(0xFFE0E0F8)),
+                SizedBox(height: 16),
+                Text(
+                  "FETCHING INFORMATION...",
+                  style: TextStyle(color: Colors.white54, fontFamily: 'Rajdhani', fontSize: 11, letterSpacing: 2),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_phoneData == null) {
+      return const SizedBox.shrink();
+    }
+
+    final filteredData = _phoneData!.entries.where((entry) => entry.value != 'Not found').toList();
+
+    if (filteredData.isEmpty) {
+      return _buildGlassCard(
+        child: Padding(
+          padding: const EdgeInsets.all(40),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(FontAwesomeIcons.phoneSlash, color: Colors.white.withOpacity(0.1), size: 50),
+                const SizedBox(height: 16),
+                Text(
+                  "NO INFORMATION FOUND",
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontFamily: 'Rajdhani', fontSize: 13, fontWeight: FontWeight.w800, letterSpacing: 2),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Could not retrieve data for this number",
+                  style: TextStyle(color: Colors.white.withOpacity(0.25), fontFamily: 'Rajdhani', fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _buildGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 3,
+                  height: 18,
+                  decoration: BoxDecoration(
+                    color: _glowColor1.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(2),
+                    boxShadow: [BoxShadow(color: _glowColor1.withOpacity(0.5), blurRadius: 6)],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "PHONE INFORMATION",
+                  style: TextStyle(
+                    color: _glowColor2.withOpacity(0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
+                    fontFamily: "Rajdhani",
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _glowColor1.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _glowColor1.withOpacity(0.2), width: 1),
+                  ),
+                  child: Text(
+                    "${filteredData.length} FIELDS",
+                    style: TextStyle(
+                      color: _glowColor1.withOpacity(0.8),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1,
+                      fontFamily: "Rajdhani",
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Divider(color: Colors.white.withOpacity(0.06), height: 1),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: filteredData.map((entry) {
+                return _buildInfoRow(entry.key, entry.value);
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 110,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Container(
+                  width: 2,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: _glowColor1,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$label:',
+                  style: TextStyle(
+                    color: _glowColor2.withOpacity(0.6),
+                    fontSize: 11,
+                    fontFamily: 'Rajdhani',
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+              decoration: BoxDecoration(
+                color: _surfaceColor,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: _glowColor1.withOpacity(0.08), width: 1),
+              ),
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.85),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  fontFamily: 'Rajdhani',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooter() {
+    return Column(
+      children: [
+        Container(
+          height: 1,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.transparent, _glowColor1.withOpacity(0.1), Colors.transparent],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildFooterDot(_successColor),
+            const SizedBox(width: 8),
+            _buildFooterText("SECURE"),
+            const SizedBox(width: 20),
+            Container(width: 1, height: 10, color: Colors.white.withOpacity(0.06)),
+            const SizedBox(width: 20),
+            Icon(Icons.fingerprint, color: Colors.white.withOpacity(0.12), size: 12),
+            const SizedBox(width: 20),
+            _buildFooterDot(_glowColor2),
+            const SizedBox(width: 8),
+            _buildFooterText("ENCRYPTED"),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          "NXOB • PHONE LOOKUP",
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.1),
+            fontSize: 8,
+            letterSpacing: 3,
+            fontFamily: 'Rajdhani',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFooterDot(Color color) {
+    return Container(
+      width: 5,
+      height: 5,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: [BoxShadow(color: color, blurRadius: 5)],
+      ),
+    );
+  }
+
+  Widget _buildFooterText(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.25),
+        fontSize: 8,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 2.5,
+        fontFamily: 'Rajdhani',
       ),
     );
   }
@@ -365,274 +690,29 @@ class _PhoneLookupPageState extends State<PhoneLookupPage> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _C.bg,
+      backgroundColor: _darkerBg,
       body: Stack(
         children: [
-          Positioned.fill(child: _AnimatedBg(controller: _bgCtrl)),
-          
+          _buildAnimatedBackground(),
           SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(),
-                
-                Expanded(
-                  child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        _buildInputSection(),
-                        
-                        const SizedBox(height: 24),
-                        
-                        if (_isLoading) _buildLoadingIndicator(),
-                        
-                        if (_errorMessage != null && !_isLoading)
-                          _buildErrorMessage(),
-                        
-                        if (_result != null && !_isLoading)
-                          _buildResultCard(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            _C.bg.withOpacity(0.95),
-            _C.bg.withOpacity(0.85),
-          ],
-        ),
-        border: Border(
-          bottom: BorderSide(color: _C.border.withOpacity(0.5)),
-        ),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _C.cardInner.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _C.border),
-                boxShadow: [
-                  BoxShadow(
-                    color: _C.blue.withOpacity(0.1),
-                    blurRadius: 8,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.arrow_back_ios_rounded,
-                color: _C.blueLight,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: _C.card.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: _C.border),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: _C.blueLight,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: _C.blueLight.withOpacity(0.5), blurRadius: 4),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'PHONE LOOKUP',
-                  style: TextStyle(
-                    color: _C.text,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          const Spacer(),
-          
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildInputSection() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _C.card,
-            _C.cardInner,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _C.border),
-        boxShadow: [
-          BoxShadow(
-            color: _C.blue.withOpacity(0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 18,
-                        decoration: BoxDecoration(
-                          color: _C.blueLight,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Nomor Telepon Lookup',
-                        style: TextStyle(
-                          color: _C.text,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  TextFormField(
-                    controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    style: const TextStyle(color: _C.text),
-                    cursorColor: _C.blueLight,
-                    decoration: InputDecoration(
-                      hintText: '+62 812 3456 7890',
-                      hintStyle: const TextStyle(color: _C.textSub),
-                      prefixIcon: Icon(Icons.phone_android_rounded, color: _C.blueLight, size: 20),
-                      filled: true,
-                      fillColor: _C.bg.withOpacity(0.5),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _C.border),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _C.border),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: BorderSide(color: _C.blueLight, width: 1.5),
-                      ),
-                      errorBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        borderSide: const BorderSide(color: _C.red),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Nomor telepon tidak boleh kosong';
-                      }
-                      final cleanNumber = value.replaceAll(RegExp(r'[^0-9+]'), '');
-                      if (cleanNumber.length < 8) {
-                        return 'Nomor telepon terlalu pendek';
-                      }
-                      return null;
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Info format nomor
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline_rounded, color: _C.textSub, size: 12),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Format: +62 (Indonesia), +1 (US), +44 (UK), dll',
-                          style: const TextStyle(color: _C.textSub, fontSize: 10),
-                        ),
-                      ),
-                    ],
-                  ),
-                  
+                  _buildNeonHeader(),
                   const SizedBox(height: 20),
-                  
-                  GestureDetector(
-                    onTap: _lookupPhone,
-                    child: Container(
-                      width: double.infinity,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [_C.steel, _C.blueMid, _C.blueLight],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _C.blueMid.withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Column(
                         children: [
-                          Icon(Icons.search_rounded, color: Colors.white, size: 20),
-                          SizedBox(width: 10),
-                          Text(
-                            'LOOKUP NUMBER',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
-                            ),
-                          ),
+                          _buildSearchCard(),
+                          const SizedBox(height: 20),
+                          _buildResultsCard(),
+                          const SizedBox(height: 32),
+                          _buildFooter(),
+                          const SizedBox(height: 30),
                         ],
                       ),
                     ),
@@ -640,346 +720,19 @@ class _PhoneLookupPageState extends State<PhoneLookupPage> with TickerProviderSt
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildLoadingIndicator() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: _C.card.withOpacity(0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _C.border),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: _C.blueLight,
-              backgroundColor: _C.border,
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Menganalisis nomor...',
-            style: TextStyle(color: _C.textSub),
           ),
         ],
       ),
     );
   }
-  
-  Widget _buildErrorMessage() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _C.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _C.red.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.error_outline, color: _C.red, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              _errorMessage!,
-              style: const TextStyle(color: _C.textSub),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildResultCard() {
-    final result = _result!;
-    
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _C.card,
-                _C.cardInner,
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _C.border),
-            boxShadow: [
-              BoxShadow(
-                color: _C.blue.withOpacity(0.08),
-                blurRadius: 20,
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: result.isValid ? _C.green.withOpacity(0.1) : _C.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: result.isValid ? _C.green.withOpacity(0.3) : _C.red.withOpacity(0.3),
-                      ),
-                    ),
-                    child: Icon(
-                      result.isValid ? Icons.check_circle_rounded : Icons.error_rounded,
-                      color: result.isValid ? _C.green : _C.red,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          result.phoneFormatted,
-                          style: const TextStyle(
-                            color: _C.text,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          result.isValid ? 'Nomor Valid' : 'Nomor Tidak Valid',
-                          style: TextStyle(
-                            color: result.isValid ? _C.green : _C.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => _copyToClipboard(result.phoneFormatted, 'Nomor telepon'),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _C.cardInner,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: _C.border),
-                      ),
-                      child: Icon(Icons.copy_rounded, color: _C.blueLight, size: 18),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 20),
-              const Divider(color: _C.border, height: 1),
-              const SizedBox(height: 16),
-              
-              _buildInfoRow(
-                icon: Icons.public_rounded,
-                label: 'Country',
-                value: '${result.countryCode} ${result.countryName}',
-                onCopy: () => _copyToClipboard(result.countryName, 'Country'),
-              ),
-              const SizedBox(height: 12),
-              
-              if (result.carrier != 'Unknown') ...[
-                _buildInfoRow(
-                  icon: Icons.signal_cellular_alt_rounded,
-                  label: 'Carrier',
-                  value: result.carrier,
-                  onCopy: () => _copyToClipboard(result.carrier, 'Carrier'),
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              _buildInfoRow(
-                icon: Icons.devices_rounded,
-                label: 'Line Type',
-                value: result.lineType,
-              ),
-              const SizedBox(height: 12),
-              
-              if (result.city != null) ...[
-                _buildInfoRow(
-                  icon: Icons.location_city_rounded,
-                  label: 'Area/City',
-                  value: result.city!,
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              if (result.operatorCode != null) ...[
-                _buildInfoRow(
-                  icon: Icons.qr_code_rounded,
-                  label: 'Operator Code',
-                  value: result.operatorCode!,
-                ),
-                const SizedBox(height: 12),
-              ],
-              
-              _buildInfoRow(
-                icon: Icons.format_size_rounded,
-                label: 'Length',
-                value: '${result.details['length']} digit',
-              ),
-            ],
-          ),
-        ),
-        
-        const SizedBox(height: 16),
-        
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _C.cardInner.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _C.border),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: _C.blueLight.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(Icons.info_outline_rounded, color: _C.blueLight, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-  child: Text(
-    result.isValid 
-      ? 'Nomor terdeteksi dari ${result.countryName}. ${result.carrier != "Unknown" ? "Operator: ${result.carrier}." : ""}'
-      : 'Format nomor tidak dikenali. Gunakan kode negara (+62, +1, +44, dll)',
-    style: const TextStyle(color: _C.textSub, fontSize: 12, height: 1.4),
-  ),
-),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-  
-  Widget _buildInfoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-    VoidCallback? onCopy,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: _C.blueLight, size: 18),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(color: _C.textSub, fontSize: 13),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: _C.text,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (onCopy != null)
-            GestureDetector(
-              onTap: onCopy,
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: _C.cardInner,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: _C.border),
-                ),
-                child: Icon(Icons.copy_rounded, color: _C.textSub, size: 14),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Animated Background ──────────────────────────────────────────────────────
-class _AnimatedBg extends StatelessWidget {
-  final AnimationController controller;
-  const _AnimatedBg({required this.controller});
 
   @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) => CustomPaint(
-        painter: _BgPainter(controller.value),
-      ),
-    );
+  void dispose() {
+    _glowController.dispose();
+    _fadeController.dispose();
+    _rotateController.dispose();
+    _videoController?.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
-}
-
-class _BgPainter extends CustomPainter {
-  final double t;
-  _BgPainter(this.t);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final grid = Paint()
-      ..color = _C.border.withOpacity(0.22)
-      ..strokeWidth = 0.5;
-    
-    const step = 44.0;
-    for (double x = 0; x < size.width; x += step) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
-    }
-    for (double y = 0; y < size.height; y += step) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final glow = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.steel.withOpacity(0.10 + math.sin(t * math.pi * 2) * 0.03),
-        Colors.transparent,
-      ], radius: 0.9).createShader(
-        Rect.fromCircle(center: Offset(size.width / 2, 0), radius: size.width)
-      );
-    canvas.drawCircle(Offset(size.width / 2, 0), size.width, glow);
-
-    final glow2 = Paint()
-      ..shader = RadialGradient(colors: [
-        _C.blueMid.withOpacity(0.05 + math.cos(t * math.pi * 2) * 0.02),
-        Colors.transparent,
-      ], radius: 0.5).createShader(
-        Rect.fromCircle(center: Offset(size.width * 0.85, size.height * 0.75), radius: size.width * 0.4)
-      );
-    canvas.drawCircle(
-      Offset(size.width * 0.85, size.height * 0.75),
-      size.width * 0.4,
-      glow2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_BgPainter old) => old.t != t;
 }
